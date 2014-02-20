@@ -1,0 +1,5 @@
+const msg = "hello world", 10
+const msg_len = len(msg)
+fun hello
+    int(80, 4, 1, msg, msg_len)
+    ret(0)

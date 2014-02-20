@@ -1,0 +1,26 @@
+Assign a value to a register:
+
+    register = value
+
+    example:
+	eax = 2
+
+Declare a function:
+
+    fun name
+
+    example:
+	fun hello_world
+	ret
+
+Return from a function
+
+    ret [retval]
+
+    example:
+	ret 1
+
+    example:
+	ret
+
+Declare a constant
