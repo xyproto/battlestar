@@ -11,16 +11,22 @@ Declare a function:
 
     example:
 	fun hello_world
-	ret
 
-Return from a function
+    example:
+	fun hello
+	    eax = 2
+	    ret(0)
+
+Return from a function:
 
     ret [retval]
 
     example:
-	ret 1
+	ret(1)
 
     example:
 	ret
 
-Declare a constant
+Declare a constant:
+
+   const name = constant 

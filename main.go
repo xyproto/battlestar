@@ -87,14 +87,15 @@ func is_valid_name(s string) bool {
 	upper := strings.ToUpper(letters)
 	digits := "0123456789"
 	special := "_"
-	combined := letters + upper + digits + special
-	if !(strings.Contains(letters, string(s[0])) || strings.Contains(upper, string(s[0]))) {
+	combined1 := letters + upper + special
+	combined2 := letters + upper + digits + special
+	if !(strings.Contains(combined1, string(s[0]))) {
 		// Does not start with a letter
 		return false
 	}
 	for _, letter := range s {
 		// If not a letter, digit or valid special character, it's not a valid name
-		if !(strings.Contains(combined, string(letter))) {
+		if !(strings.Contains(combined2, string(letter))) {
 			return false
 		}
 	}
@@ -129,7 +130,7 @@ func tokenize(program string, debug bool) []Token {
 				continue
 			}
 			if instring {
-				collected += word
+				collected += word + " "
 			} else if has(registers, word) {
 				if debug {
 					log.Println("TOKEN", word, "register")
@@ -345,8 +346,8 @@ func (st Statement) String() string {
 	} else if (len(st) == 2) && (st[0].t == KEYWORD) && (st[1].t == VALID_NAME) && (st[0].value == "fun") {
 		asmcode := ";--- function " + st[1].value + " ---\n"
 		infunction = st[1].value
-		asmcode += "global go.main." + st[1].value + "\t\t\t; make label available to linker (Go)\n"
-		asmcode += "go.main." + st[1].value + ":\t\t\t\t; label / name of the function\n\n"
+		asmcode += "global " + st[1].value + "\t\t\t; make label available to linker (Go)\n"
+		asmcode += st[1].value + ":\t\t\t\t; label / name of the function\n\n"
 		asmcode += "\t;--- setup stack frame ---\n"
 		asmcode += "\tpush rbp\t\t\t; save old base pointer\n"
 		asmcode += "\tmov rbp, rsp\t\t\t; use stack pointer as new base pointer\n"
@@ -407,9 +408,13 @@ func main() {
 		tokens := tokenize(string(bytes), true)
 		log.Println("--- Done tokenizing ---")
 		constants, asmcode := TokensToAssembly(tokens, true, false)
-		fmt.Println("SECTION .data\n")
-		fmt.Println(constants + "\n")
-		fmt.Println("SECTION .text\n")
-		fmt.Println(asmcode)
+		if constants != "" {
+			fmt.Println("SECTION .data\n")
+			fmt.Println(constants + "\n")
+		}
+		if asmcode != "" {
+			fmt.Println("SECTION .text\n")
+			fmt.Println(asmcode + "\n")
+		}
 	}
 }
