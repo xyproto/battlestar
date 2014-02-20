@@ -7,6 +7,7 @@ import (
 	"os"
 	"log"
 	"fmt"
+	"time"
 )
 
 type Program string
@@ -27,6 +28,10 @@ type Token struct {
 	t TokenType
 	value string
 }
+
+// Global variables
+var infunction string // name of the function we are currently in
+var defined_names []string // all defined variables/constants/functions
 
 func (tok Token) String() string {
 	if tok.t == REGISTER {
@@ -52,9 +57,10 @@ func (tok Token) String() string {
 
 type Statement []Token
 
-var registers = []string{"eax", "ebx", "ecx", "esp", "ebp"}
+var registers = []string{"eax", "ebx", "ecx", "edx", "rbp", "rsp", "rax", "rbx", "rcx", "rdx"}
+var parameter_registers = []string{"eax", "ebx", "ecx", "edx"}
 var operators = []string{"="}
-var keywords = []string{"fun", "int", "ret", "const"}
+var keywords = []string{"fun", "int", "ret", "const", "len"}
 
 func maps(sl []string, f func (string) string) []string {
 	newl := make([]string, len(sl), len(sl))
@@ -211,15 +217,46 @@ func tokenize(program string, debug bool) []Token {
 	return tokens
 }
 
+func reduce(st Statement) Statement {
+	for i := 0; i < (len(st)-1); i++ {
+		if (st[i].t == KEYWORD) && (st[i].value == "len") {
+			if st[i+1].t == VALID_NAME {
+				// len followed by a valid name
+				// replace with the length of the given value
+
+				name := st[i+1].value
+				token_type := st[i+1].t
+
+				// remove the element at i+1
+				st = st[:i+1+copy(st[i+1:], st[i+2:])]
+
+				// replace len(name) with _length_of_name
+				st[i] = Token{token_type, "_length_of_" + name}
+
+				log.Println("SUCCESSFULL REPLACEMENT WITH", st[i])
+			}
+		}
+	}
+	return st;
+}
+
 func (st Statement) String() string {
+	reduced := reduce(st)
+	if len(reduced) != len(st) {
+		return reduced.String()
+	}
 	if len(st) == 0 {
 		log.Fatalln("Error: Empty statement:", st)
 		return ""
 	} else if (st[0].t == KEYWORD) && (st[0].value == "int") { // interrrupt call
-		asmcode := "--- call interrupt 0x" + st[1].value + " ---\n"
+		asmcode := "\t;--- call interrupt 0x" + st[1].value + " ---\n"
 		// Check the number of parameters
 		if len(st) > 6 {
-			log.Fatalln("Error: Too many parameters for interrupt call:\n", st)
+			log.Println("Error: Too many parameters for interrupt call:")
+			for _, t := range st {
+				log.Println(t.value)
+			}
+			os.Exit(1)
 		}
 		// Store each of the parameters to the appropriate registers
 		var (
@@ -228,7 +265,7 @@ func (st Statement) String() string {
 			comment string
 		)
 		for i := 2; i < len(st); i++ {
-			reg = []string{"eax", "ebx", "ecx", "edx"}[i-2]
+			reg = parameter_registers[i-2]
 			n = strconv.Itoa(i-2)
 			if (i-2) == 0 {
 				comment = "function call: " + st[i].value
@@ -236,54 +273,90 @@ func (st Statement) String() string {
 				if st[i].t == VALUE {
 					comment = "parameter #" + n + " is " + st[i].value
 				} else {
-					comment = "parameter #" + n + " is " + "&" + st[i].value
+					if strings.HasPrefix(st[i].value, "_length_of_") {
+						comment = "parameter #" + n + " is len(" + st[i].value[11:] + ")"
+					} else {
+						comment = "parameter #" + n + " is " + "&" + st[i].value
+					}
 				}
 			}
-			asmcode += "mov " + reg + ", " + st[i].value + "\t; " + comment + "\n"
+			codeline := "\tmov " + reg + ", " + st[i].value
+
+			// TODO: Find a more elegant way to format the comments in columns
+			if len(codeline) > 14 { // for tab formatting
+				asmcode += codeline + "\t\t; " + comment + "\n"
+			} else {
+				asmcode += codeline + "\t\t\t; " + comment + "\n"
+			}
 		}
 		// Add the interrupt call
 		if (st[1].t == VALUE) {
-			asmcode += "int 0x" + st[1].value + "\t; perform the call"
+			asmcode += "\tint 0x" + st[1].value + "\t\t\t; perform the call\n"
 			return asmcode
 		}
-		log.Fatalln("Error: Need a (hexadecimal) interrupt number to call:\n", st)
+		log.Fatalln("Error: Need a (hexadecimal) interrupt number to call:\n", st[1].value)
 	} else if (st[0].t == KEYWORD) && (st[0].value == "const") && (len(st) == 4) { // constant data
+		constname := ""
+		if st[1].t == VALID_NAME {
+			constname = st[1].value
+		} else {
+			log.Fatalln(st[1].value, "is not a valid name for a constant")
+		}
+		asmcode := ""
 		if (st[1].t == VALID_NAME) && (st[2].t == ASSIGNMENT) && (st[3].t == STRING) {
+			if has(defined_names, constname) {
+				log.Fatalln("Error: constant is already defined: " + constname)
+			}
+			defined_names = append(defined_names, constname)
 			// For the .DATA section (recognized by the keyword)
-			return st[1].value + ":\tdb " + st[3].value + "\t; constant string"
+			asmcode += constname + ":\tdb " + st[3].value + "\t\t; constant string\n"
+			// Special naming for storing the length for later
+			asmcode += "_length_of_" + constname + " equ $ - " + constname + "\t\t; constant string length\n"
+			return asmcode
 		}
 		log.Fatalln("Error: Invalid parameters for constant string statement:\n", st)
-	} else if (st[0].t == KEYWORD) && (st[0].value == "const") && (len(st) == 5) { // constant data with len
-		// For the .DATA section (recognized by the keyword)
-		return ";TODO\t; constant: length of " + st[4].value
-		log.Fatalln("Error: Invalid parameters for constant string len statement:\n", st)
 	} else if (st[0].t == KEYWORD) && (st[0].value == "ret") {
-		fmt.Println(st[1])
-		return ";TODO: RET"
+		asmcode := "\t;--- takedown stack frame ---\n"
+		asmcode += "\tmov rsp, rbp\t\t\t; use base pointer as new stack pointer\n"
+		asmcode += "\tpop rbp\t\t\t\t; get the old base pointer\n\n"
+		if infunction != "" {
+			asmcode += "\t;--- return from \"" + infunction + "\" ---\n"
+			// Exiting from the function definition
+			infunction = ""
+		} else {
+			asmcode += "\t;--- return ---\n"
+		}
+		if (len(st) == 2) && (st[1].t == VALUE){
+			asmcode += "\tmov rax, " + st[1].value + "\t\t\t; Error code "
+			if st[1].value == "0" {
+				asmcode += "0 (everything is fine)\n"
+			} else {
+				asmcode += st[1].value + "\n"
+			}
+		}
+		asmcode += "\tret\t\t\t\t; Return"
+		return asmcode
 	} else if len(st) == 3 {
 		if (st[0].t == REGISTER) && (st[1].t == ASSIGNMENT) && (st[2].t == VALUE) {
-			return "mov " + st[0].value + ", " + st[2].value + "\t; " + st[0].value + " " + st[1].value + " " + st[2].value
+			return "mov " + st[0].value + ", " + st[2].value + "\t\t; " + st[0].value + " " + st[1].value + " " + st[2].value
 		} else {
 			log.Fatalln("Error: Uknown type of statement, but familiar layout:\n", st)
 		}
-	} else if len(st) == 2 {
-		if (st[0].t == KEYWORD) && (st[1].t == VALID_NAME) {
-			if st[0].value == "fun" {
-				asmcode := "--- function " + st[1].value + " ---\n"
-				asmcode += "global go.main." + st[1].value + "\t; make label available to linker (Go)\n"
-				asmcode += "go.main." + st[1].value + ":\n"
-				asmcode += "\n; -- setup stack frame\n"
-				asmcode += "push rbp\t; save old base pointer\n"
-				asmcode += "mov rbp, rsp\t; use stack pointer as new base pointer\n"
-				return asmcode
-			} else {
-				log.Fatalln("Error: Unknown keyword:", st[0].value)
-			}
-		}
+	} else if (len(st) == 2) && (st[0].t == KEYWORD) && (st[1].t == VALID_NAME) && (st[0].value == "fun") {
+		asmcode := ";--- function " + st[1].value + " ---\n"
+		infunction = st[1].value
+		asmcode += "global go.main." + st[1].value + "\t\t\t; make label available to linker (Go)\n"
+		asmcode += "go.main." + st[1].value + ":\t\t\t\t; label / name of the function\n\n"
+		asmcode += "\t;--- setup stack frame ---\n"
+		asmcode += "\tpush rbp\t\t\t; save old base pointer\n"
+		asmcode += "\tmov rbp, rsp\t\t\t; use stack pointer as new base pointer\n"
+		return asmcode
+	} else if (st[0].t == KEYWORD) {
+		log.Fatalln("Error: Unknown keyword:", st[0].value)
 	}
 	log.Println("Error: Unfamiliar statement layout: ")
 	for _, token := range []Token(st) {
-		log.Print(token.value + " ")
+		log.Print(token)
 	}
 	os.Exit(1)
 	return ";ERROR"
@@ -298,18 +371,11 @@ func TokensToAssembly(tokens []Token, debug bool, debug2 bool) (string, string) 
 			if len(statement) > 0 {
 				asmline := Statement(statement).String()
 				if (statement[0].t == KEYWORD) && (statement[0].value == "const") {
-					log.Println("CONSTANT")
 					if debug {
-						log.Println("CONSTANT", asmline)
+						log.Println("CONSTANT", asmline[:20], "...")
 					}
 					constants += asmline + "\n"
 				} else {
-					if debug {
-						log.Println("STATEMENT", statement)
-					}
-					if debug2 {
-						log.Println("ASM", asmline)
-					}
 					asmcode += asmline + "\n"
 				}
 			}
@@ -322,10 +388,18 @@ func TokensToAssembly(tokens []Token, debug bool, debug2 bool) (string, string) 
 }
 
 func main() {
-	log.Println("Battlestar compiler")
-	log.Println("Version 0.1")
+	name := "Battlestar"
+	version := "0.1"
+	log.Println(name + " compiler")
+	log.Println("Version " + version)
 	log.Println("Alexander Rødseth, 2014")
 	log.Println("MIT licensed")
+
+	t := time.Now()
+	fmt.Printf("; Generated with %s %s, at %s\n\n", name, version, t.String()[:16])
+
+	// TODO: Needed?
+	defined_names = make([]string, 0, 0)
 
 	// Read code from stdin and output 64-bit assembly code
 	bytes, err := ioutil.ReadAll(os.Stdin)

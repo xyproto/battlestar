@@ -1,5 +1,7 @@
 const msg = "hello world", 10
-const msg_len = len(msg)
+const hi = "hello puppy"
+
 fun hello
-    int(80, 4, 1, msg, msg_len)
+    int(80, 4, 1, msg, len(msg))
+    int(80, 4, 1, hi, len(hi))
     ret(0)
