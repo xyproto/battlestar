@@ -1,27 +1,24 @@
 LBITS := $(shell getconf LONG_BIT)
+SOURCES := $(sort $(wildcard *.bts))
+ASMSOURCES := $(SOURCES:.bts=.asm)
+OBJECTS := $(ASMSOURCES:.asm=.o)
+TARGETS := $(OBJECTS:.o=.elf)
 
-all: test1 test2
+all: $(TARGETS)
 
-run:
-	./run.sh test2.bts
+%.asm: %.bts
+	@echo "--- $< ---"
+	@echo -en "\tGenerating $@ from $<... "
+	@<$< ../battlestar -platform=$(LBITS) 2>/dev/null > $@ && echo ok
 
-test1.asm: test1.bts
-	<test1.bts ../battlestar -platform=$(LBITS) 2>/dev/null > test1.asm
+%.o: %.asm
+	@echo -en "\tCompiling $<... "
+	@nasm -f elf$(LBITS) -o $@ $< && echo ok
 
-test2.asm: test2.bts
-	<test2.bts ../battlestar -platform=$(LBITS) 2>/dev/null > test2.asm
-
-test1.o: test1.asm
-	nasm -f elf$(LBITS) -o test1.o test1.asm
-
-test2.o: test2.asm
-	nasm -f elf$(LBITS) -o test2.o test2.asm
-
-test1: test1.o
-	ld -o test1 test1.o
-
-test2: test2.o
-	ld -o test2 test2.o
+%.elf: %.o
+	@echo -en "\tLinking $@... "
+	@ld --fatal-warnings -pie -nostdlib --relax -o $@ $< && echo ok
 
 clean:
-	rm -rf _obj *.o *~ *.6 *.gch a.out test *.asm test1 test2
+	@echo 'Cleaning...'
+	@rm -rf _obj *~ *.6 *.gch a.out $(ASMSOURCES) $(OBJECTS) $(TARGETS)
