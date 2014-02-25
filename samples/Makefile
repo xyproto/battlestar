@@ -11,7 +11,8 @@ all: $(TARGETS)
 %.asm: %.bts
 	@echo "--- $< ---"
 	@echo -en "\tGenerating $@ from $<... "
-	@<$< ../battlestar -platform=$(LBITS) 2>/dev/null > $@ && echo ok
+	@[ -e ../battlestar ] || echo Could not find ../battlestar! && exit 1
+	@<$< ../battlestar -platform=$(LBITS) 2> $<.log > $@ && echo ok
 
 %.o: %.asm
 	@echo -en "\tCompiling $<... "
@@ -19,9 +20,8 @@ all: $(TARGETS)
 
 %.elf: %.o
 	@echo -en "\tLinking $@... "
-	@ld --fatal-warnings --relax -o $@ $< && echo ok
-	#@ld --fatal-warnings -pie -nostdlib --relax -o $@ $< && echo ok
+	@ld -s --fatal-warnings -nostdlib --relax -o $@ $< && echo ok
 
 clean:
 	@echo 'Cleaning...'
-	@rm -rf _obj *~ *.6 *.gch a.out $(ASMSOURCES) $(OBJECTS) $(TARGETS)
+	@rm -rf $(ASMSOURCES) $(OBJECTS) $(TARGETS) _obj *~ *.6 *.gch a.out *.log

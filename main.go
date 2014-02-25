@@ -43,9 +43,9 @@ var (
 	defined_names []string // all defined variables/constants/functions
 
 	registers           = []string{"eax", "ebx", "ecx", "edx", "rbp", "rsp", "rax", "rbx", "rcx", "rdx"}
-	operators           = []string{"="}
-	keywords            = []string{"fun", "ret", "const"}
-	builtins            = []string{"len", "int"} // built-in functions
+	operators           = []string{"=", "+=", "-=", "*=", "/="}
+	keywords            = []string{"fun", "ret", "const", "call"}
+	builtins            = []string{"len", "int", "exit"} // built-in functions
 
 	token_to_string = TokenDescriptionMap{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in"}
 
@@ -90,8 +90,7 @@ func is_valid_name(s string) bool {
 	if len(s) == 0 {
 		return false
 	}
-
-	// TODO: These can be global constants instead
+	// TODO: These could be global constants instead
 	letters := "abcdefghijklmnopqrstuvwxyz"
 	upper := strings.ToUpper(letters)
 	digits := "0123456789"
@@ -346,22 +345,26 @@ func (st Statement) String() string {
 			return asmcode
 		}
 		log.Fatalln("Error: Invalid parameters for constant string statement:\n", st)
-	} else if (st[0].t == KEYWORD) && (st[0].value == "ret") {
+	} else if ((st[0].t == KEYWORD) && (st[0].value == "ret")) || ((st[0].t == BUILTIN) && (st[0].value == "exit")) {
 		asmcode := ""
-		if (in_function == "main") || (in_function == "_start") {
-			log.Println("Not taking down stack frame in the main/_start function.")
-		} else {
-			asmcode += "\t;--- takedown stack frame ---\n"
-			if platform == 32 {
-				asmcode += "\tmov esp, ebp\t\t\t; use base pointer as new stack pointer\n"
-				asmcode += "\tpop ebp\t\t\t\t; get the old base pointer\n\n"
+		if st[0].value == "ret" {
+			if (in_function == "main") || (in_function == "_start") {
+				log.Println("Not taking down stack frame in the main/_start function.")
 			} else {
-				asmcode += "\tmov rsp, rbp\t\t\t; use base pointer as new stack pointer\n"
-				asmcode += "\tpop rbp\t\t\t\t; get the old base pointer\n\n"
+				asmcode += "\t;--- takedown stack frame ---\n"
+				if platform == 32 {
+					asmcode += "\tmov esp, ebp\t\t\t; use base pointer as new stack pointer\n"
+					asmcode += "\tpop ebp\t\t\t\t; get the old base pointer\n\n"
+				} else {
+					asmcode += "\tmov rsp, rbp\t\t\t; use base pointer as new stack pointer\n"
+					asmcode += "\tpop rbp\t\t\t\t; get the old base pointer\n\n"
+				}
 			}
 		}
 		if in_function != "" {
 			asmcode += "\t;--- return from \"" + in_function + "\" ---\n"
+		} else if st[0].value == "exit" {
+			asmcode += "\t;--- exit program ---\n"
 		} else {
 			asmcode += "\t;--- return ---\n"
 		}
@@ -377,7 +380,7 @@ func (st Statement) String() string {
 				asmcode += st[1].value + "\n"
 			}
 		}
-		if (in_function == "main") || (in_function == "_start") {
+		if (st[0].value == "exit") || (in_function == "main") || (in_function == "_start") {
 			// Not returning from main/_start function, but exiting properly
 			exit_code := "0"
 			if (len(st) == 2) && (st[1].t == VALUE) {
@@ -462,7 +465,7 @@ func TokensToAssembly(tokens []Token, debug bool, debug2 bool) (string, string) 
 			statement = append(statement, token)
 		}
 	}
-	return strings.TrimSpace(constants), strings.TrimSpace(asmcode)
+	return strings.TrimSpace(constants), asmcode
 }
 
 func add_starting_point_if_missing(asmcode string) string {
@@ -481,10 +484,46 @@ func add_starting_point_if_missing(asmcode string) string {
 	return asmcode
 }
 
-fun add_exit_point_if_missing(sourceprogram string) string {
-	// TODO: Add an exit function at the end if there is no exit function or exit point
-	// TODO: Check with the tokens
-	return sourceprogram
+func add_exit_token_if_missing(tokens []Token) []Token {
+	var lasttoken Token
+	for i := len(tokens)-1; i >= 0; i-- {
+		if tokens[i].t == SEP {
+			continue
+		}
+		//log.Println("LAST PROPER TOKEN", tokens[i])
+		lasttoken = tokens[i]
+		break
+	}
+
+	// If the last token is ret, all is well, return the same tokens
+	if (lasttoken.t == KEYWORD) && (lasttoken.value == "ret") {
+		return tokens
+	}
+
+	// If the last token is exit, all is well, return the same tokens
+	if (lasttoken.t == BUILTIN) && (lasttoken.value == "exit") {
+		return tokens
+	}
+
+	//log.Fatalln("Error: Last token is not ret")
+
+	// If not, add an exit statement and return
+
+	newtokens := make([]Token, len(tokens)+2, len(tokens)+2)
+	for i, _ := range(tokens) {
+		newtokens[i] = tokens[i]
+	}
+
+	ret_token := Token{BUILTIN, "exit"}
+	newtokens[len(tokens)] = ret_token
+
+	sep_token := Token{SEP, ";"}
+	newtokens[len(tokens)+1] = sep_token
+
+	//log.Println(tokens)
+	//log.Println(newtokens)
+
+	return newtokens
 }
 
 func main() {
@@ -514,7 +553,7 @@ func main() {
 		t := time.Now()
 		fmt.Printf("; Generated with %s %s, at %s\n\n", name, version, t.String()[:16])
 		fmt.Printf("BITS %d\n", platform)
-		tokens := tokenize(add_exit_point_if_missing(string(bytes)), true)
+		tokens := add_exit_token_if_missing(tokenize(string(bytes), true))
 		log.Println("--- Done tokenizing ---")
 		constants, asmcode := TokensToAssembly(tokens, true, false)
 		if constants != "" {

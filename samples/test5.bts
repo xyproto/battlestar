@@ -1,0 +1,12 @@
+const commence = "Commence jump prep.", 10
+const nebula = "We're going to the ionian nebula.", 10
+const hi = "Hi", 10
+
+fun hello
+    int(80, 4, 1, commence, len(commence))
+    int(80, 4, 1, nebula, len(nebula))
+    ret
+
+fun main
+    call hello
+    int(80, 4, 1, hi, len(hi))
