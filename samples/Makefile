@@ -11,7 +11,7 @@ all: $(TARGETS)
 %.asm: %.bts
 	@echo "--- $< ---"
 	@echo -en "\tGenerating $@ from $<... "
-	@[ -e ../battlestar ] || echo Could not find ../battlestar! && exit 1
+	@[ -e ../battlestar ] || echo 'Could not find ../battlestar!'
 	@<$< ../battlestar -platform=$(LBITS) 2> $<.log > $@ && echo ok
 
 %.o: %.asm

@@ -42,10 +42,10 @@ var (
 	in_function   string   // name of the function we are currently in
 	defined_names []string // all defined variables/constants/functions
 
-	registers           = []string{"eax", "ebx", "ecx", "edx", "rbp", "rsp", "rax", "rbx", "rcx", "rdx"}
-	operators           = []string{"=", "+=", "-=", "*=", "/="}
-	keywords            = []string{"fun", "ret", "const", "call"}
-	builtins            = []string{"len", "int", "exit"} // built-in functions
+	registers = []string{"eax", "ebx", "ecx", "edx", "rbp", "rsp", "rax", "rbx", "rcx", "rdx"}
+	operators = []string{"=", "+=", "-=", "*=", "/="}
+	keywords  = []string{"fun", "ret", "const", "call"}
+	builtins  = []string{"len", "int", "exit"} // built-in functions
 
 	token_to_string = TokenDescriptionMap{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in"}
 
@@ -284,9 +284,9 @@ func (st Statement) String() string {
 		}
 		// Store each of the parameters to the appropriate registers
 		var (
-			reg     string
-			n       string
-			comment string
+			reg                 string
+			n                   string
+			comment             string
 			parameter_registers []string
 		)
 		if platform == 32 {
@@ -339,7 +339,15 @@ func (st Statement) String() string {
 			}
 			defined_names = append(defined_names, constname)
 			// For the .DATA section (recognized by the keyword)
-			asmcode += constname + ":\tdb " + st[3].value + "\t\t; constant string\n"
+			asmcode += constname + ":\tdb "
+			for i := 3; i < len(st); i++ {
+				asmcode += st[i].value
+				// Add a comma between every element but the last one
+				if (i + 1) != len(st) {
+					asmcode += ", "
+				}
+			}
+			asmcode += "\t\t; constant string\n"
 			// Special naming for storing the length for later
 			asmcode += "_length_of_" + constname + " equ $ - " + constname + "\t; length of constant\n"
 			return asmcode
@@ -387,15 +395,15 @@ func (st Statement) String() string {
 				exit_code = st[1].value
 			}
 			if platform == 32 {
-				asmcode += "\tmov eax, 1\t\t\t; function call: 1\n\tmov ebx, " + exit_code + "\t\t\t; return code " + exit_code + "\n\tint 0x80\t\t\t; exit program"
+				asmcode += "\tmov eax, 1\t\t\t; function call: 1\n\tmov ebx, " + exit_code + "\t\t\t; return code " + exit_code + "\n\tint 0x80\t\t\t; exit program\n"
 			} else {
-				asmcode += "\tmov rax, 1\t\t\t; function call: 1\n\tmov rbx, " + exit_code + "\t\t\t; return code " + exit_code + "\n\tint 0x80\t\t\t; exit program"
+				asmcode += "\tmov rax, 1\t\t\t; function call: 1\n\tmov rbx, " + exit_code + "\t\t\t; return code " + exit_code + "\n\tint 0x80\t\t\t; exit program\n"
 			}
 		} else {
 			log.Println("IN FUNCTION", in_function)
 			// Do not return eax=0/rax=0 if no return value is explicitly provided, by design
 			// This allows the return value from the previous call to be returned instead
-			asmcode += "\tret\t\t\t\t; Return"
+			asmcode += "\tret\t\t\t\t; Return\n"
 		}
 		if in_function != "" {
 			// Exiting from the function definition
@@ -426,6 +434,12 @@ func (st Statement) String() string {
 			asmcode += "\tmov rbp, rsp\t\t\t; use stack pointer as new base pointer\n"
 		}
 		return asmcode
+	} else if (st[0].t == KEYWORD) && (st[0].value == "call") && (len(st) == 2) {
+		if st[1].t == VALID_NAME {
+			return "\tcall " + st[1].value + "\n"
+		} else {
+			log.Fatalln("Calling an invalid name:", st[1].value)
+		}
 	} else if st[0].value == "const" {
 		log.Fatalln("Error: Incomprehensible constant:", st.String())
 	} else if st[0].t == KEYWORD {
@@ -448,12 +462,12 @@ func TokensToAssembly(tokens []Token, debug bool, debug2 bool) (string, string) 
 			if len(statement) > 0 {
 				asmline := Statement(statement).String()
 				if (statement[0].t == KEYWORD) && (statement[0].value == "const") {
-					if debug {
-						if len(asmline) > 20 {
-							log.Println("CONSTANT", asmline[:20], "...")
-						} else {
-							log.Println("CONSTANT", asmline)
+					if strings.Contains(asmline, ":") {
+						if debug {
+							log.Printf("CONSTANT: \"%s\"\n", strings.Split(asmline, ":")[0])
 						}
+					} else {
+						log.Fatalln("Error: Unfamiliar constant:", asmline)
 					}
 					constants += asmline + "\n"
 				} else {
@@ -476,7 +490,7 @@ func add_starting_point_if_missing(asmcode string) string {
 		if strings.Contains(asmcode, "\nmain:") {
 			log.Println("...but main has been defined, using that as starting point.")
 			// Add "_start:" right after "main:"
-			return strings.Replace(asmcode, "\nmain:", "\n" + addstring + "main:", 1)
+			return strings.Replace(asmcode, "\nmain:", "\n"+addstring+"main:", 1)
 		}
 		return addstring + "\n" + asmcode
 
@@ -486,7 +500,7 @@ func add_starting_point_if_missing(asmcode string) string {
 
 func add_exit_token_if_missing(tokens []Token) []Token {
 	var lasttoken Token
-	for i := len(tokens)-1; i >= 0; i-- {
+	for i := len(tokens) - 1; i >= 0; i-- {
 		if tokens[i].t == SEP {
 			continue
 		}
@@ -510,7 +524,7 @@ func add_exit_token_if_missing(tokens []Token) []Token {
 	// If not, add an exit statement and return
 
 	newtokens := make([]Token, len(tokens)+2, len(tokens)+2)
-	for i, _ := range(tokens) {
+	for i, _ := range tokens {
 		newtokens[i] = tokens[i]
 	}
 
@@ -562,7 +576,7 @@ func main() {
 		}
 		if asmcode != "" {
 			fmt.Println("SECTION .text\n")
-		    asmcode = add_starting_point_if_missing(asmcode)
+			asmcode = add_starting_point_if_missing(asmcode)
 			fmt.Println(asmcode + "\n")
 		}
 	}

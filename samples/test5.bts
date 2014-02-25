@@ -8,5 +8,6 @@ fun hello
     ret
 
 fun main
-    call hello
     int(80, 4, 1, hi, len(hi))
+    call hello
+    call hello
