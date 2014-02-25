@@ -411,8 +411,9 @@ func (st Statement) String() string {
 		}
 		return asmcode
 	} else if len(st) == 3 {
+		// TODO: Handle all sorts of equivivalents to assembly statements
 		if (st[0].t == REGISTER) && (st[1].t == ASSIGNMENT) && (st[2].t == VALUE) {
-			return "mov " + st[0].value + ", " + st[2].value + "\t\t; " + st[0].value + " " + st[1].value + " " + st[2].value
+			return "\tmov " + st[0].value + ", " + st[2].value + "\t\t; " + st[0].value + " " + st[1].value + " " + st[2].value
 		} else {
 			log.Fatalln("Error: Uknown type of statement, but familiar layout:\n", st)
 		}
