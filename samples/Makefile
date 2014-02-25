@@ -6,7 +6,7 @@ TARGETS := $(OBJECTS:.o=.elf)
 
 .SECONDARY: $(ASMSOURCES)
 
-all: $(TARGETS)
+all: clean $(TARGETS)
 
 %.asm: %.bts
 	@echo "--- $< ---"
