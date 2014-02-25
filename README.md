@@ -9,3 +9,9 @@ Created for fun and for the educational process.
 * License: MIT
 * Author: Alexander Rødseth
 
+
+Dependencies
+------------
+
+* nasm
+* sstrip from elfkickers

@@ -1,0 +1,5 @@
+const hi = "hello"
+
+fun main
+    int(80, 4, 1, hi, len(hi))
+    ret

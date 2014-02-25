@@ -381,7 +381,7 @@ func (st Statement) String() string {
 		asmcode := ";--- function " + st[1].value + " ---\n"
 		in_function = st[1].value
 		asmcode += "global " + st[1].value + "\t\t\t; make label available to linker (Go)\n"
-		asmcode += st[1].value + ":\t\t\t\t; label / name of the function\n\n"
+		asmcode += st[1].value + ":\t\t\t\t; name of the function\n\n"
 		asmcode += "\t;--- setup stack frame ---\n"
 		if platform == 32 {
 			asmcode += "\tpush ebp\t\t\t; save old base pointer\n"
@@ -427,12 +427,29 @@ func TokensToAssembly(tokens []Token, debug bool, debug2 bool) (string, string) 
 	return strings.TrimSpace(constants), strings.TrimSpace(asmcode)
 }
 
+func add_starting_point_if_missing(asmcode string) string {
+	// Check if the resulting code contains a starting point or not
+	if !strings.Contains(asmcode, "_start") {
+		log.Println("No _start has been defined")
+		addstring := "global _start\t\t\t; make label available to the linker (ld)\n_start:\t\t\t\t; starting point of the program\n"
+		if strings.Contains(asmcode, "\nmain:") {
+			log.Println("...but main has been defined, using that as starting point.")
+			// Add "_start:" right after "main:"
+			return strings.Replace(asmcode, "\nmain:", "\n" + addstring + "main:", 1)
+		}
+		return addstring + "\n" + asmcode
+
+	}
+	return asmcode
+}
+
 func main() {
 	name := "Battlestar"
 	version := "0.1"
 	log.Println(name + " compiler")
 	log.Println("Version " + version)
-	log.Println("Alexander Rødseth, 2014")
+	log.Println("Alexander Rødseth")
+	log.Println("2014")
 	log.Println("MIT licensed")
 
 	// TODO: Needed?
@@ -461,6 +478,7 @@ func main() {
 		}
 		if asmcode != "" {
 			fmt.Println("SECTION .text\n")
+		    asmcode = add_starting_point_if_missing(asmcode)
 			fmt.Println(asmcode + "\n")
 		}
 	}

@@ -17,7 +17,8 @@ all: $(TARGETS)
 
 %.elf: %.o
 	@echo -en "\tLinking $@... "
-	@ld --fatal-warnings -pie -nostdlib --relax -o $@ $< && echo ok
+	@ld --fatal-warnings --relax -o $@ $< && echo ok
+	#@ld --fatal-warnings -pie -nostdlib --relax -o $@ $< && echo ok
 
 clean:
 	@echo 'Cleaning...'
