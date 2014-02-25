@@ -43,10 +43,9 @@ var (
 	defined_names []string // all defined variables/constants/functions
 
 	registers           = []string{"eax", "ebx", "ecx", "edx", "rbp", "rsp", "rax", "rbx", "rcx", "rdx"}
-	parameter_registers = []string{"eax", "ebx", "ecx", "edx"}
 	operators           = []string{"="}
-	keywords            = []string{"fun", "int", "ret", "const"}
-	builtins            = []string{"len"} // built-in functions
+	keywords            = []string{"fun", "ret", "const"}
+	builtins            = []string{"len", "int"} // built-in functions
 
 	token_to_string = TokenDescriptionMap{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in"}
 
@@ -274,7 +273,7 @@ func (st Statement) String() string {
 	if len(st) == 0 {
 		log.Fatalln("Error: Empty statement:", st)
 		return ""
-	} else if (st[0].t == KEYWORD) && (st[0].value == "int") { // interrrupt call
+	} else if (st[0].t == BUILTIN) && (st[0].value == "int") { // interrrupt call
 		asmcode := "\t;--- call interrupt 0x" + st[1].value + " ---\n"
 		// Check the number of parameters
 		if len(st) > 6 {
@@ -289,7 +288,13 @@ func (st Statement) String() string {
 			reg     string
 			n       string
 			comment string
+			parameter_registers []string
 		)
+		if platform == 32 {
+			parameter_registers = []string{"eax", "ebx", "ecx", "edx"}
+		} else {
+			parameter_registers = []string{"rax", "rbx", "rcx", "rdx"}
+		}
 		for i := 2; i < len(st); i++ {
 			reg = parameter_registers[i-2]
 			n = strconv.Itoa(i - 2)
@@ -321,7 +326,7 @@ func (st Statement) String() string {
 			return asmcode
 		}
 		log.Fatalln("Error: Need a (hexadecimal) interrupt number to call:\n", st[1].value)
-	} else if (st[0].t == KEYWORD) && (st[0].value == "const") && (len(st) == 4) { // constant data
+	} else if (st[0].t == KEYWORD) && (st[0].value == "const") && (len(st) >= 4) { // constant data
 		constname := ""
 		if st[1].t == VALID_NAME {
 			constname = st[1].value
@@ -337,23 +342,26 @@ func (st Statement) String() string {
 			// For the .DATA section (recognized by the keyword)
 			asmcode += constname + ":\tdb " + st[3].value + "\t\t; constant string\n"
 			// Special naming for storing the length for later
-			asmcode += "_length_of_" + constname + " equ $ - " + constname + "\t\t; constant string length\n"
+			asmcode += "_length_of_" + constname + " equ $ - " + constname + "\t; length of constant\n"
 			return asmcode
 		}
 		log.Fatalln("Error: Invalid parameters for constant string statement:\n", st)
 	} else if (st[0].t == KEYWORD) && (st[0].value == "ret") {
-		asmcode := "\t;--- takedown stack frame ---\n"
-		if platform == 32 {
-			asmcode += "\tmov esp, ebp\t\t\t; use base pointer as new stack pointer\n"
-			asmcode += "\tpop ebp\t\t\t\t; get the old base pointer\n\n"
+		asmcode := ""
+		if (in_function == "main") || (in_function == "_start") {
+			log.Println("Not taking down stack frame in the main/_start function.")
 		} else {
-			asmcode += "\tmov rsp, rbp\t\t\t; use base pointer as new stack pointer\n"
-			asmcode += "\tpop rbp\t\t\t\t; get the old base pointer\n\n"
+			asmcode += "\t;--- takedown stack frame ---\n"
+			if platform == 32 {
+				asmcode += "\tmov esp, ebp\t\t\t; use base pointer as new stack pointer\n"
+				asmcode += "\tpop ebp\t\t\t\t; get the old base pointer\n\n"
+			} else {
+				asmcode += "\tmov rsp, rbp\t\t\t; use base pointer as new stack pointer\n"
+				asmcode += "\tpop rbp\t\t\t\t; get the old base pointer\n\n"
+			}
 		}
 		if in_function != "" {
 			asmcode += "\t;--- return from \"" + in_function + "\" ---\n"
-			// Exiting from the function definition
-			in_function = ""
 		} else {
 			asmcode += "\t;--- return ---\n"
 		}
@@ -369,7 +377,27 @@ func (st Statement) String() string {
 				asmcode += st[1].value + "\n"
 			}
 		}
-		asmcode += "\tret\t\t\t\t; Return"
+		if (in_function == "main") || (in_function == "_start") {
+			// Not returning from main/_start function, but exiting properly
+			exit_code := "0"
+			if (len(st) == 2) && (st[1].t == VALUE) {
+				exit_code = st[1].value
+			}
+			if platform == 32 {
+				asmcode += "\tmov eax, 1\t\t\t; function call: 1\n\tmov ebx, " + exit_code + "\t\t\t; return code " + exit_code + "\n\tint 0x80\t\t\t; exit program"
+			} else {
+				asmcode += "\tmov rax, 1\t\t\t; function call: 1\n\tmov rbx, " + exit_code + "\t\t\t; return code " + exit_code + "\n\tint 0x80\t\t\t; exit program"
+			}
+		} else {
+			log.Println("IN FUNCTION", in_function)
+			// Do not return eax=0/rax=0 if no return value is explicitly provided, by design
+			// This allows the return value from the previous call to be returned instead
+			asmcode += "\tret\t\t\t\t; Return"
+		}
+		if in_function != "" {
+			// Exiting from the function definition
+			in_function = ""
+		}
 		return asmcode
 	} else if len(st) == 3 {
 		if (st[0].t == REGISTER) && (st[1].t == ASSIGNMENT) && (st[2].t == VALUE) {
@@ -380,8 +408,12 @@ func (st Statement) String() string {
 	} else if (len(st) == 2) && (st[0].t == KEYWORD) && (st[1].t == VALID_NAME) && (st[0].value == "fun") {
 		asmcode := ";--- function " + st[1].value + " ---\n"
 		in_function = st[1].value
-		asmcode += "global " + st[1].value + "\t\t\t; make label available to linker (Go)\n"
-		asmcode += st[1].value + ":\t\t\t\t; name of the function\n\n"
+		asmcode += "global " + in_function + "\t\t\t; make label available to the linker (ld)\n"
+		asmcode += in_function + ":\t\t\t\t; name of the function\n\n"
+		if (in_function == "main") || (in_function == "_start") {
+			log.Println("Not setting up stack frame in the main/_start function.")
+			return asmcode
+		}
 		asmcode += "\t;--- setup stack frame ---\n"
 		if platform == 32 {
 			asmcode += "\tpush ebp\t\t\t; save old base pointer\n"
@@ -391,6 +423,8 @@ func (st Statement) String() string {
 			asmcode += "\tmov rbp, rsp\t\t\t; use stack pointer as new base pointer\n"
 		}
 		return asmcode
+	} else if st[0].value == "const" {
+		log.Fatalln("Error: Incomprehensible constant:", st.String())
 	} else if st[0].t == KEYWORD {
 		log.Fatalln("Error: Unknown keyword:", st[0].value)
 	}
@@ -412,7 +446,11 @@ func TokensToAssembly(tokens []Token, debug bool, debug2 bool) (string, string) 
 				asmline := Statement(statement).String()
 				if (statement[0].t == KEYWORD) && (statement[0].value == "const") {
 					if debug {
-						log.Println("CONSTANT", asmline[:20], "...")
+						if len(asmline) > 20 {
+							log.Println("CONSTANT", asmline[:20], "...")
+						} else {
+							log.Println("CONSTANT", asmline)
+						}
 					}
 					constants += asmline + "\n"
 				} else {
@@ -469,6 +507,7 @@ func main() {
 		}
 		t := time.Now()
 		fmt.Printf("; Generated with %s %s, at %s\n\n", name, version, t.String()[:16])
+		fmt.Printf("BITS %d\n", platform)
 		tokens := tokenize(string(bytes), true)
 		log.Println("--- Done tokenizing ---")
 		constants, asmcode := TokensToAssembly(tokens, true, false)

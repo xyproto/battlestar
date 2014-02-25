@@ -1,4 +1,4 @@
-const hi = "hello"
+const hi = "hello", 10
 
 fun main
     int(80, 4, 1, hi, len(hi))

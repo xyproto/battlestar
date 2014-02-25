@@ -4,6 +4,8 @@ ASMSOURCES := $(SOURCES:.bts=.asm)
 OBJECTS := $(ASMSOURCES:.asm=.o)
 TARGETS := $(OBJECTS:.o=.elf)
 
+.SECONDARY: $(ASMSOURCES)
+
 all: $(TARGETS)
 
 %.asm: %.bts
