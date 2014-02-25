@@ -14,16 +14,13 @@ import (
 type (
 	Program   string
 	TokenType int
+	Token struct {
+		t     TokenType
+		value string
+	}
+	TokenDescriptions map[TokenType]string
+	Statement []Token
 )
-
-type Token struct {
-	t     TokenType
-	value string
-}
-
-type TokenDescriptionMap map[TokenType]string
-
-type Statement []Token
 
 const (
 	REGISTER   = 0
@@ -47,10 +44,15 @@ var (
 	keywords  = []string{"fun", "ret", "const", "call"}
 	builtins  = []string{"len", "int", "exit"} // built-in functions
 
-	token_to_string = TokenDescriptionMap{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in"}
+	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in"}
 
 	// 32-bit (i686) or 64-bit (x86_64)
 	platform = 32
+
+	// OS X or Linux
+	osx = false
+
+	linker_start_function = "_start"
 )
 
 // Check if a given map has a given key
@@ -356,8 +358,8 @@ func (st Statement) String() string {
 	} else if ((st[0].t == KEYWORD) && (st[0].value == "ret")) || ((st[0].t == BUILTIN) && (st[0].value == "exit")) {
 		asmcode := ""
 		if st[0].value == "ret" {
-			if (in_function == "main") || (in_function == "_start") {
-				log.Println("Not taking down stack frame in the main/_start function.")
+			if (in_function == "main") || (in_function == linker_start_function) {
+				log.Println("Not taking down stack frame in the main/_start/start function.")
 			} else {
 				asmcode += "\t;--- takedown stack frame ---\n"
 				if platform == 32 {
@@ -388,8 +390,8 @@ func (st Statement) String() string {
 				asmcode += st[1].value + "\n"
 			}
 		}
-		if (st[0].value == "exit") || (in_function == "main") || (in_function == "_start") {
-			// Not returning from main/_start function, but exiting properly
+		if (st[0].value == "exit") || (in_function == "main") || (in_function == linker_start_function) {
+			// Not returning from main/_start/start function, but exiting properly
 			exit_code := "0"
 			if (len(st) == 2) && (st[1].t == VALUE) {
 				exit_code = st[1].value
@@ -422,8 +424,8 @@ func (st Statement) String() string {
 		in_function = st[1].value
 		asmcode += "global " + in_function + "\t\t\t; make label available to the linker (ld)\n"
 		asmcode += in_function + ":\t\t\t\t; name of the function\n\n"
-		if (in_function == "main") || (in_function == "_start") {
-			log.Println("Not setting up stack frame in the main/_start function.")
+		if (in_function == "main") || (in_function == linker_start_function) {
+			log.Println("Not setting up stack frame in the main/_start/start function.")
 			return asmcode
 		}
 		asmcode += "\t;--- setup stack frame ---\n"
@@ -485,12 +487,12 @@ func TokensToAssembly(tokens []Token, debug bool, debug2 bool) (string, string) 
 
 func add_starting_point_if_missing(asmcode string) string {
 	// Check if the resulting code contains a starting point or not
-	if !strings.Contains(asmcode, "_start") {
-		log.Println("No _start has been defined")
-		addstring := "global _start\t\t\t; make label available to the linker (ld)\n_start:\t\t\t\t; starting point of the program\n"
+	if !strings.Contains(asmcode, linker_start_function) {
+		log.Printf("No %s has been defined\n", linker_start_function)
+		addstring := "global " + linker_start_function + "\t\t\t; make label available to the linker (ld)\n" + linker_start_function + ":\t\t\t\t; starting point of the program\n"
 		if strings.Contains(asmcode, "\nmain:") {
 			log.Println("...but main has been defined, using that as starting point.")
-			// Add "_start:" right after "main:"
+			// Add "_start:"/"start" right after "main:"
 			return strings.Replace(asmcode, "\nmain:", "\n"+addstring+"main:", 1)
 		}
 		return addstring + "\n" + asmcode
@@ -553,10 +555,23 @@ func main() {
 	// TODO: Needed?
 	defined_names = make([]string, 0, 0)
 
-	// Check for --platform=32 or --platform=64
-	bits := flag.Int("platform", 64, "Output 32-bit or 64-bit x86 assembly")
+	// TODO: Automatically discover 32-bit/64-bit and Linux/OS X
+	// Check for -platform=32 or -platform=64 (default)
+	platform_bits := flag.Int("platform", 64, "Output 32-bit or 64-bit x86 assembly")
+	// Check for -osx=true or -osx=false (default)
+	is_osx := flag.Bool("osx", false, "On OS X?")
 	flag.Parse()
-	platform = *bits
+	platform = *platform_bits
+	osx = *is_osx
+
+	// TODO: Consider adding an option for "start" as well, or a custom
+	// start symbol
+
+	if osx {
+		linker_start_function = "_main"
+	} else {
+		linker_start_function = "_start"
+	}
 
 	// Read code from stdin and output 32-bit or 64-bit assembly code
 	bytes, err := ioutil.ReadAll(os.Stdin)
