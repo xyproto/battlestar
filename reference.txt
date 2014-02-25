@@ -30,3 +30,11 @@ Return from a function:
 Declare a constant:
 
    const name = constant 
+
+   The given value can be a string, comma-separated list of values or a mix of both
+
+Built in functions:
+
+    len(name)
+
+    Represents the length of a constant, by the given name

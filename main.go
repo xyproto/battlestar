@@ -1,53 +1,67 @@
 package main
 
 import (
-	"strings"
-	"strconv"
-	"io/ioutil"
-	"os"
-	"log"
+	"flag"
 	"fmt"
+	"io/ioutil"
+	"log"
+	"os"
+	"strconv"
+	"strings"
 	"time"
 )
 
-type Program string
-
-type TokenType int
-const (
-	REGISTER = 0
-	ASSIGNMENT = 1
-	VALUE = 2
-	KEYWORD = 3
-	VALID_NAME = 4
-	STRING = 5
-	SEP = 127
-	UNKNOWN = 255
+type (
+	Program   string
+	TokenType int
 )
 
 type Token struct {
-	t TokenType
+	t     TokenType
 	value string
 }
 
+type TokenDescriptionMap map[TokenType]string
+
+type Statement []Token
+
+const (
+	REGISTER   = 0
+	ASSIGNMENT = 1
+	VALUE      = 2
+	KEYWORD    = 3
+	BUILTIN    = 4
+	VALID_NAME = 5
+	STRING     = 6
+	SEP        = 127
+	UNKNOWN    = 255
+)
+
 // Global variables
-var infunction string // name of the function we are currently in
-var defined_names []string // all defined variables/constants/functions
+var (
+	in_function   string   // name of the function we are currently in
+	defined_names []string // all defined variables/constants/functions
 
-var token_to_string map[string]string = {REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string"}
+	registers           = []string{"eax", "ebx", "ecx", "edx", "rbp", "rsp", "rax", "rbx", "rcx", "rdx"}
+	parameter_registers = []string{"eax", "ebx", "ecx", "edx"}
+	operators           = []string{"="}
+	keywords            = []string{"fun", "int", "ret", "const"}
+	builtins            = []string{"len"} // built-in functions
 
+	token_to_string = TokenDescriptionMap{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in"}
+
+	// 32-bit (i686) or 64-bit (x86_64)
+	platform = 32
+)
 
 // Check if a given map has a given key
-func haskey(sm map[string]string, searchkey string) {
-	for key, value := range sm {
-		if key == string {
-			return true
-		}
-	}
-	return false
+func haskey(sm map[TokenType]string, key TokenType) bool {
+	_, present := sm[key]
+	return present
 }
 
 func (tok Token) String() string {
-    if tok.t == SEP {
+	if tok.t == SEP {
 		return ";"
 	} else if haskey(token_to_string, tok.t) {
 		return token_to_string[tok.t] + "[" + tok.value + "]"
@@ -56,14 +70,7 @@ func (tok Token) String() string {
 	return "!?"
 }
 
-type Statement []Token
-
-var registers = []string{"eax", "ebx", "ecx", "edx", "rbp", "rsp", "rax", "rbx", "rcx", "rdx"}
-var parameter_registers = []string{"eax", "ebx", "ecx", "edx"}
-var operators = []string{"="}
-var keywords = []string{"fun", "int", "ret", "const", "len"}
-
-func maps(sl []string, f func (string) string) []string {
+func maps(sl []string, f func(string) string) []string {
 	newl := make([]string, len(sl), len(sl))
 	for i, element := range sl {
 		newl[i] = f(element)
@@ -84,25 +91,30 @@ func is_valid_name(s string) bool {
 	if len(s) == 0 {
 		return false
 	}
+
+	// TODO: These can be global constants instead
 	letters := "abcdefghijklmnopqrstuvwxyz"
 	upper := strings.ToUpper(letters)
 	digits := "0123456789"
-	special := "_"
-	combined1 := letters + upper + special
-	combined2 := letters + upper + digits + special
-	if !(strings.Contains(combined1, string(s[0]))) {
-		// Does not start with a letter
+	special := "_·"
+	combined := letters + upper + digits + special
+
+	// Does not start with a number
+	if strings.Contains(digits, string(s[0])) {
 		return false
 	}
+	// Check that the rest are valid characters
 	for _, letter := range s {
 		// If not a letter, digit or valid special character, it's not a valid name
-		if !(strings.Contains(combined2, string(letter))) {
+		if !(strings.Contains(combined, string(letter))) {
 			return false
 		}
 	}
+	// Valid
 	return true
 }
 
+// Split a string into more tokens and tokenize them
 func retokenize(word string, sep string, debug bool) []Token {
 	var newtokens []Token
 	words := strings.Split(word, sep)
@@ -118,11 +130,12 @@ func retokenize(word string, sep string, debug bool) []Token {
 	return newtokens
 }
 
+// Tokenize a string
 func tokenize(program string, debug bool) []Token {
 	statements := maps(strings.Split(program, "\n"), strings.TrimSpace)
 	tokens := make([]Token, 0, 0)
 	var t Token
-	var instring bool // Have we encountered a " for any given statement?
+	var instring bool    // Have we encountered a " for any given statement?
 	var collected string // Collected string, until end of line
 	for _, statement := range statements {
 		words := maps(strings.Split(statement, " "), strings.TrimSpace)
@@ -130,6 +143,7 @@ func tokenize(program string, debug bool) []Token {
 			if word == "" {
 				continue
 			}
+			// TODO: refactor out code that repeats the same thing
 			if instring {
 				collected += word + " "
 			} else if has(registers, word) {
@@ -150,7 +164,13 @@ func tokenize(program string, debug bool) []Token {
 				}
 				t = Token{KEYWORD, word}
 				tokens = append(tokens, t)
-		    } else if i, err := strconv.Atoi(word); err == nil {
+			} else if has(builtins, word) {
+				if debug {
+					log.Println("TOKEN", word, "builtin")
+				}
+				t = Token{BUILTIN, word}
+				tokens = append(tokens, t)
+			} else if i, err := strconv.Atoi(word); err == nil {
 				if debug {
 					log.Println("TOKEN", i, "value")
 				}
@@ -219,31 +239,35 @@ func tokenize(program string, debug bool) []Token {
 	return tokens
 }
 
-func reduce(st Statement) Statement {
-	for i := 0; i < (len(st)-1); i++ {
-		if (st[i].t == KEYWORD) && (st[i].value == "len") {
-			if st[i+1].t == VALID_NAME {
-				// len followed by a valid name
-				// replace with the length of the given value
+// Replace built-in function calls with more basic code
+func reduce(st Statement, debug bool) Statement {
+	for i := 0; i < (len(st) - 1); i++ {
+		// The built-in len() function
+		if (st[i].t == BUILTIN) && (st[i].value == "len") && (st[i+1].t == VALID_NAME) {
+			// len followed by a valid name
+			// replace with the length of the given value
 
-				name := st[i+1].value
-				token_type := st[i+1].t
+			name := st[i+1].value
+			token_type := st[i+1].t
 
-				// remove the element at i+1
-				st = st[:i+1+copy(st[i+1:], st[i+2:])]
+			// remove the element at i+1
+			st = st[:i+1+copy(st[i+1:], st[i+2:])]
 
-				// replace len(name) with _length_of_name
-				st[i] = Token{token_type, "_length_of_" + name}
+			// replace len(name) with _length_of_name
+			st[i] = Token{token_type, "_length_of_" + name}
 
+			if debug {
 				log.Println("SUCCESSFULL REPLACEMENT WITH", st[i])
 			}
 		}
 	}
-	return st;
+	return st
 }
 
 func (st Statement) String() string {
-	reduced := reduce(st)
+	debug := true
+
+	reduced := reduce(st, debug)
 	if len(reduced) != len(st) {
 		return reduced.String()
 	}
@@ -262,14 +286,14 @@ func (st Statement) String() string {
 		}
 		// Store each of the parameters to the appropriate registers
 		var (
-			reg string
-			n string
+			reg     string
+			n       string
 			comment string
 		)
 		for i := 2; i < len(st); i++ {
 			reg = parameter_registers[i-2]
-			n = strconv.Itoa(i-2)
-			if (i-2) == 0 {
+			n = strconv.Itoa(i - 2)
+			if (i - 2) == 0 {
 				comment = "function call: " + st[i].value
 			} else {
 				if st[i].t == VALUE {
@@ -292,7 +316,7 @@ func (st Statement) String() string {
 			}
 		}
 		// Add the interrupt call
-		if (st[1].t == VALUE) {
+		if st[1].t == VALUE {
 			asmcode += "\tint 0x" + st[1].value + "\t\t\t; perform the call\n"
 			return asmcode
 		}
@@ -319,17 +343,26 @@ func (st Statement) String() string {
 		log.Fatalln("Error: Invalid parameters for constant string statement:\n", st)
 	} else if (st[0].t == KEYWORD) && (st[0].value == "ret") {
 		asmcode := "\t;--- takedown stack frame ---\n"
-		asmcode += "\tmov rsp, rbp\t\t\t; use base pointer as new stack pointer\n"
-		asmcode += "\tpop rbp\t\t\t\t; get the old base pointer\n\n"
-		if infunction != "" {
-			asmcode += "\t;--- return from \"" + infunction + "\" ---\n"
+		if platform == 32 {
+			asmcode += "\tmov esp, ebp\t\t\t; use base pointer as new stack pointer\n"
+			asmcode += "\tpop ebp\t\t\t\t; get the old base pointer\n\n"
+		} else {
+			asmcode += "\tmov rsp, rbp\t\t\t; use base pointer as new stack pointer\n"
+			asmcode += "\tpop rbp\t\t\t\t; get the old base pointer\n\n"
+		}
+		if in_function != "" {
+			asmcode += "\t;--- return from \"" + in_function + "\" ---\n"
 			// Exiting from the function definition
-			infunction = ""
+			in_function = ""
 		} else {
 			asmcode += "\t;--- return ---\n"
 		}
-		if (len(st) == 2) && (st[1].t == VALUE){
-			asmcode += "\tmov rax, " + st[1].value + "\t\t\t; Error code "
+		if (len(st) == 2) && (st[1].t == VALUE) {
+			if platform == 32 {
+				asmcode += "\tmov eax, " + st[1].value + "\t\t\t; Error code "
+			} else {
+				asmcode += "\tmov rax, " + st[1].value + "\t\t\t; Error code "
+			}
 			if st[1].value == "0" {
 				asmcode += "0 (everything is fine)\n"
 			} else {
@@ -346,14 +379,19 @@ func (st Statement) String() string {
 		}
 	} else if (len(st) == 2) && (st[0].t == KEYWORD) && (st[1].t == VALID_NAME) && (st[0].value == "fun") {
 		asmcode := ";--- function " + st[1].value + " ---\n"
-		infunction = st[1].value
+		in_function = st[1].value
 		asmcode += "global " + st[1].value + "\t\t\t; make label available to linker (Go)\n"
 		asmcode += st[1].value + ":\t\t\t\t; label / name of the function\n\n"
 		asmcode += "\t;--- setup stack frame ---\n"
-		asmcode += "\tpush rbp\t\t\t; save old base pointer\n"
-		asmcode += "\tmov rbp, rsp\t\t\t; use stack pointer as new base pointer\n"
+		if platform == 32 {
+			asmcode += "\tpush ebp\t\t\t; save old base pointer\n"
+			asmcode += "\tmov ebp, esp\t\t\t; use stack pointer as new base pointer\n"
+		} else {
+			asmcode += "\tpush rbp\t\t\t; save old base pointer\n"
+			asmcode += "\tmov rbp, rsp\t\t\t; use stack pointer as new base pointer\n"
+		}
 		return asmcode
-	} else if (st[0].t == KEYWORD) {
+	} else if st[0].t == KEYWORD {
 		log.Fatalln("Error: Unknown keyword:", st[0].value)
 	}
 	log.Println("Error: Unfamiliar statement layout: ")
@@ -397,15 +435,23 @@ func main() {
 	log.Println("Alexander Rødseth, 2014")
 	log.Println("MIT licensed")
 
-	t := time.Now()
-	fmt.Printf("; Generated with %s %s, at %s\n\n", name, version, t.String()[:16])
-
 	// TODO: Needed?
 	defined_names = make([]string, 0, 0)
 
-	// Read code from stdin and output 64-bit assembly code
+	// Check for --platform=32 or --platform=64
+	bits := flag.Int("platform", 64, "Output 32-bit or 64-bit x86 assembly")
+	flag.Parse()
+	platform = *bits
+
+	// Read code from stdin and output 32-bit or 64-bit assembly code
 	bytes, err := ioutil.ReadAll(os.Stdin)
 	if err == nil {
+		if len(strings.TrimSpace(string(bytes))) == 0 {
+			// Empty program
+			log.Fatalln("Error: Empty program")
+		}
+		t := time.Now()
+		fmt.Printf("; Generated with %s %s, at %s\n\n", name, version, t.String()[:16])
 		tokens := tokenize(string(bytes), true)
 		log.Println("--- Done tokenizing ---")
 		constants, asmcode := TokensToAssembly(tokens, true, false)
