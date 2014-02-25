@@ -33,23 +33,24 @@ type Token struct {
 var infunction string // name of the function we are currently in
 var defined_names []string // all defined variables/constants/functions
 
+var token_to_string map[string]string = {REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string"}
+
+
+// Check if a given map has a given key
+func haskey(sm map[string]string, searchkey string) {
+	for key, value := range sm {
+		if key == string {
+			return true
+		}
+	}
+	return false
+}
+
 func (tok Token) String() string {
-	if tok.t == REGISTER {
-		return "register" + tok.value
-	} else if tok.t == ASSIGNMENT {
-		return "assignment[" + tok.value + "]"
-	} else if tok.t == VALUE {
-		return "value[" + tok.value + "]"
-	} else if tok.t == VALID_NAME {
-		return "name[" + tok.value + "]"
-	} else if tok.t == SEP {
+    if tok.t == SEP {
 		return ";"
-	} else if tok.t == UNKNOWN {
-		return "?[" + tok.value + "]"
-	} else if tok.t == KEYWORD {
-		return "keyword[" + tok.value + "]"
-	} else if tok.t == STRING {
-		return "string[" + tok.value + "]"
+	} else if haskey(token_to_string, tok.t) {
+		return token_to_string[tok.t] + "[" + tok.value + "]"
 	}
 	log.Fatalln("Error when serializing: Unfamiliar token: " + tok.value + " (?)")
 	return "!?"
