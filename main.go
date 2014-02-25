@@ -481,6 +481,12 @@ func add_starting_point_if_missing(asmcode string) string {
 	return asmcode
 }
 
+fun add_exit_point_if_missing(sourceprogram string) string {
+	// TODO: Add an exit function at the end if there is no exit function or exit point
+	// TODO: Check with the tokens
+	return sourceprogram
+}
+
 func main() {
 	name := "Battlestar"
 	version := "0.1"
@@ -508,7 +514,7 @@ func main() {
 		t := time.Now()
 		fmt.Printf("; Generated with %s %s, at %s\n\n", name, version, t.String()[:16])
 		fmt.Printf("BITS %d\n", platform)
-		tokens := tokenize(string(bytes), true)
+		tokens := tokenize(add_exit_point_if_missing(string(bytes)), true)
 		log.Println("--- Done tokenizing ---")
 		constants, asmcode := TokensToAssembly(tokens, true, false)
 		if constants != "" {
