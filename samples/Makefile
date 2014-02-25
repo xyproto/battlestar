@@ -6,20 +6,29 @@ TARGETS := $(OBJECTS:.o=.elf)
 
 .SECONDARY: $(ASMSOURCES)
 
+# OS X detection (depends on uname being present)
+OSX := false
+ifeq ($(shell uname -s),Darwin)
+  OSX = true
+endif
+
+# First clean, then build targets
 all: clean $(TARGETS)
 
 %.asm: %.bts
 	@echo "--- $< ---"
 	@echo -en "\tGenerating $@ from $<... "
 	@[ -e ../battlestar ] || echo 'Could not find ../battlestar!'
-	@<$< ../battlestar -platform=$(LBITS) 2> $<.log > $@ && echo ok
+	@<$< ../battlestar -platform=$(LBITS) -osx=$(OSX) 2>$<.log >$@ && echo ok
 
 %.o: %.asm
 	@echo -en "\tCompiling $<... "
-	@nasm -f elf$(LBITS) -o $@ $< && echo ok
+	#if [ $(OSX) = true ]; then
+	@yasm -f elf$(LBITS) -o $@ $< && echo ok
 
 %.elf: %.o
 	@echo -en "\tLinking $@... "
+	#if [ $(OSX) = true ]; then
 	@ld -s --fatal-warnings -nostdlib --relax -o $@ $< && echo ok
 
 clean:
