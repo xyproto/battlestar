@@ -1,0 +1,12 @@
+// Comment
+const hello = "Hi", 32
+
+// Since this function does not return, it will continue down to the main function and be called recursively.
+// Wonder what will happen to the stack as a result of this.
+fun hi
+    int(80, 4, 1, hello, len(hello))
+//  TODO: Make the compiler catch the missing ret?
+//    ret
+
+fun main
+    call hi

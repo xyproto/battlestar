@@ -52,7 +52,10 @@ var (
 	// OS X or Linux
 	osx = false
 
+	// TODO: Add an option for not adding start symbols
 	linker_start_function = "_start"
+
+	// TODO: Add an option for not adding an exit function
 )
 
 // Check if a given map has a given key
@@ -65,12 +68,13 @@ func (tok Token) String() string {
 	if tok.t == SEP {
 		return ";"
 	} else if haskey(token_to_string, tok.t) {
-		return token_to_string[tok.t] + "[" + tok.value + "]"
+		return token_to_string[tok.t] + ":" + tok.value
 	}
 	log.Fatalln("Error when serializing: Unfamiliar token: " + tok.value + " (?)")
 	return "!?"
 }
 
+// Maps the function f over a slice of strings
 func maps(sl []string, f func(string) string) []string {
 	newl := make([]string, len(sl), len(sl))
 	for i, element := range sl {
@@ -79,6 +83,7 @@ func maps(sl []string, f func(string) string) []string {
 	return newl
 }
 
+// Checks if a slice of strings has the given string
 func has(sl []string, s string) bool {
 	for _, e := range sl {
 		if e == s {
@@ -130,9 +135,17 @@ func retokenize(word string, sep string, debug bool) []Token {
 	return newtokens
 }
 
+// Remove one line commants, both // and # are ok
+func removecomments(s string) string {
+	if strings.HasPrefix(s, "//") || strings.HasPrefix(s, "#") {
+		return ""
+	}
+	return s
+}
+
 // Tokenize a string
 func tokenize(program string, debug bool) []Token {
-	statements := maps(strings.Split(program, "\n"), strings.TrimSpace)
+	statements := maps(maps(strings.Split(program, "\n"), strings.TrimSpace), removecomments)
 	tokens := make([]Token, 0, 0)
 	var t Token
 	var instring bool    // Have we encountered a " for any given statement?
@@ -147,41 +160,41 @@ func tokenize(program string, debug bool) []Token {
 			if instring {
 				collected += word + " "
 			} else if has(registers, word) {
-				if debug {
-					log.Println("TOKEN", word, "register")
-				}
 				t = Token{REGISTER, word}
 				tokens = append(tokens, t)
-			} else if has(operators, word) {
 				if debug {
-					log.Println("TOKEN", word, "operator")
+					log.Println("TOKEN", t)
 				}
+			} else if has(operators, word) {
 				t = Token{ASSIGNMENT, word}
 				tokens = append(tokens, t)
-			} else if has(keywords, word) {
 				if debug {
-					log.Println("TOKEN", word, "keyword")
+					log.Println("TOKEN", t)
 				}
+			} else if has(keywords, word) {
 				t = Token{KEYWORD, word}
 				tokens = append(tokens, t)
-			} else if has(builtins, word) {
 				if debug {
-					log.Println("TOKEN", word, "builtin")
+					log.Println("TOKEN", t)
 				}
+			} else if has(builtins, word) {
 				t = Token{BUILTIN, word}
 				tokens = append(tokens, t)
-			} else if i, err := strconv.Atoi(word); err == nil {
 				if debug {
-					log.Println("TOKEN", i, "value")
+					log.Println("TOKEN", t)
 				}
+			} else if _, err := strconv.Atoi(word); err == nil {
 				t = Token{VALUE, word}
 				tokens = append(tokens, t)
-			} else if is_valid_name(word) {
 				if debug {
-					log.Println("TOKEN", word, "valid name")
+					log.Println("TOKEN", t)
 				}
+			} else if is_valid_name(word) {
 				t = Token{VALID_NAME, word}
 				tokens = append(tokens, t)
+				if debug {
+					log.Println("TOKEN", t)
+				}
 			} else if strings.Contains(word, "(") {
 				if debug {
 					log.Println("RETOKENIZE BECAUSE OF \"(\"")
@@ -337,8 +350,9 @@ func (st Statement) String() string {
 		asmcode := ""
 		if (st[1].t == VALID_NAME) && (st[2].t == ASSIGNMENT) && (st[3].t == STRING) {
 			if has(defined_names, constname) {
-				log.Fatalln("Error: constant is already defined: " + constname)
+				log.Fatalln("Error: Can not declare constant, name is already defined: " + constname)
 			}
+			// Store the name of the declared constant in defined_names
 			defined_names = append(defined_names, constname)
 			// For the .DATA section (recognized by the keyword)
 			asmcode += constname + ":\tdb "
@@ -422,6 +436,11 @@ func (st Statement) String() string {
 	} else if (len(st) == 2) && (st[0].t == KEYWORD) && (st[1].t == VALID_NAME) && (st[0].value == "fun") {
 		asmcode := ";--- function " + st[1].value + " ---\n"
 		in_function = st[1].value
+		// Store the name of the declared function in defined_names
+		if has(defined_names, in_function) {
+			log.Fatalln("Error: Can not declare function, name is already defined:", in_function)
+		}
+		defined_names = append(defined_names, in_function)
 		asmcode += "global " + in_function + "\t\t\t; make label available to the linker (ld)\n"
 		asmcode += in_function + ":\t\t\t\t; name of the function\n\n"
 		if (in_function == "main") || (in_function == linker_start_function) {
