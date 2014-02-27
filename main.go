@@ -14,12 +14,12 @@ import (
 type (
 	Program   string
 	TokenType int
-	Token struct {
+	Token     struct {
 		t     TokenType
 		value string
 	}
 	TokenDescriptions map[TokenType]string
-	Statement []Token
+	Statement         []Token
 )
 
 const (
