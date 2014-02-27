@@ -285,7 +285,7 @@ func (st Statement) String() string {
 		return reduced.String()
 	}
 	if len(st) == 0 {
-		log.Fatalln("Error: Empty statement:", st)
+		log.Fatalln("Error: Empty statement.")
 		return ""
 	} else if (st[0].t == BUILTIN) && (st[0].value == "int") { // interrrupt call
 		asmcode := "\t;--- call interrupt 0x" + st[1].value + " ---\n"
@@ -431,7 +431,11 @@ func (st Statement) String() string {
 		if (st[0].t == REGISTER) && (st[1].t == ASSIGNMENT) && (st[2].t == VALUE) {
 			return "\tmov " + st[0].value + ", " + st[2].value + "\t\t; " + st[0].value + " " + st[1].value + " " + st[2].value
 		} else {
-			log.Fatalln("Error: Uknown type of statement, but familiar layout:\n", st)
+			log.Println("Error: Uknown type of 3 token statement:")
+			for _, t := range st {
+				log.Println("\t", t)
+			}
+			os.Exit(1)
 		}
 	} else if (len(st) == 2) && (st[0].t == KEYWORD) && (st[1].t == VALID_NAME) && (st[0].value == "fun") {
 		asmcode := ";--- function " + st[1].value + " ---\n"
