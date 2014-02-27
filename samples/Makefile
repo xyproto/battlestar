@@ -19,15 +19,15 @@ all: clean $(TARGETS)
 	@echo "--- $< ---"
 	@echo -e "\tGenerating $@ from $<... "
 	@[ -e ../battlestar ] || echo 'Could not find ../battlestar!'
-	@<$< ../battlestar -platform=$(LBITS) -osx=$(OSX) 2>$<.log >$@
+	@-< $< ../battlestar -platform=$(LBITS) -osx=$(OSX) 2> $<.log >$@
 
 %.o: %.asm
 	@echo -e "\tCompiling $<... "
-	@[ $(OSX) = true ] && nasm -f macho -o $@ $< || yasm -f elf$(LBITS) -o $@ $<
+	@-[[ $(OSX) = true ]] && nasm -f macho -o $@ $< || yasm -f elf$(LBITS) -o $@ $<
 
 %.elf: %.o
 	@echo -e "\tLinking $@... "
-	@[ $(OSX) = true ] && ld -s --fatal-warnings -nostdlib --relax -o $@ $< || ld -s --fatal-warnings -nostdlib --relax -o $@ $<
+	@-[[ $< == fail* ]] || [[ $(OSX) = true ]] && ld -s --fatal-warnings -nostdlib --relax -o $@ $< || ld -s --fatal-warnings -nostdlib --relax -o $@ $<
 
 clean:
 	@echo -e '\tCleaning...'
