@@ -1,5 +1,7 @@
 package main
 
+// TODO: Add line numbers to the error messages and make them parseable by editors and IDEs
+
 import (
 	"flag"
 	"fmt"
@@ -42,7 +44,7 @@ var (
 	registers = []string{"eax", "ebx", "ecx", "edx", "ebp", "esp", // 32-bit
 		"rax", "rbx", "rcx", "rdx", "rbp", "rsp"} // 64-bit
 	operators = []string{"=", "+=", "-=", "*=", "/="}
-	keywords  = []string{"fun", "ret", "const", "call"}
+	keywords  = []string{"fun", "ret", "const", "call", "extern", "end"}
 	builtins  = []string{"len", "int", "exit"} // built-in functions
 
 	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in"}
@@ -320,13 +322,13 @@ func (st Statement) String() string {
 					comment = "parameter #" + n + " is " + st[i].value
 				} else if st[i].t == REGISTER {
 					log.Fatalln("Error: Can't use a register as a parameter to interrupt calls, since they may be overwritten when preparing for the call.\n" +
-					             "You can, however, use _ as a parameter to use the value in the corresponding register.")
+						"You can, however, use _ as a parameter to use the value in the corresponding register.")
 				} else {
 					if strings.HasPrefix(st[i].value, "_length_of_") {
 						comment = "parameter #" + n + " is len(" + st[i].value[11:] + ")"
 					} else {
-					    if st[i].value == "_" {
-						    // When _ is given, use the value already in the corresponding register
+						if st[i].value == "_" {
+							// When _ is given, use the value already in the corresponding register
 							comment = "parameter #" + n + " is already set"
 						} else {
 							comment = "parameter #" + n + " is " + "&" + st[i].value
@@ -443,7 +445,7 @@ func (st Statement) String() string {
 		}
 		return asmcode
 	} else if len(st) == 3 {
-	    // Statements like "eax = 3" are handled here
+		// Statements like "eax = 3" are handled here
 		// TODO: Handle all sorts of equivivalents to assembly statements
 		if (st[0].t == REGISTER) && (st[1].t == ASSIGNMENT) && (st[2].t == VALUE || st[2].t == VALID_NAME) {
 			return "\tmov " + st[0].value + ", " + st[2].value + "\t\t; " + st[0].value + " " + st[1].value + " " + st[2].value
@@ -488,14 +490,50 @@ func (st Statement) String() string {
 		return asmcode
 	} else if (st[0].t == KEYWORD) && (st[0].value == "call") && (len(st) == 2) {
 		if st[1].t == VALID_NAME {
-			return "\tcall " + st[1].value + "\n"
+			return "\t;--- call the \"" + st[1].value + "\" function ---\n\tcall " + st[1].value + "\n"
 		} else {
 			log.Fatalln("Calling an invalid name:", st[1].value)
 		}
+		// TODO: Find a shorter format to describe matching tokens.
+		// Something along the lines of: if match(st, [KEYWORD:"extern"], 2)
+	} else if (st[0].t == KEYWORD) && (st[0].value == "extern") && (len(st) == 2) {
+		if st[1].t == VALID_NAME {
+			extname := st[1].value
+			// Declare the external name
+			if has(defined_names, extname) {
+				log.Fatalln("Error: Can not declare external symbol, name is already defined: " + extname)
+			}
+			// Store the name of the declared constant in defined_names
+			defined_names = append(defined_names, extname)
+			// Return a comment
+			return "extern " + extname + "\t\t\t; external symbol\n"
+		} else {
+			log.Fatalln("Error: extern with invalid name:", st[1].value)
+		}
+	} else if (st[0].t == KEYWORD) && (st[0].value == "end") && (len(st) == 1) {
+		if in_function != "" {
+			// Return from the function if "end" is encountered
+			ret := Token{KEYWORD, "ret"}
+			newstatement := Statement{ret}
+			return newstatement.String()
+		} else {
+			log.Fatalln("Error: Not in a function, hard to tell what should be ended with \"end\".")
+		}
+	} else if (st[0].t == VALID_NAME) && (len(st) == 1) {
+		// Just a name, assume it's a function call
+		if has(defined_names, st[0].value) {
+			call := Token{KEYWORD, "call"}
+			newstatement := Statement{call, st[0]}
+			return newstatement.String()
+		} else {
+			log.Fatalln("Error: No function named:", st[0].value)
+		}
 	} else if st[0].value == "const" {
 		log.Fatalln("Error: Incomprehensible constant:", st.String())
+	} else if st[0].t == BUILTIN {
+		log.Fatalln("Error: Unhandled builtin:", st[0].value)
 	} else if st[0].t == KEYWORD {
-		log.Fatalln("Error: Unknown keyword:", st[0].value)
+		log.Fatalln("Error: Unhandled keyword:", st[0].value)
 	}
 	log.Println("Error: Unfamiliar statement layout: ")
 	for _, token := range []Token(st) {
@@ -561,8 +599,8 @@ func add_exit_token_if_missing(tokens []Token) []Token {
 		break
 	}
 
-	// If the last token is ret, all is well, return the same tokens
-	if (lasttoken.t == KEYWORD) && (lasttoken.value == "ret") {
+	// If the last token is ret or end, all is well, return the same tokens
+	if (lasttoken.t == KEYWORD) && ((lasttoken.value == "ret") || (lasttoken.value == "end")) {
 		return tokens
 	}
 

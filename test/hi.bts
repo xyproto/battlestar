@@ -1,0 +1,13 @@
+const msg = "Hi", 10
+
+extern hi_twice
+
+fun hi
+  // Say hi
+  int(80, 4, 1, msg, len(msg))
+end
+
+fun main
+  // Say hi twice, from C
+  hi_twice
+end

@@ -1,0 +1,19 @@
+import zlib             // To import a C library, as found by pkg-config
+
+int main() {            // If there is a curly bracket, it must be a C function
+	return 0
+}
+
+l = [1, 2, 3, 4, 5] // a list
+
+for x in l do
+	blabla
+end
+
+Ignore comments when // is not the first thing on the line
+
+Built in quaternions
+
+Built in support for SDL2
+
+Use a subset of the ruby syntax
