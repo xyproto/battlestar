@@ -32,6 +32,7 @@ const (
 	BUILTIN    = 4
 	VALID_NAME = 5
 	STRING     = 6
+	DISREGARD  = 7
 	SEP        = 127
 	UNKNOWN    = 255
 )
@@ -47,7 +48,7 @@ var (
 	keywords  = []string{"fun", "ret", "const", "call", "extern", "end"}
 	builtins  = []string{"len", "int", "exit"} // built-in functions
 
- 	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in"}
+	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard"}
 
 	// 32-bit (i686) or 64-bit (x86_64)
 	platform_bits = 32
@@ -73,7 +74,7 @@ func (tok Token) String() string {
 	} else if haskey(token_to_string, tok.t) {
 		return token_to_string[tok.t] + ":" + tok.value
 	}
-	log.Fatalln("Error when serializing: Unfamiliar token: " + tok.value + " (?)")
+	log.Fatalln("Error when serializing: Unfamiliar token when representing as string: " + tok.value + " (?)")
 	return "!?"
 }
 
@@ -188,6 +189,12 @@ func tokenize(program string, debug bool) []Token {
 				}
 			} else if _, err := strconv.Atoi(word); err == nil {
 				t = Token{VALUE, word}
+				tokens = append(tokens, t)
+				if debug {
+					log.Println("TOKEN", t)
+				}
+			} else if word == "_" {
+				t = Token{DISREGARD, word}
 				tokens = append(tokens, t)
 				if debug {
 					log.Println("TOKEN", t)
@@ -466,6 +473,9 @@ func (st Statement) String() string {
 			} else {
 				log.Fatalln("Error:", st[0].value, "is not recognized as a register (and there is no const qualifier). Can't assign.")
 			}
+		} else if (st[0].t == DISREGARD) && (st[1].t == ASSIGNMENT) {
+			// TODO: If st[2] is a function, one wishes to call it, then disregard afterwards
+			return "\t\t\t\t; Disregarding: " + st[2].value + "\n"
 		} else {
 			log.Println("Error: Uknown type of 3 token statement:")
 			for _, t := range st {

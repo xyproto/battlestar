@@ -1,4 +1,4 @@
-const msg = "Psst", 10
+const msg = "Yes", 10
 
 fun main
 
