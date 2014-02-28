@@ -1,0 +1,5 @@
+#!/usr/bin/bts
+
+const msg = "Hello World", 10
+
+int(80, 4, 1, msg, len(msg))

@@ -16,7 +16,7 @@ fi
 
 # Check for needed utilities
 which battlestar >/dev/null || exit 1
-which nasm >/dev/null || exit 1
+which yasm >/dev/null || exit 1
 
 # Set up temporary filenames
 tmpfn1=`mktemp --suffix=asm`
@@ -25,14 +25,17 @@ tmpfn3=`mktemp --suffix=elf`
 
 # Compile and link
 BITS=`getconf LONG_BIT`
-<$1 battlestar -platform=$BITS 2>/dev/null > "$tmpfn1"
-nasm -f elf$BITS -o "$tmpfn2" "$tmpfn1"
-ld -o "$tmpfn3" "$tmpfn2"
+<$1 battlestar -bits=$BITS 2>/dev/null > "$tmpfn1"
+yasm -f elf$BITS -o "$tmpfn2" "$tmpfn1"
+ld -s --fatal-warnings -nostdlib -relax -o "$tmpfn3" "$tmpfn2"
 
 # Clean up after compiling and linking
 rm "$tmpfn1" "$tmpfn2"
 
+#echo
+#echo "Running $1"
 #echo "Size of executable: `du -b "$tmpfn3" | cut -d'/' -f1`bytes"
+#echo
 
 # Run the program
 "$tmpfn3"
