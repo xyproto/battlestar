@@ -318,15 +318,30 @@ func (st Statement) String() string {
 			} else {
 				if st[i].t == VALUE {
 					comment = "parameter #" + n + " is " + st[i].value
+				} else if st[i].t == REGISTER {
+					log.Fatalln("Error: Can't use a register as a parameter to interrupt calls, since they may be overwritten when preparing for the call.\n" +
+					             "You can, however, use _ as a parameter to use the value in the corresponding register.")
 				} else {
 					if strings.HasPrefix(st[i].value, "_length_of_") {
 						comment = "parameter #" + n + " is len(" + st[i].value[11:] + ")"
 					} else {
-						comment = "parameter #" + n + " is " + "&" + st[i].value
+					    if st[i].value == "_" {
+						    // When _ is given, use the value already in the corresponding register
+							comment = "parameter #" + n + " is already set"
+						} else {
+							comment = "parameter #" + n + " is " + "&" + st[i].value
+						}
 					}
 				}
 			}
-			codeline := "\tmov " + reg + ", " + st[i].value
+			codeline := ""
+			// Skip parameters/registers that are already set
+			if st[i].value == "_" {
+				codeline = "\t\t"
+				log.Println("Note: Skipping the value for register " + reg + " when calling interrupt " + st[1].value)
+			} else {
+				codeline = "\tmov " + reg + ", " + st[i].value
+			}
 
 			// TODO: Find a more elegant way to format the comments in columns
 			if len(codeline) > 14 { // for tab formatting
@@ -428,9 +443,16 @@ func (st Statement) String() string {
 		}
 		return asmcode
 	} else if len(st) == 3 {
+	    // Statements like "eax = 3" are handled here
 		// TODO: Handle all sorts of equivivalents to assembly statements
-		if (st[0].t == REGISTER) && (st[1].t == ASSIGNMENT) && (st[2].t == VALUE) {
+		if (st[0].t == REGISTER) && (st[1].t == ASSIGNMENT) && (st[2].t == VALUE || st[2].t == VALID_NAME) {
 			return "\tmov " + st[0].value + ", " + st[2].value + "\t\t; " + st[0].value + " " + st[1].value + " " + st[2].value
+		} else if (st[0].t == VALID_NAME) && (st[1].t == ASSIGNMENT) {
+			if has(defined_names, st[0].value) {
+				log.Fatalln("Error:", st[0].value, "has already been defined")
+			} else {
+				log.Fatalln("Error:", st[0].value, "is not recognized as a register (and there is no const qualifier). Can't assign.")
+			}
 		} else {
 			log.Println("Error: Uknown type of 3 token statement:")
 			for _, t := range st {
@@ -452,7 +474,7 @@ func (st Statement) String() string {
 		asmcode += "global " + in_function + "\t\t\t; make label available to the linker (ld)\n"
 		asmcode += in_function + ":\t\t\t\t; name of the function\n\n"
 		if (in_function == "main") || (in_function == linker_start_function) {
-			log.Println("Not setting up stack frame in the main/_start/start function.")
+			log.Println("Note: Not setting up stack frame in the main/_start/start function.")
 			return asmcode
 		}
 		asmcode += "\t;--- setup stack frame ---\n"

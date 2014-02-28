@@ -1,0 +1,11 @@
+const msg = "Psst", 10
+
+fun main
+
+  // Set rdx
+  rdx = len(msg)
+
+  // Then use _ to signify that rdx should be used instead of being set when calling the interrupt
+  int(80, 4, 1, msg, _)
+
+  ret
