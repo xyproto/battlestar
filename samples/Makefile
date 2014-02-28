@@ -31,7 +31,7 @@ BULLET=->
 %.asm: %.bts
 	@echo -e "$(HEADER_COLOR)·---[$(HEADER_COLOR2) $< $(NO_COLOR)$(HEADER_COLOR)]-----------···$(NO_COLOR)\n"
 	@echo -e "  $(GENERATE_COLOR)$(BULLET) Generating$(NO_COLOR) $@ from $<"
-	@[ -e ../battlestar ] || echo '$(ERROR_COLOR)Could not find ../battlestar!$(NO_COLOR)'
+	@[ -e ../battlestar ] || echo -e '$(ERROR_COLOR)Could not find ../battlestar!$(NO_COLOR)'
 	@-< $< ../battlestar -bits=$(LBITS) -osx=$(OSX) 2> $<.log >$@
 
 %.o: %.asm

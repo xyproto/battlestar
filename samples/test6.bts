@@ -8,4 +8,4 @@ fun main
   // Then use _ to signify that rdx should be used instead of being set when calling the interrupt
   int(80, 4, 1, msg, _)
 
-  ret
+end
