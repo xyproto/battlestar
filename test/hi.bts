@@ -3,8 +3,9 @@ const msg = "Hi", 10
 extern hi_twice
 
 fun hi
+  ecx = eax
   // Say hi
-  int(80, 4, 1, msg, len(msg))
+  int(80, 4, 1, _, len(msg))
 end
 
 fun main

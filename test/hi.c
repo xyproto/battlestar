@@ -1,8 +1,6 @@
-//#include <stdio.h>
-
-void hi(); // Call the hi assembly function, twice
+void hi(char* msg); // External assembly function
 
 void hi_twice() {
-  hi();
-  hi();
+  hi("there");
+  hi("you");
 }

@@ -462,7 +462,7 @@ func (st Statement) String() string {
 			in_function = ""
 		}
 		return asmcode
-	} else if len(st) == 3 {
+	} else if (st[0].t == REGISTER) || (st[0].t == DISREGARD) && (len(st) == 3) {
 		// Statements like "eax = 3" are handled here
 		// TODO: Handle all sorts of equivivalents to assembly statements
 		if (st[0].t == REGISTER) && (st[1].t == ASSIGNMENT) && (st[2].t == VALUE || st[2].t == VALID_NAME) {
@@ -476,6 +476,8 @@ func (st Statement) String() string {
 		} else if (st[0].t == DISREGARD) && (st[1].t == ASSIGNMENT) {
 			// TODO: If st[2] is a function, one wishes to call it, then disregard afterwards
 			return "\t\t\t\t; Disregarding: " + st[2].value + "\n"
+		} else if (st[0].t == REGISTER) && (st[1].t == ASSIGNMENT) && (st[2].t == REGISTER) {
+			return "\tmov " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " " + st[1].value + " " + st[2].value
 		} else {
 			log.Println("Error: Uknown type of 3 token statement:")
 			for _, t := range st {
@@ -483,7 +485,7 @@ func (st Statement) String() string {
 			}
 			os.Exit(1)
 		}
-	} else if (len(st) == 2) && (st[0].t == KEYWORD) && (st[1].t == VALID_NAME) && (st[0].value == "fun") {
+	} else if (len(st) >= 2) && (st[0].t == KEYWORD) && (st[1].t == VALID_NAME) && (st[0].value == "fun") {
 		if in_function != "" {
 			log.Fatalf("Error: Missing \"ret\"? Already in a function named %s when declaring function %s.\n", in_function, st[1].value)
 		}

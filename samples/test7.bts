@@ -1,0 +1,10 @@
+const message = "Yes", 10
+
+fun hello(msg)
+  int(80, 4, 1, msg, len(msg))
+end
+
+fun main
+  hello(message)
+  //hello("you")
+end
