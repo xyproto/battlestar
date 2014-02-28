@@ -39,7 +39,8 @@ var (
 	in_function   string   // name of the function we are currently in
 	defined_names []string // all defined variables/constants/functions
 
-	registers = []string{"eax", "ebx", "ecx", "edx", "rbp", "rsp", "rax", "rbx", "rcx", "rdx"}
+	registers = []string{"eax", "ebx", "ecx", "edx", "ebp", "esp", // 32-bit
+		"rax", "rbx", "rcx", "rdx", "rbp", "rsp"} // 64-bit
 	operators = []string{"=", "+=", "-=", "*=", "/="}
 	keywords  = []string{"fun", "ret", "const", "call"}
 	builtins  = []string{"len", "int", "exit"} // built-in functions
@@ -47,7 +48,7 @@ var (
 	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in"}
 
 	// 32-bit (i686) or 64-bit (x86_64)
-	platform = 32
+	platform_bits = 32
 
 	// OS X or Linux
 	osx = false
@@ -304,7 +305,7 @@ func (st Statement) String() string {
 			comment             string
 			parameter_registers []string
 		)
-		if platform == 32 {
+		if platform_bits == 32 {
 			parameter_registers = []string{"eax", "ebx", "ecx", "edx"}
 		} else {
 			parameter_registers = []string{"rax", "rbx", "rcx", "rdx"}
@@ -376,7 +377,7 @@ func (st Statement) String() string {
 				log.Println("Not taking down stack frame in the main/_start/start function.")
 			} else {
 				asmcode += "\t;--- takedown stack frame ---\n"
-				if platform == 32 {
+				if platform_bits == 32 {
 					asmcode += "\tmov esp, ebp\t\t\t; use base pointer as new stack pointer\n"
 					asmcode += "\tpop ebp\t\t\t\t; get the old base pointer\n\n"
 				} else {
@@ -393,7 +394,7 @@ func (st Statement) String() string {
 			asmcode += "\t;--- return ---\n"
 		}
 		if (len(st) == 2) && (st[1].t == VALUE) {
-			if platform == 32 {
+			if platform_bits == 32 {
 				asmcode += "\tmov eax, " + st[1].value + "\t\t\t; Error code "
 			} else {
 				asmcode += "\tmov rax, " + st[1].value + "\t\t\t; Error code "
@@ -410,7 +411,7 @@ func (st Statement) String() string {
 			if (len(st) == 2) && (st[1].t == VALUE) {
 				exit_code = st[1].value
 			}
-			if platform == 32 {
+			if platform_bits == 32 {
 				asmcode += "\tmov eax, 1\t\t\t; function call: 1\n\tmov ebx, " + exit_code + "\t\t\t; return code " + exit_code + "\n\tint 0x80\t\t\t; exit program\n"
 			} else {
 				asmcode += "\tmov rax, 1\t\t\t; function call: 1\n\tmov rbx, " + exit_code + "\t\t\t; return code " + exit_code + "\n\tint 0x80\t\t\t; exit program\n"
@@ -438,6 +439,9 @@ func (st Statement) String() string {
 			os.Exit(1)
 		}
 	} else if (len(st) == 2) && (st[0].t == KEYWORD) && (st[1].t == VALID_NAME) && (st[0].value == "fun") {
+		if in_function != "" {
+			log.Fatalf("Error: Missing \"ret\"? Already in a function named %s when declaring function %s.\n", in_function, st[1].value)
+		}
 		asmcode := ";--- function " + st[1].value + " ---\n"
 		in_function = st[1].value
 		// Store the name of the declared function in defined_names
@@ -452,7 +456,7 @@ func (st Statement) String() string {
 			return asmcode
 		}
 		asmcode += "\t;--- setup stack frame ---\n"
-		if platform == 32 {
+		if platform_bits == 32 {
 			asmcode += "\tpush ebp\t\t\t; save old base pointer\n"
 			asmcode += "\tmov ebp, esp\t\t\t; use stack pointer as new base pointer\n"
 		} else {
@@ -511,7 +515,7 @@ func TokensToAssembly(tokens []Token, debug bool, debug2 bool) (string, string) 
 func add_starting_point_if_missing(asmcode string) string {
 	// Check if the resulting code contains a starting point or not
 	if !strings.Contains(asmcode, linker_start_function) {
-		log.Printf("No %s has been defined\n", linker_start_function)
+		log.Printf("No %s has been defined, creating one\n", linker_start_function)
 		addstring := "global " + linker_start_function + "\t\t\t; make label available to the linker (ld)\n" + linker_start_function + ":\t\t\t\t; starting point of the program\n"
 		if strings.Contains(asmcode, "\nmain:") {
 			log.Println("...but main has been defined, using that as starting point.")
@@ -579,12 +583,14 @@ func main() {
 	defined_names = make([]string, 0, 0)
 
 	// TODO: Automatically discover 32-bit/64-bit and Linux/OS X
-	// Check for -platform=32 or -platform=64 (default)
-	platform_bits := flag.Int("platform", 64, "Output 32-bit or 64-bit x86 assembly")
+	// Check for -bits=32 or -bits=64 (default)
+	bits := flag.Int("bits", 64, "Output 32-bit or 64-bit x86 assembly")
 	// Check for -osx=true or -osx=false (default)
 	is_osx := flag.Bool("osx", false, "On OS X?")
+
 	flag.Parse()
-	platform = *platform_bits
+
+	platform_bits = *bits
 	osx = *is_osx
 
 	// TODO: Consider adding an option for "start" as well, or a custom
@@ -605,7 +611,7 @@ func main() {
 		}
 		t := time.Now()
 		fmt.Printf("; Generated with %s %s, at %s\n\n", name, version, t.String()[:16])
-		fmt.Printf("BITS %d\n", platform)
+		fmt.Printf("BITS %d\n", platform_bits)
 		tokens := add_exit_token_if_missing(tokenize(string(bytes), true))
 		log.Println("--- Done tokenizing ---")
 		constants, asmcode := TokensToAssembly(tokens, true, false)

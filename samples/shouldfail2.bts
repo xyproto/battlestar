@@ -5,7 +5,7 @@ const hello = "Hi", 32
 // Wonder what will happen to the stack as a result of this.
 fun hi
     int(80, 4, 1, hello, len(hello))
-//  TODO: Make the compiler catch the missing ret?
+//  TODO: Make the compiler catch the missing ret and protest
 //    ret
 
 fun main
