@@ -47,7 +47,7 @@ var (
 	keywords  = []string{"fun", "ret", "const", "call", "extern", "end"}
 	builtins  = []string{"len", "int", "exit"} // built-in functions
 
-	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in"}
+ 	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in"}
 
 	// 32-bit (i686) or 64-bit (x86_64)
 	platform_bits = 32
@@ -366,9 +366,12 @@ func (st Statement) String() string {
 			log.Fatalln(st[1].value, "is not a valid name for a constant")
 		}
 		asmcode := ""
-		if (st[1].t == VALID_NAME) && (st[2].t == ASSIGNMENT) && (st[3].t == STRING) {
+		if (st[1].t == VALID_NAME) && (st[2].t == ASSIGNMENT) && ((st[3].t == STRING) || (st[3].t == VALUE) || (st[3].t == VALID_NAME)) {
 			if has(defined_names, constname) {
 				log.Fatalln("Error: Can not declare constant, name is already defined: " + constname)
+			}
+			if (st[3].t == VALID_NAME) && !has(defined_names, st[3].value) {
+				log.Fatalln("Error: Can't assign", st[3].value, "to", st[1].value, "because", st[3].value, "is undefined.")
 			}
 			// Store the name of the declared constant in defined_names
 			defined_names = append(defined_names, constname)
@@ -381,12 +384,20 @@ func (st Statement) String() string {
 					asmcode += ", "
 				}
 			}
-			asmcode += "\t\t; constant string\n"
+			if (st[3].t == STRING) {
+				asmcode += "\t\t; constant string\n"
+			} else {
+				asmcode += "\t\t; constant value\n"
+			}
 			// Special naming for storing the length for later
-			asmcode += "_length_of_" + constname + " equ $ - " + constname + "\t; length of constant\n"
+			asmcode += "_length_of_" + constname + " equ $ - " + constname + "\t; size of constant value\n"
 			return asmcode
 		}
-		log.Fatalln("Error: Invalid parameters for constant string statement:\n", st)
+		log.Println("Error: Invalid parameters for constant string statement:")
+		for _, t := range st {
+			log.Println(t.value)
+		}
+		os.Exit(1)
 	} else if ((st[0].t == KEYWORD) && (st[0].value == "ret")) || ((st[0].t == BUILTIN) && (st[0].value == "exit")) {
 		asmcode := ""
 		if st[0].value == "ret" {
@@ -473,7 +484,7 @@ func (st Statement) String() string {
 			log.Fatalln("Error: Can not declare function, name is already defined:", in_function)
 		}
 		defined_names = append(defined_names, in_function)
-		asmcode += "global " + in_function + "\t\t\t; make label available to the linker (ld)\n"
+		asmcode += "global " + in_function + "\t\t\t; make label available to the linker\n"
 		asmcode += in_function + ":\t\t\t\t; name of the function\n\n"
 		if (in_function == "main") || (in_function == linker_start_function) {
 			log.Println("Note: Not setting up stack frame in the main/_start/start function.")
@@ -576,7 +587,7 @@ func add_starting_point_if_missing(asmcode string) string {
 	// Check if the resulting code contains a starting point or not
 	if !strings.Contains(asmcode, linker_start_function) {
 		log.Printf("No %s has been defined, creating one\n", linker_start_function)
-		addstring := "global " + linker_start_function + "\t\t\t; make label available to the linker (ld)\n" + linker_start_function + ":\t\t\t\t; starting point of the program\n"
+		addstring := "global " + linker_start_function + "\t\t\t; make label available to the linker\n" + linker_start_function + ":\t\t\t\t; starting point of the program\n"
 		if strings.Contains(asmcode, "\nmain:") {
 			log.Println("...but main has been defined, using that as starting point.")
 			// Add "_start:"/"start" right after "main:"
