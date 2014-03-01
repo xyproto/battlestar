@@ -34,6 +34,7 @@ const (
 	STRING     = 6
 	DISREGARD  = 7
 	RESERVED   = 8
+	VARIABLE   = 9
 	SEP        = 127
 	UNKNOWN    = 255
 )
@@ -42,17 +43,18 @@ const (
 var (
 	in_function   string   // name of the function we are currently in
 	defined_names []string // all defined variables/constants/functions
+	variables map[string][]string // list of variable names per function name
 
 	registers = []string{"ah", "bh", "ch", "dh", "si", "di", "sp", "bp", "ip", // 16-bit
 		"eax", "ebx", "ecx", "edx", "esi", "edi", "esp", "ebp", "eip", // 32-bit
 		"rax", "rbx", "rcx", "rdx", "rsi", "rdi", "rsp", "rbp", "rip", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15", "sil", "dil", "spl", "bpl", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15"} // 64-bit
 
 	operators = []string{"=", "+=", "-=", "*=", "/="}
-	keywords  = []string{"fun", "ret", "const", "call", "extern", "end"}
+	keywords  = []string{"fun", "ret", "const", "call", "extern", "end", "var"}
 	builtins  = []string{"len", "int", "exit"} // built-in functions
 	reserved  = []string{"param"}              // built-in variables
 
-	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard", RESERVED: "reserved"}
+	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard", RESERVED: "reserved", VARIABLE: "variable"}
 
 	// 32-bit (i686) or 64-bit (x86_64)
 	platform_bits = 32
@@ -299,6 +301,15 @@ func reduce(st Statement, debug bool) Statement {
 			// replace with the length of the given value
 
 			name := st[i+1].value
+
+			if !has(defined_names, name) {
+				log.Fatalln("Error:", name, "is unfamiliar. Can not find length.")
+			}
+			if has(variables[in_function], name) {
+				// TODO: Find a way to find the length of local variables
+				log.Fatalln("Error: finding the length of a local variable is currently not implemented")
+			}
+
 			token_type := st[i+1].t
 
 			// remove the element at i+1
@@ -506,6 +517,22 @@ func (st Statement) String() string {
 			return "\t\t\t\t; Disregarding: " + st[2].value + "\n"
 		} else if (st[0].t == REGISTER) && (st[1].t == ASSIGNMENT) && (st[2].t == REGISTER) {
 			return "\tmov " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " " + st[1].value + " " + st[2].value
+		} else if (st[0].t == RESERVED) && (st[1].t == VALUE) {
+			if st[0].value == "param" {
+				reg := "rbp"
+				if platform_bits == 32 {
+					reg = "ebp"
+				}
+				paramoffset, err := strconv.Atoi(st[1].value)
+				if err != nil {
+					log.Fatalln("Error: Invalid list offset for", st[0].value+":", st[1].value)
+				}
+				offset := strconv.Itoa(8 + paramoffset*4)
+				return "[" + reg + "+" + offset + "]"
+			} else {
+				// TODO: Implement support for other lists
+				log.Fatalln("Error: Can only handle \"param\" reserved words.")
+			}
 		} else if (st[0].t == REGISTER) && (st[1].t == ASSIGNMENT) && (st[2].t == RESERVED) && (st[3].t == VALUE) {
 			if st[2].value == "param" {
 				reg := "rbp"
@@ -595,6 +622,40 @@ func (st Statement) String() string {
 		} else {
 			log.Fatalln("Error: No function named:", st[0].value)
 		}
+		// TODO: This catches too much. Narrow and fix.
+/*	} else if (st[0].t == VALID_NAME) && (st[1].t == ASSIGNMENT) {
+		if !has(defined_names, st[0].value) {
+			// Add the variable name to the defined names
+			defined_names = append(defined_names, st[0].value)
+			log.Println("Note: Declaring local variable", st[0].value, "in function", in_function)
+			if len(variables[in_function]) == 0 {
+				variables[in_function] = make([]string, 0, 0)
+			}
+			variables[in_function] = append(variables[in_function], st[0].value)
+		}
+		// Create a new statement, where the first token is now a VARIABLE instead of just a VALID_NAME
+		newstatement := make(Statement, len(st), len(st))
+		for i, t := range st {
+			newstatement[i] = t
+		}
+		newstatement[0].t = VARIABLE
+		return newstatement.String()  */
+	} else if (st[0].t == VARIABLE) && (st[1].t == ASSIGNMENT) && (len(st) > 2) {
+		reg := "rbp"
+		if platform_bits == 32 {
+			reg = "ebp"
+		}
+		// negative base pointer offset for local variables
+		paramoffset := len(variables[in_function])-1
+		offset := strconv.Itoa(paramoffset*4 + 8)
+		asmcode := "\tmov [" + reg + "-" + offset + "], "
+		newstatements := make(Statement, len(st)-2, len(st)-2)
+		for i := 2; i < len(st); i++ {
+			newstatements = append(newstatements, st[i-2])
+		}
+		asmcode += newstatements.String()
+		asmcode += "\t\t; local variable #" + strconv.Itoa(paramoffset) + "\n"
+		return asmcode
 	} else if st[0].value == "const" {
 		log.Fatalln("Error: Incomprehensible constant:", st.String())
 	} else if st[0].t == BUILTIN {
@@ -706,8 +767,9 @@ func main() {
 	log.Println("2014")
 	log.Println("MIT licensed")
 
-	// TODO: Needed?
+	// Initialize global maps and slices
 	defined_names = make([]string, 0, 0)
+	variables = make(map[string][]string)
 
 	// TODO: Automatically discover 32-bit/64-bit and Linux/OS X
 	// Check for -bits=32 or -bits=64 (default)
@@ -738,16 +800,16 @@ func main() {
 		}
 		t := time.Now()
 		fmt.Printf("; Generated with %s %s, at %s\n\n", name, version, t.String()[:16])
-		fmt.Printf("BITS %d\n", platform_bits)
+		fmt.Printf("bits %d\n", platform_bits)
 		tokens := add_exit_token_if_missing(tokenize(string(bytes), true))
 		log.Println("--- Done tokenizing ---")
 		constants, asmcode := TokensToAssembly(tokens, true, false)
 		if constants != "" {
-			fmt.Println("SECTION .data\n")
+			fmt.Println("section .data\n")
 			fmt.Println(constants + "\n")
 		}
 		if asmcode != "" {
-			fmt.Println("SECTION .text\n")
+			fmt.Println("section .text\n")
 			asmcode = add_starting_point_if_missing(asmcode)
 			fmt.Println(asmcode + "\n")
 		}

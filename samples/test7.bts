@@ -1,10 +1,12 @@
 const message = "Yes", 10
 
-fun hello(msg)
-  int(80, 4, 1, msg, len(msg))
+fun hello
+  msg = param[0]
+  //guess_length_of_string = 4
+  int(80, 4, 1, msg, guess_length_of_string)
 end
 
 fun main
-  hello(message)
+  //hello(message)
   //hello("you")
 end
