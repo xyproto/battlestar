@@ -33,6 +33,7 @@ const (
 	VALID_NAME = 5
 	STRING     = 6
 	DISREGARD  = 7
+	RESERVED   = 8
 	SEP        = 127
 	UNKNOWN    = 255
 )
@@ -42,13 +43,16 @@ var (
 	in_function   string   // name of the function we are currently in
 	defined_names []string // all defined variables/constants/functions
 
-	registers = []string{"eax", "ebx", "ecx", "edx", "ebp", "esp", // 32-bit
-		"rax", "rbx", "rcx", "rdx", "rbp", "rsp"} // 64-bit
+	registers = []string{"ah", "bh", "ch", "dh", "si", "di", "sp", "bp", "ip", // 16-bit
+		"eax", "ebx", "ecx", "edx", "esi", "edi", "esp", "ebp", "eip", // 32-bit
+		"rax", "rbx", "rcx", "rdx", "rsi", "rdi", "rsp", "rbp", "rip", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15", "sil", "dil", "spl", "bpl", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15"} // 64-bit
+
 	operators = []string{"=", "+=", "-=", "*=", "/="}
 	keywords  = []string{"fun", "ret", "const", "call", "extern", "end"}
 	builtins  = []string{"len", "int", "exit"} // built-in functions
+	reserved  = []string{"param"}              // built-in variables
 
-	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard"}
+	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard", RESERVED: "reserved"}
 
 	// 32-bit (i686) or 64-bit (x86_64)
 	platform_bits = 32
@@ -74,7 +78,7 @@ func (tok Token) String() string {
 	} else if haskey(token_to_string, tok.t) {
 		return token_to_string[tok.t] + ":" + tok.value
 	}
-	log.Fatalln("Error when serializing: Unfamiliar token when representing as string: " + tok.value + " (?)")
+	log.Fatalln("Error when serializing: Unfamiliar token type when representing token as string: " + tok.value)
 	return "!?"
 }
 
@@ -187,6 +191,12 @@ func tokenize(program string, debug bool) []Token {
 				if debug {
 					log.Println("TOKEN", t)
 				}
+			} else if has(reserved, word) {
+				t = Token{RESERVED, word}
+				tokens = append(tokens, t)
+				if debug {
+					log.Println("TOKEN", t)
+				}
 			} else if _, err := strconv.Atoi(word); err == nil {
 				t = Token{VALUE, word}
 				tokens = append(tokens, t)
@@ -219,6 +229,24 @@ func tokenize(program string, debug bool) []Token {
 					log.Println("RETOKENIZE BECAUSE OF \")\"")
 				}
 				newtokens := retokenize(word, ")", debug)
+				for _, newtoken := range newtokens {
+					tokens = append(tokens, newtoken)
+				}
+				log.Println("NEWTOKENS", newtokens)
+			} else if strings.Contains(word, "[") {
+				if debug {
+					log.Println("RETOKENIZE BECAUSE OF \"[\"")
+				}
+				newtokens := retokenize(word, "[", debug)
+				for _, newtoken := range newtokens {
+					tokens = append(tokens, newtoken)
+				}
+				log.Println("NEWTOKENS", newtokens)
+			} else if strings.Contains(word, "]") {
+				if debug {
+					log.Println("RETOKENIZE BECAUSE OF \"]\"")
+				}
+				newtokens := retokenize(word, "]", debug)
 				for _, newtoken := range newtokens {
 					tokens = append(tokens, newtoken)
 				}
@@ -309,18 +337,18 @@ func (st Statement) String() string {
 		}
 		// Store each of the parameters to the appropriate registers
 		var (
-			reg                 string
-			n                   string
-			comment             string
-			parameter_registers []string
+			reg                           string
+			n                             string
+			comment                       string
+			interrupt_parameter_registers []string
 		)
 		if platform_bits == 32 {
-			parameter_registers = []string{"eax", "ebx", "ecx", "edx"}
+			interrupt_parameter_registers = []string{"eax", "ebx", "ecx", "edx"}
 		} else {
-			parameter_registers = []string{"rax", "rbx", "rcx", "rdx"}
+			interrupt_parameter_registers = []string{"rax", "rbx", "rcx", "rdx"}
 		}
 		for i := 2; i < len(st); i++ {
-			reg = parameter_registers[i-2]
+			reg = interrupt_parameter_registers[i-2]
 			n = strconv.Itoa(i - 2)
 			if (i - 2) == 0 {
 				comment = "function call: " + st[i].value
@@ -391,7 +419,7 @@ func (st Statement) String() string {
 					asmcode += ", "
 				}
 			}
-			if (st[3].t == STRING) {
+			if st[3].t == STRING {
 				asmcode += "\t\t; constant string\n"
 			} else {
 				asmcode += "\t\t; constant value\n"
@@ -478,6 +506,22 @@ func (st Statement) String() string {
 			return "\t\t\t\t; Disregarding: " + st[2].value + "\n"
 		} else if (st[0].t == REGISTER) && (st[1].t == ASSIGNMENT) && (st[2].t == REGISTER) {
 			return "\tmov " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " " + st[1].value + " " + st[2].value
+		} else if (st[0].t == REGISTER) && (st[1].t == ASSIGNMENT) && (st[2].t == RESERVED) && (st[3].t == VALUE) {
+			if st[2].value == "param" {
+				reg := "rbp"
+				if platform_bits == 32 {
+					reg = "ebp"
+				}
+				paramoffset, err := strconv.Atoi(st[3].value)
+				if err != nil {
+					log.Fatalln("Error: Invalid list offset for", st[2].value+":", st[3].value)
+				}
+				offset := strconv.Itoa(8 + paramoffset*4)
+				return "\tmov " + st[0].value + ", " + "[" + reg + "+" + offset + "]\t\t; fetch function param #" + st[3].value + "\n"
+			} else {
+				// TODO: Implement support for other lists
+				log.Fatalln("Error: Can only handle \"param\" lists.")
+			}
 		} else {
 			log.Println("Error: Uknown type of 3 token statement:")
 			for _, t := range st {

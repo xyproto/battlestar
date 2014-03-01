@@ -3,7 +3,7 @@ const msg = "Hi", 10
 extern hi_twice
 
 fun hi
-  ecx = eax
+  rcx = param[0]
   // Say hi
   int(80, 4, 1, _, len(msg))
 end
