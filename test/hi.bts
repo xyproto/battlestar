@@ -3,8 +3,8 @@ const msg = "Hi", 10
 extern hi_twice
 
 fun hi
-  rcx = param[0]
   // Say hi
+  rcx = param[0]
   int(80, 4, 1, _, len(msg))
 end
 

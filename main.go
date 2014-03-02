@@ -527,7 +527,34 @@ func (st Statement) String() string {
 				if err != nil {
 					log.Fatalln("Error: Invalid list offset for", st[0].value+":", st[1].value)
 				}
-				offset := strconv.Itoa(8 + paramoffset*4)
+				var offset string
+				if platform_bits == 32 {
+					offset = strconv.Itoa(8 + paramoffset*4)
+				} else if platform_bits == 64 {
+					offset = strconv.Itoa(paramoffset*8)
+					// ref: page 34 at http://people.freebsd.org/~obrien/amd64-elf-abi.pdf (Figure 3.17)
+					switch offset {
+					case "0":
+						return "rdi"
+					case "8":
+						return "rsi"
+					case "16":
+						return "rdx"
+					case "24":
+						return "rcx"
+					case "32":
+						return "r8"
+					case "40":
+						return "r9"
+					case "48":
+						return "xmm0"
+					case "64":
+						return "xmm1"
+					case "72":
+						return "xmm2"
+					// TODO: Up to xmm15
+					}
+				}
 				return "[" + reg + "+" + offset + "]"
 			} else {
 				// TODO: Implement support for other lists

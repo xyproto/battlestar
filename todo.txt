@@ -1,0 +1,1 @@
+Fix x86_64 calling convention. Not ebp+8, but rdi. See: http://people.freebsd.org/~obrien/amd64-elf-abi.pdf
