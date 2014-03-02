@@ -41,9 +41,9 @@ const (
 
 // Global variables
 var (
-	in_function   string   // name of the function we are currently in
-	defined_names []string // all defined variables/constants/functions
-	variables map[string][]string // list of variable names per function name
+	in_function   string              // name of the function we are currently in
+	defined_names []string            // all defined variables/constants/functions
+	variables     map[string][]string // list of variable names per function name
 
 	registers = []string{"ah", "bh", "ch", "dh", "si", "di", "sp", "bp", "ip", // 16-bit
 		"eax", "ebx", "ecx", "edx", "esi", "edi", "esp", "ebp", "eip", // 32-bit
@@ -531,7 +531,7 @@ func (st Statement) String() string {
 				if platform_bits == 32 {
 					offset = strconv.Itoa(8 + paramoffset*4)
 				} else if platform_bits == 64 {
-					offset = strconv.Itoa(paramoffset*8)
+					offset = strconv.Itoa(paramoffset * 8)
 					// ref: page 34 at http://people.freebsd.org/~obrien/amd64-elf-abi.pdf (Figure 3.17)
 					switch offset {
 					case "0":
@@ -552,7 +552,7 @@ func (st Statement) String() string {
 						return "xmm1"
 					case "72":
 						return "xmm2"
-					// TODO: Up to xmm15
+						// TODO: Up to xmm15
 					}
 				}
 				return "[" + reg + "+" + offset + "]"
@@ -650,30 +650,30 @@ func (st Statement) String() string {
 			log.Fatalln("Error: No function named:", st[0].value)
 		}
 		// TODO: This catches too much. Narrow and fix.
-/*	} else if (st[0].t == VALID_NAME) && (st[1].t == ASSIGNMENT) {
-		if !has(defined_names, st[0].value) {
-			// Add the variable name to the defined names
-			defined_names = append(defined_names, st[0].value)
-			log.Println("Note: Declaring local variable", st[0].value, "in function", in_function)
-			if len(variables[in_function]) == 0 {
-				variables[in_function] = make([]string, 0, 0)
+		/*	} else if (st[0].t == VALID_NAME) && (st[1].t == ASSIGNMENT) {
+			if !has(defined_names, st[0].value) {
+				// Add the variable name to the defined names
+				defined_names = append(defined_names, st[0].value)
+				log.Println("Note: Declaring local variable", st[0].value, "in function", in_function)
+				if len(variables[in_function]) == 0 {
+					variables[in_function] = make([]string, 0, 0)
+				}
+				variables[in_function] = append(variables[in_function], st[0].value)
 			}
-			variables[in_function] = append(variables[in_function], st[0].value)
-		}
-		// Create a new statement, where the first token is now a VARIABLE instead of just a VALID_NAME
-		newstatement := make(Statement, len(st), len(st))
-		for i, t := range st {
-			newstatement[i] = t
-		}
-		newstatement[0].t = VARIABLE
-		return newstatement.String()  */
+			// Create a new statement, where the first token is now a VARIABLE instead of just a VALID_NAME
+			newstatement := make(Statement, len(st), len(st))
+			for i, t := range st {
+				newstatement[i] = t
+			}
+			newstatement[0].t = VARIABLE
+			return newstatement.String()  */
 	} else if (st[0].t == VARIABLE) && (st[1].t == ASSIGNMENT) && (len(st) > 2) {
 		reg := "rbp"
 		if platform_bits == 32 {
 			reg = "ebp"
 		}
 		// negative base pointer offset for local variables
-		paramoffset := len(variables[in_function])-1
+		paramoffset := len(variables[in_function]) - 1
 		offset := strconv.Itoa(paramoffset*4 + 8)
 		asmcode := "\tmov [" + reg + "-" + offset + "], "
 		newstatements := make(Statement, len(st)-2, len(st)-2)

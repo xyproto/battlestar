@@ -2,22 +2,26 @@ LBITS := $(shell getconf LONG_BIT)
 SOURCES := $(sort $(wildcard *.bts))
 ASMSOURCES := $(SOURCES:.bts=.asm)
 OBJECTS := $(ASMSOURCES:.asm=.o)
-TARGETS := $(OBJECTS:.o=.elf)
-
-all: clean $(TARGETS)
 
 .SECONDARY: $(ASMSOURCES)
 
 # OS X detection (depends on uname being present)
 ifeq ($(shell uname -s),Darwin)
   OSX := true
-  ASMCMD := "nasm -f macho"
-  LDCMD := ld -s --fatal-warnings -nostdlib -relax
+  ASMCMD := yasm -f macho
+  LDCMD := ld -macosx_version_min 10.8 -lSystem
+  SUFFIX := macho
+  LBITS = 32
 else
   OSX := false
   ASMCMD := yasm -f elf$(LBITS)
   LDCMD := ld -s --fatal-warnings -nostdlib --relax
+  SUFFIX := elf
 endif
+
+TARGETS = $(OBJECTS:.o=.$(SUFFIX))
+
+all: clean $(TARGETS)
 
 NO_COLOR=\x1b[0m
 HEADER_COLOR=\x1b[31;01m
@@ -37,7 +41,7 @@ BULLET=->
 %.o: %.asm
 	@[[ $< != *fail* ]] && (echo -e "  $(COMPILE_COLOR)$(BULLET) Compiling$(NO_COLOR) $<"; $(ASMCMD) -o $@ $<) || true
 
-%.elf: %.o
+%.$(SUFFIX): %.o
 	@[[ $< != *fail* ]] && (echo -e "  $(LINK_COLOR)$(BULLET) Linking$(NO_COLOR) $@\n"; $(LDCMD) -o $@ $<) || echo
 
 clean:
