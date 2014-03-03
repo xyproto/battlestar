@@ -50,9 +50,9 @@ var (
 		"rax", "rbx", "rcx", "rdx", "rsi", "rdi", "rsp", "rbp", "rip", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15", "sil", "dil", "spl", "bpl", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15"} // 64-bit
 
 	operators = []string{"=", "+=", "-=", "*=", "/="}
-	keywords  = []string{"fun", "ret", "const", "call", "extern", "end", "var"}
+	keywords  = []string{"fun", "ret", "const", "call", "extern", "end", "var", "inline_c"}
 	builtins  = []string{"len", "int", "exit"} // built-in functions
-	reserved  = []string{"param"}              // built-in variables
+	reserved  = []string{"param", "intparam"}  // built-in variables
 
 	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard", RESERVED: "reserved", VARIABLE: "variable"}
 
@@ -66,6 +66,8 @@ var (
 	linker_start_function = "_start"
 
 	// TODO: Add an option for not adding an exit function
+
+	interrupt_parameter_registers []string
 )
 
 // Check if a given map has a given key
@@ -166,8 +168,29 @@ func tokenize(program string, debug bool) []Token {
 	var t Token
 	var instring bool    // Have we encountered a " for any given statement?
 	var collected string // Collected string, until end of line
+	in_c := false        // Are we in parts of the code that are inline C?
 	for _, statement := range statements {
 		words := maps(strings.Split(statement, " "), strings.TrimSpace)
+
+		if len(words) == 0 {
+			continue
+		}
+
+		// Check for inline C, skip if encountered
+		if (words[0] == "inline_c") {
+			// TODO: If we are in a function when encountering inline C, place it in the function in question somehow
+			//       (possibly by putting it in a C function and calling that function from assembly)
+		    in_c = true
+		}
+		if in_c && (words[0] == "end") {
+			in_c = false
+			continue
+		}
+		if in_c {
+			continue
+		}
+
+		// Tokenize the words
 		for _, word := range words {
 			if word == "" {
 				continue
@@ -393,6 +416,30 @@ func paramnum2reg(num int) string {
 	return "[" + reg + "+" + offset + "]"
 }
 
+func reserved_and_value(st Statement) string {
+	if st[0].value == "param" {
+		paramoffset, err := strconv.Atoi(st[1].value)
+		if err != nil {
+			log.Fatalln("Error: Invalid offset for", st[0].value+":", st[1].value)
+		}
+		return paramnum2reg(paramoffset)
+	} else if st[0].value == "intparam" {
+		paramoffset, err := strconv.Atoi(st[1].value)
+		if err != nil {
+			log.Fatalln("Error: Invalid offset for", st[0].value+":", st[1].value)
+		}
+		if paramoffset >= len(interrupt_parameter_registers) {
+			log.Fatalln("Error: Invalid offset for", st[0].value+":", st[1].value, "(too high)")
+		}
+		return interrupt_parameter_registers[paramoffset]
+	} else {
+		// TODO: Implement support for other lists
+		log.Fatalln("Error: Can only handle \"param\" reserved words.")
+	}
+	log.Fatalln("Error: Unable to handle reserved word and value:", st[0].value, st[1].value)
+	return ""
+}
+
 func (st Statement) String() string {
 	debug := true
 
@@ -418,13 +465,7 @@ func (st Statement) String() string {
 			reg                           string
 			n                             string
 			comment                       string
-			interrupt_parameter_registers []string
 		)
-		if platform_bits == 32 {
-			interrupt_parameter_registers = []string{"eax", "ebx", "ecx", "edx"}
-		} else {
-			interrupt_parameter_registers = []string{"rax", "rbx", "rcx", "rdx"}
-		}
 		for i := 2; i < len(st); i++ {
 			reg = interrupt_parameter_registers[i-2]
 			n = strconv.Itoa(i - 2)
@@ -453,7 +494,6 @@ func (st Statement) String() string {
 			// Skip parameters/registers that are already set
 			if st[i].value == "_" {
 				codeline = "\t\t"
-				log.Println("Note: Skipping the value for register " + reg + " when calling interrupt " + st[1].value)
 			} else {
 				codeline = "\tmov " + reg + ", " + st[i].value
 			}
@@ -585,16 +625,7 @@ func (st Statement) String() string {
 		} else if (st[0].t == REGISTER) && (st[1].t == ASSIGNMENT) && (st[2].t == REGISTER) {
 			return "\tmov " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " " + st[1].value + " " + st[2].value
 		} else if (st[0].t == RESERVED) && (st[1].t == VALUE) {
-			if st[0].value == "param" {
-				paramoffset, err := strconv.Atoi(st[1].value)
-				if err != nil {
-					log.Fatalln("Error: Invalid list offset for", st[0].value+":", st[1].value)
-				}
-				return paramnum2reg(paramoffset)
-			} else {
-				// TODO: Implement support for other lists
-				log.Fatalln("Error: Can only handle \"param\" reserved words.")
-			}
+			return reserved_and_value(st[:2])
 		} else if (st[0].t == REGISTER) && (st[1].t == ASSIGNMENT) && (st[2].t == RESERVED) && (st[3].t == VALUE) {
 			if st[2].value == "param" {
 				paramoffset, err := strconv.Atoi(st[3].value)
@@ -610,13 +641,11 @@ func (st Statement) String() string {
 				// TODO: Implement support for other lists
 				log.Fatalln("Error: Can only handle \"param\" lists.")
 			}
-		} else {
-			log.Println("Error: Uknown type of 3 token statement:")
-			for _, t := range st {
-				log.Println("\t", t)
-			}
-			os.Exit(1)
 		}
+	} else if (len(st) == 5) && (st[0].t == RESERVED) && (st[1].t == VALUE) && (st[2].t == ASSIGNMENT) && (st[3].t == RESERVED) && (st[4].t == VALUE) {
+		retval := "\tmov " + reserved_and_value(st[:2]) + ", " + reserved_and_value(st[3:]) + "\t\t\t; "
+		retval += fmt.Sprintf("%s[%s] = %s[%s]\n", st[0].value, st[1].value, st[3].value, st[4].value)
+		return retval
 	} else if (len(st) >= 2) && (st[0].t == KEYWORD) && (st[1].t == VALID_NAME) && (st[0].value == "fun") {
 		if in_function != "" {
 			log.Fatalf("Error: Missing \"ret\"? Already in a function named %s when declaring function %s.\n", in_function, st[1].value)
@@ -631,7 +660,7 @@ func (st Statement) String() string {
 		asmcode += "global " + in_function + "\t\t\t; make label available to the linker\n"
 		asmcode += in_function + ":\t\t\t\t; name of the function\n\n"
 		if (in_function == "main") || (in_function == linker_start_function) {
-			log.Println("Note: Not setting up stack frame in the main/_start/start function.")
+			log.Println("Not setting up stack frame in the main/_start/start function.")
 			return asmcode
 		}
 		asmcode += "\t;--- setup stack frame ---\n"
@@ -761,6 +790,49 @@ func TokensToAssembly(tokens []Token, debug bool, debug2 bool) (string, string) 
 	return strings.TrimSpace(constants), asmcode
 }
 
+func ExtractInlineC(code string, debug bool) string {
+	// Fetch the inline C code between the "c" and "end" kewyords
+	clines := ""
+	in_c := false
+	whitespace := -1 // Where to strip whitespace
+	for _, line := range strings.Split(code, "\n") {
+		firstword := strings.TrimSpace(removecomments(line))
+		if strings.Contains(firstword, " "){
+			words := strings.SplitN(firstword, " ", 1)
+			firstword = words[0]
+		}
+		if firstword == "inline_c" {
+			in_c = true
+			continue
+		}
+		if firstword == "end" {
+			in_c = false
+			continue
+		}
+		if in_c {
+			// Detect whitespace, once and only for some variations
+			if whitespace == -1 {
+				if strings.HasPrefix(line, "    ") {
+					whitespace = 4
+				} else if strings.HasPrefix(line, "\t") {
+					whitespace = 1
+				} else if strings.HasPrefix(line, "  ") {
+					whitespace = 2
+				} else {
+					whitespace = 0
+				}
+			}
+			// Strip whitespace, and check that only whitespace has been stripped
+			if (len(line) >= whitespace) && (strings.TrimSpace(line) == strings.TrimSpace(line[whitespace:])) {
+				clines += line[whitespace:] + "\n"
+			} else {
+				clines += line + "\n"
+			}
+		}
+	}
+	return clines
+}
+
 func add_starting_point_if_missing(asmcode string) string {
 	// Check if the resulting code contains a starting point or not
 	if !strings.Contains(asmcode, linker_start_function) {
@@ -837,11 +909,28 @@ func main() {
 	bits := flag.Int("bits", 64, "Output 32-bit or 64-bit x86 assembly")
 	// Check for -osx=true or -osx=false (default)
 	is_osx := flag.Bool("osx", false, "On OS X?")
+	// Assembly output file
+	asm_file := flag.String("o", "main.asm", "Assembly output file")
+	// C output file
+	c_file := flag.String("co", "main.c", "C output file")
+	// Input file
+	bts_file := flag.String("f", "main.bts", "BTS source file")
 
 	flag.Parse()
 
 	platform_bits = *bits
 	osx = *is_osx
+
+	asmfile := *asm_file
+	cfile := *c_file
+	btsfile := *bts_file
+
+	// Used when calling interrupts
+	if platform_bits == 32 {
+		interrupt_parameter_registers = []string{"eax", "ebx", "ecx", "edx"}
+	} else {
+		interrupt_parameter_registers = []string{"rax", "rbx", "rcx", "rdx"}
+	}
 
 	// TODO: Consider adding an option for "start" as well, or a custom
 	// start symbol
@@ -852,27 +941,52 @@ func main() {
 		linker_start_function = "_start"
 	}
 
+	// Assembly file contents
+	asmdata := ""
+
+	// C file contents
+	cdata := ""
+
 	// Read code from stdin and output 32-bit or 64-bit assembly code
-	bytes, err := ioutil.ReadAll(os.Stdin)
+	bytes, err := ioutil.ReadFile(btsfile)
 	if err == nil {
 		if len(strings.TrimSpace(string(bytes))) == 0 {
 			// Empty program
 			log.Fatalln("Error: Empty program")
 		}
 		t := time.Now()
-		fmt.Printf("; Generated with %s %s, at %s\n\n", name, version, t.String()[:16])
-		fmt.Printf("bits %d\n", platform_bits)
+		asmdata += fmt.Sprintf("; Generated with %s %s, at %s\n\n", name, version, t.String()[:16])
+		asmdata += fmt.Sprintf("bits %d\n", platform_bits)
 		tokens := add_exit_token_if_missing(tokenize(string(bytes), true))
 		log.Println("--- Done tokenizing ---")
 		constants, asmcode := TokensToAssembly(tokens, true, false)
 		if constants != "" {
-			fmt.Println("section .data\n")
-			fmt.Println(constants + "\n")
+			asmdata += fmt.Sprintln("section .data\n")
+			asmdata += fmt.Sprintln(constants + "\n")
 		}
 		if asmcode != "" {
-			fmt.Println("section .text\n")
+			asmdata += fmt.Sprintln("section .text\n")
 			asmcode = add_starting_point_if_missing(asmcode)
-			fmt.Println(asmcode + "\n")
+			asmdata += fmt.Sprintln(asmcode + "\n")
+		}
+		ccode := ExtractInlineC(strings.TrimSpace(string(bytes)), true)
+		if ccode != "" {
+			cdata += fmt.Sprintf("// Generated with %s %s, at %s\n\n", name, version, t.String()[:16])
+			cdata += ccode
+		}
+	}
+
+	if asmdata != "" {
+		err = ioutil.WriteFile(asmfile, []byte(asmdata), 0644)
+		if err != nil {
+			log.Fatalln("Error: Unable to write to", asmfile)
+		}
+	}
+
+	if cdata != "" {
+		err = ioutil.WriteFile(cfile, []byte(cdata), 0644)
+		if err != nil {
+			log.Fatalln("Error: Unable to write to", cfile)
 		}
 	}
 }
