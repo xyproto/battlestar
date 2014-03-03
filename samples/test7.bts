@@ -1,12 +1,15 @@
-const message = "Yes", 10
+const msg = "Hello", 10, 0
 
 fun hello
-  msg = param[0]
-  //guess_length_of_string = 4
-  int(80, 4, 1, msg, guess_length_of_string)
+  int(80, 4, 1, msg, len(msg))
+end
+
+c
+  void c_hi() {
+    hello()
+  }
 end
 
 fun main
-  //hello(message)
-  //hello("you")
+  c_hi
 end

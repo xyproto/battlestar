@@ -149,7 +149,13 @@ func retokenize(word string, sep string, debug bool) []Token {
 func removecomments(s string) string {
 	if strings.HasPrefix(s, "//") || strings.HasPrefix(s, "#") {
 		return ""
-	}
+	} else if pos := strings.Index(s, "//"); pos != -1 {
+	    // Strip away everything after the first // on the line
+	    return s[:pos]
+	} else if pos := strings.Index(s, "#"); pos != -1 {
+	    // Strip away everything after the first # on the line
+	    return s[:pos]
+    }
 	return s
 }
 
@@ -324,6 +330,67 @@ func reduce(st Statement, debug bool) Statement {
 		}
 	}
 	return st
+}
+
+func paramnum2reg(num int) string {
+	var offset string
+	var reg string
+	if platform_bits == 32 {
+		offset = strconv.Itoa(8 + num*4)
+		reg = "ebp"
+	} else if platform_bits == 64 {
+		offset = strconv.Itoa(num*8)
+		// ref: page 34 at http://people.freebsd.org/~obrien/amd64-elf-abi.pdf (Figure 3.17)
+		switch offset {
+		case "0":
+			return "rdi"
+		case "8":
+			return "rsi"
+		case "16":
+			return "rdx"
+		case "24":
+			return "rcx"
+		case "32":
+			return "r8"
+		case "40":
+			return "r9"
+		case "48":
+			return "xmm0"
+		case "64":
+			return "xmm1"
+		case "72":
+			return "xmm2"
+		case "80":
+			return "xmm3"
+		case "88":
+			return "xmm4"
+		case "96":
+			return "xmm5"
+		case "104":
+			return "xmm6"
+		case "112":
+			return "xmm7"
+		case "120":
+			return "xmm8"
+		case "128":
+			return "xmm9"
+		case "136":
+			return "xmm10"
+		case "144":
+			return "xmm11"
+		case "152":
+			return "xmm12"
+		case "160":
+			return "xmm13"
+		case "168":
+			return "xmm14"
+		case "176":
+			return "xmm15"
+		// TODO: Test if the above offsets and registers are correct
+		}
+		reg = "rbp"
+	}
+	return "[" + reg + "+" + offset + "]"
 }
 
 func (st Statement) String() string {
@@ -519,59 +586,26 @@ func (st Statement) String() string {
 			return "\tmov " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " " + st[1].value + " " + st[2].value
 		} else if (st[0].t == RESERVED) && (st[1].t == VALUE) {
 			if st[0].value == "param" {
-				reg := "rbp"
-				if platform_bits == 32 {
-					reg = "ebp"
-				}
 				paramoffset, err := strconv.Atoi(st[1].value)
 				if err != nil {
 					log.Fatalln("Error: Invalid list offset for", st[0].value+":", st[1].value)
 				}
-				var offset string
-				if platform_bits == 32 {
-					offset = strconv.Itoa(8 + paramoffset*4)
-				} else if platform_bits == 64 {
-					offset = strconv.Itoa(paramoffset * 8)
-					// ref: page 34 at http://people.freebsd.org/~obrien/amd64-elf-abi.pdf (Figure 3.17)
-					switch offset {
-					case "0":
-						return "rdi"
-					case "8":
-						return "rsi"
-					case "16":
-						return "rdx"
-					case "24":
-						return "rcx"
-					case "32":
-						return "r8"
-					case "40":
-						return "r9"
-					case "48":
-						return "xmm0"
-					case "64":
-						return "xmm1"
-					case "72":
-						return "xmm2"
-						// TODO: Up to xmm15
-					}
-				}
-				return "[" + reg + "+" + offset + "]"
+				return paramnum2reg(paramoffset)
 			} else {
 				// TODO: Implement support for other lists
 				log.Fatalln("Error: Can only handle \"param\" reserved words.")
 			}
 		} else if (st[0].t == REGISTER) && (st[1].t == ASSIGNMENT) && (st[2].t == RESERVED) && (st[3].t == VALUE) {
 			if st[2].value == "param" {
-				reg := "rbp"
-				if platform_bits == 32 {
-					reg = "ebp"
-				}
 				paramoffset, err := strconv.Atoi(st[3].value)
 				if err != nil {
 					log.Fatalln("Error: Invalid list offset for", st[2].value+":", st[3].value)
 				}
-				offset := strconv.Itoa(8 + paramoffset*4)
-				return "\tmov " + st[0].value + ", " + "[" + reg + "+" + offset + "]\t\t; fetch function param #" + st[3].value + "\n"
+				param_expression := paramnum2reg(paramoffset)
+				if len(param_expression) == 3 {
+					param_expression += "\t"
+				}
+				return "\tmov " + st[0].value + ", " + param_expression + "\t\t; fetch function param #" + st[3].value + "\n"
 			} else {
 				// TODO: Implement support for other lists
 				log.Fatalln("Error: Can only handle \"param\" lists.")

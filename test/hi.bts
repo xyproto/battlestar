@@ -1,14 +1,24 @@
-const msg = "Hi", 10
-
-extern hi_twice
+extern c_hi // Make the external C function accessible
 
 fun hi
-  // Say hi
-  rcx = param[0]
-  int(80, 4, 1, _, len(msg))
+  rcx = param[0] // Third parameter to the interrupt call is the first parameter to the function
+  rdx = param[1] // Fourth parameter to the interrupt call is the second parameter to the function
+  int(80, 4, 1, _, _)
+end
+
+c
+  void hi(char* msg, int len); // External battlestar function
+
+  void c_hi() {
+    char *c = "hi ";
+    hi(c, 3);
+    hi("you\n", 4);
+  }
 end
 
 fun main
-  // Say hi twice, from C
-  hi_twice
+  // Call a C function that then calls the hi function above
+  //hi "you" 3 // Call the hi function, with parameters
+  c_hi       // Call the C function named hia TODO: Prettier syntax, avoid the extern at the top
 end
+

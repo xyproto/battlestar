@@ -1,7 +1,7 @@
-void hi(char* msg); // External assembly function
+void hi(char* msg, int len); // External battlestar function
 
-void hi_twice() {
-  char *c = "there";
-  hi(c);
-  hi("you");
+void c_hi() {
+  char *c = "hi ";
+  hi(c, 3);
+  hi("you\n", 4);
 }
