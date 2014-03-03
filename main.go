@@ -152,12 +152,12 @@ func removecomments(s string) string {
 	if strings.HasPrefix(s, "//") || strings.HasPrefix(s, "#") {
 		return ""
 	} else if pos := strings.Index(s, "//"); pos != -1 {
-	    // Strip away everything after the first // on the line
-	    return s[:pos]
+		// Strip away everything after the first // on the line
+		return s[:pos]
 	} else if pos := strings.Index(s, "#"); pos != -1 {
-	    // Strip away everything after the first # on the line
-	    return s[:pos]
-    }
+		// Strip away everything after the first # on the line
+		return s[:pos]
+	}
 	return s
 }
 
@@ -177,10 +177,10 @@ func tokenize(program string, debug bool) []Token {
 		}
 
 		// Check for inline C, skip if encountered
-		if (words[0] == "inline_c") {
+		if words[0] == "inline_c" {
 			// TODO: If we are in a function when encountering inline C, place it in the function in question somehow
 			//       (possibly by putting it in a C function and calling that function from assembly)
-		    in_c = true
+			in_c = true
 		}
 		if in_c && (words[0] == "end") {
 			in_c = false
@@ -362,7 +362,7 @@ func paramnum2reg(num int) string {
 		offset = strconv.Itoa(8 + num*4)
 		reg = "ebp"
 	} else if platform_bits == 64 {
-		offset = strconv.Itoa(num*8)
+		offset = strconv.Itoa(num * 8)
 		// ref: page 34 at http://people.freebsd.org/~obrien/amd64-elf-abi.pdf (Figure 3.17)
 		switch offset {
 		case "0":
@@ -409,7 +409,7 @@ func paramnum2reg(num int) string {
 			return "xmm14"
 		case "176":
 			return "xmm15"
-		// TODO: Test if the above offsets and registers are correct
+			// TODO: Test if the above offsets and registers are correct
 		}
 		reg = "rbp"
 	}
@@ -462,9 +462,9 @@ func (st Statement) String() string {
 		}
 		// Store each of the parameters to the appropriate registers
 		var (
-			reg                           string
-			n                             string
-			comment                       string
+			reg     string
+			n       string
+			comment string
 		)
 		for i := 2; i < len(st); i++ {
 			reg = interrupt_parameter_registers[i-2]
@@ -797,7 +797,7 @@ func ExtractInlineC(code string, debug bool) string {
 	whitespace := -1 // Where to strip whitespace
 	for _, line := range strings.Split(code, "\n") {
 		firstword := strings.TrimSpace(removecomments(line))
-		if strings.Contains(firstword, " "){
+		if strings.Contains(firstword, " ") {
 			words := strings.SplitN(firstword, " ", 1)
 			firstword = words[0]
 		}
