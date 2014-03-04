@@ -10,11 +10,14 @@
 
 # Check for needed utilities (in PATH)
 battlestarc=battlestarc
-which "$battlestarc" 2>/dev/null || echo 'Could not find battlestar compiler'
-which "$battlestarc" 2>/dev/null || exit 1
-which yasm 2>/dev/null || echo 'Could not find yasm'
-which yasm 2>/dev/null || exit 1
-which gcc 2>/dev/null || echo 'Could not find gcc (optional)'
+
+# TODO: Improve this, only check once per executable
+which "$battlestarc" 2>&1 1>/dev/null || echo 'Could not find battlestar compiler'
+which "$battlestarc" 2>&1 1>/dev/null || exit 1
+which yasm 2>&1 1>/dev/null || echo 'Could not find yasm'
+which yasm 2>&1 1>/dev/null || exit 1
+which gcc 2>&1 1>/dev/null || echo 'Could not find gcc (optional)'
+which sstrip 2>&1 1>/dev/null || echo 'Could not find sstrip (optional)'
 
 bits=`getconf LONG_BIT`
 osx=$([[ `uname -s` = Darwin ]] && echo true || echo false)
@@ -61,6 +64,9 @@ function run {
   
     # Clean up after compiling and linking
     rm -f "${o1fn}" "${o2fn}" "$asmfn" "$cfn" "$logfn"
+
+    # Strip the program, if available
+    sstrip "$elffn" || true
   
     #echo
     #echo "Running $1"
@@ -68,6 +74,7 @@ function run {
     #echo
   
     # Run the program
+    #[ -e $elffn ] && time "$elffn"
     [ -e $elffn ] && "$elffn"
   
     # Remove the program after execution

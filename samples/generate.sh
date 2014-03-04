@@ -1,9 +1,10 @@
 #!/bin/sh
 
 # Check for needed utilities
-which yasm >/dev/null || (echo 'Could not find yasm'; exit 1)
-which ld >/dev/null || (echo 'Could not find ld'; exit 1)
-which gcc >/dev/null || echo 'Could not find gcc (optional)'
+which yasm 2>/dev/null || (echo 'Could not find yasm'; exit 1)
+which ld 2>/dev/null || (echo 'Could not find ld'; exit 1)
+which gcc 2>/dev/null || echo 'Could not find gcc (optional)'
+which sstrip 2>/dev/null || echo 'Could not find sstrip (optional)'
 
 battlestarc=../battlestarc
 if [ ! -e $battlestarc ]; then
@@ -42,6 +43,9 @@ for f in *.bts; do
     $ldcmd "${n}_c.o" "$n.o" -o "$n" || echo "$n failed to link"
   elif [ -e $n.o ]; then
     $ldcmd "$n.o" -o "$n" || echo "$n failed to link"
+  fi
+  if [ -e $n ]; then
+    sstrip "$n" || echo "Could not strip $n with sstrip"
   fi
   echo
 done

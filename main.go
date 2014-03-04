@@ -603,7 +603,7 @@ func (st Statement) String() string {
 			log.Println(t.value)
 		}
 		os.Exit(1)
-	} else if (st[0].t == VALID_NAME) && (st[1].t == ASSIGNMENT) && (len(st) > 2) {
+	} else if (len(st) > 2) && (st[0].t == VALID_NAME) && (st[1].t == ASSIGNMENT) {
 		log.Println("local variable", st[0].value)
 		//for _, t := range st[2:] {
 		//    log.Println("new value:", t)

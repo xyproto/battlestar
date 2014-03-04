@@ -1,3 +1,5 @@
+extern main // TODO: this is needed only for the C function to return properly, fix this
+
 const dirname = "testdir", 0    // zero terminated string
 const permission = 644o         // octal number, yasm style
 const msg = "success", 10       // "success" followed by a newline
