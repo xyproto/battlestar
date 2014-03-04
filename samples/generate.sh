@@ -1,10 +1,11 @@
 #!/bin/sh
 
 # Check for needed utilities
-which yasm 2>/dev/null || (echo 'Could not find yasm'; exit 1)
-which ld 2>/dev/null || (echo 'Could not find ld'; exit 1)
-which gcc 2>/dev/null || echo 'Could not find gcc (optional)'
-which sstrip 2>/dev/null || echo 'Could not find sstrip (optional)'
+# TODO: Make more elegant. Make it actually exit when utilities are missing.
+which yasm 2>&1 1>/dev/null || (echo 'Could not find yasm'; exit 1)
+which ld 2>&1 1>dev/null || (echo 'Could not find ld'; exit 1)
+which gcc 2>&1 1>/dev/null || echo 'Could not find gcc (optional)'
+which sstrip 2>&1 1>/dev/null || echo 'Could not find sstrip (optional)'
 
 battlestarc=../battlestarc
 if [ ! -e $battlestarc ]; then
