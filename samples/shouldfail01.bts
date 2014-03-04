@@ -1,3 +1,4 @@
-mov eax,3
+// Ordinary assembly is not supported (and not 32-bit/64-bit independent)
+mov eax, 3
 
 // vim: set syntax=c ts=4 sw=4 et:

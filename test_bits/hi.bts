@@ -2,25 +2,25 @@
 extern c_hi
 
 fun hi
-  intparam[2] = param[0] // The first (0) parameter to the function is the third interrupt call parameter (2)
-  intparam[3] = param[1] // The second (1) parameter to the function is the fourth interrupt call parameter (3)
-  int(80, 4, 1, _, _)
+    intparam[2] = param[0] // The first (0) parameter to the function is the third interrupt call parameter (2)
+    intparam[3] = param[1] // The second (1) parameter to the function is the fourth interrupt call parameter (3)
+    int(80, 4, 1, _, _)
 end
 
 inline_c
-  void hi(char* msg, int len); // External battlestar function
+    void hi(char* msg, int len); // External battlestar function
 
-  void c_hi() {
-    char *c = "hi ";
-    hi(c, 3);
-    hi("you\n", 4);
-  }
+    void c_hi() {
+        char *c = "hi ";
+        hi(c, 3);
+        hi("you\n", 4);
+    }
 end
 
 fun main
-  // Call a C function that then calls the hi function above
-  //hi "you" 3 // Call the hi function, with parameters
-  c_hi       // Call the C function named c_hi
+    // Call a C function that then calls the hi function above
+    //hi "you" 3 // Call the hi function, with parameters
+    c_hi       // Call the C function named c_hi
 end
 
-// vim: set syntax=c ts=2 sw=2 et:
+// vim: set syntax=c ts=4 sw=4 et:
