@@ -1,7 +1,8 @@
-extern main                    // make C function available here
+extern main                    // make C function available here (not strictly needed for the "main" function)
 
 const dirname = "testdir", 0   // zero terminated string
 const permission = 644o        // octal number, yasm style
+const msg = "success", 10  // "success" followed by a newline
 
 fun makedir
     inline_c
@@ -18,8 +19,15 @@ fun removedir
     int(80, 40, _)              // skip parameter 1 to the interrupt call, already set
 end
 
+fun success
+    int(80, 4, 1, msg, len(msg))
+end
+
 // Define the main function in C
 void main() {
     makedir("/tmp/testdir");
     removedir("/tmp/testdir");
+    success();
 }
+
+// vim: set syntax=c ts=2 sw=2 et:

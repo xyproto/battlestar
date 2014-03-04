@@ -10,3 +10,5 @@ fun hi
 
 fun main
     call hi
+
+// vim: set syntax=c ts=2 sw=2 et:

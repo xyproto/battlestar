@@ -43,7 +43,8 @@ const (
 // Global variables
 var (
 	in_function   string              // name of the function we are currently in
-	inline_c      bool                // are we in a block of inline C?
+	inline_c      bool                // are we in a block of inline C? (inline_c ... end)
+	c_block       bool                // are we in a block of inline C? (void ... })
 	defined_names []string            // all defined variables/constants/functions
 	variables     map[string][]string // list of variable names per function name
 	types         map[string]string   // type of the defined names
@@ -53,7 +54,7 @@ var (
 		"rax", "rbx", "rcx", "rdx", "rsi", "rdi", "rsp", "rbp", "rip", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15", "sil", "dil", "spl", "bpl", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15"} // 64-bit
 
 	operators = []string{"=", "+=", "-=", "*=", "/="}
-	keywords  = []string{"fun", "ret", "const", "call", "extern", "end", "inline_c", "void", "}"}
+	keywords  = []string{"fun", "ret", "const", "call", "extern", "end"}
 	builtins  = []string{"len", "int", "exit"} // built-in functions
 	reserved  = []string{"param", "intparam"}  // built-in lists that can be accessed with [index]
 
@@ -171,10 +172,11 @@ func tokenize(program string, debug bool) []Token {
 	var t Token
 	var instring bool    // Have we encountered a " for any given statement?
 	var collected string // Collected string, until end of line
-	inline_c = false        // Are we in parts of the code that are inline C?
-	inline_needs_an_end := false   // Are we in a inline_c .. end block or void .. } block?
+	inline_c = false        // Are we in parts of the code that are inline_c ... end ?
+	c_block = false          // Are we in parts of the code that are void ... } ?
 	var statementnr uint
 	for statementnr_int, statement := range statements {
+		// TODO: Use line number instead of statement number (but statement numbers are better than nothing)
 		statementnr = uint(statementnr_int)
 		words := maps(strings.Split(statement, " "), strings.TrimSpace)
 
@@ -183,26 +185,38 @@ func tokenize(program string, debug bool) []Token {
 		}
 
 		if (words[0] == "void") {
-			inline_c = true
-			inline_needs_an_end = false
-			// Skip as inline C, don't include as token
+			if debug {
+				log.Println("Found void, starting C block")
+			}
+			c_block = true
+			// Skip the start of this type of inline C, don't include "void" as a token
 			continue
 		} else if inline_c && (words[0] == "end") {
-			inline_c = false
-			inline_needs_an_end = false
-			// Don't skip as inline C, include as token
-		} else if inline_c && (words[0] == "}") {
-			if !inline_needs_an_end {
-				inline_c = false
+			if debug {
+				log.Println("Found the end of inline C block")
 			}
-			// Skip as part of inline C
+			// End both types of blocks when "end" is encountered
+			inline_c = false
+			c_block = false
+			// Skip the end keyword of this type of inline C block, don't include "end" as a token
+			continue
+		} else if c_block && (words[0] == "}") {
+			if debug {
+				log.Println("Found the } of void C block")
+			}
+			c_block = false
+			// Skip the } keyword of this type of inline C block, don't include "}" as a token
 			continue
 		} else if (words[0] == "inline_c") {
+			if debug {
+				log.Println("Found inline_c, starting inline C block")
+			}
 			inline_c = true
-			inline_needs_an_end = true
-			// Don't skip as inline C, include as token
-		} else if inline_c {
-			// In block of inline C, skip, don't include as tokens
+			// Skip the start of this type of inline C, don't include "inline_c" as a token
+			continue
+		} else if inline_c || c_block {
+			// In a block of inline C code, skip and don't include as tokens
+			// log.Println("Skipping when tokenizing:", words)
 			continue
 		}
 
@@ -807,48 +821,57 @@ func ExtractInlineC(code string, debug bool) string {
 	// Fetch the inline C code between the "c" and "end" kewyords
 	clines := ""
 	inline_c = false
+	c_block = false
 	whitespace := -1 // Where to strip whitespace
 	for _, line := range strings.Split(code, "\n") {
 		firstword := strings.TrimSpace(removecomments(line))
-		if strings.Contains(firstword, " ") {
-			words := strings.SplitN(firstword, " ", 1)
-			firstword = words[0]
+		if pos := strings.Index(firstword, " "); pos != -1 {
+			firstword = firstword[:pos]
 		}
-		if (firstword == "inline_c") || (firstword == "void") {
+		//log.Println("firstword: "+ firstword)
+		if !c_block && !inline_c && (firstword == "inline_c") {
+			log.Println("found", firstword, "starting inline_c block")
 			inline_c = true
-			if firstword == "inline_c" {
-				// Don't include "inline_c" in the inline C code
-				continue
-			}
-		}
-		if (firstword == "end") {
+			// Don't include "inline_c" in the inline C code
+			continue
+		} else if !inline_c && !c_block && (firstword == "void") {
+			log.Println("found", firstword, "starting c_block block")
+			c_block = true
+			// Include "void" in the inline C code
+		} else if !c_block && inline_c && (firstword == "end") {
+			log.Println("found", firstword, "ending inline_c block")
 			inline_c = false
 			// Don't include "end" in the inline C code
 			continue
+		} else if !inline_c && c_block && (firstword == "}") {
+			log.Println("found", firstword, "ending c_block block")
+			c_block = false
+			// Include "}" in the inline C code
 		}
-		if inline_c {
-			// Detect whitespace, once and only for some variations
-			if whitespace == -1 {
-				if strings.HasPrefix(line, "    ") {
-					whitespace = 4
-				} else if strings.HasPrefix(line, "\t") {
-					whitespace = 1
-				} else if strings.HasPrefix(line, "  ") {
-					whitespace = 2
-				} else {
-					whitespace = 0
-				}
-			}
-			// Strip whitespace, and check that only whitespace has been stripped
-			if (len(line) >= whitespace) && (strings.TrimSpace(line) == strings.TrimSpace(line[whitespace:])) {
-				clines += line[whitespace:] + "\n"
+
+		if !inline_c && !c_block && (firstword != "}") {
+			// Skip lines that are not in an "inline_c ... end" or "void ... }" block.
+			//log.Println("not C, skipping:", line)
+			continue
+		}
+
+		// Detect whitespace, once and only for some variations
+		if whitespace == -1 {
+			if strings.HasPrefix(line, "    ") {
+				whitespace = 4
+			} else if strings.HasPrefix(line, "\t") {
+				whitespace = 1
+			} else if strings.HasPrefix(line, "  ") {
+				whitespace = 2
 			} else {
-				clines += line + "\n"
+				whitespace = 0
 			}
 		}
-		if firstword == "}" {
-			// Stop the inline C block with } only after first having included it in the inline C source
-			inline_c = false
+		// Strip whitespace, and check that only whitespace has been stripped
+		if (len(line) >= whitespace) && (strings.TrimSpace(line) == strings.TrimSpace(line[whitespace:])) {
+			clines += line[whitespace:] + "\n"
+		} else {
+			clines += line + "\n"
 		}
 	}
 	return clines
@@ -943,11 +966,11 @@ func main() {
 	// Check for -osx=true or -osx=false (default)
 	is_osx := flag.Bool("osx", false, "On OS X?")
 	// Assembly output file
-	asm_file := flag.String("o", "main.asm", "Assembly output file")
+	asm_file := flag.String("o", "", "Assembly output file")
 	// C output file
-	c_file := flag.String("co", "main.c", "C output file")
+	c_file := flag.String("oc", "", "C output file")
 	// Input file
-	bts_file := flag.String("f", "main.bts", "BTS source file")
+	bts_file := flag.String("f", "", "BTS source file")
 
 	flag.Parse()
 

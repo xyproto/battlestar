@@ -1,0 +1,5 @@
+fun main
+    x = 2
+end
+
+// vim: set syntax=c ts=2 sw=2 et:

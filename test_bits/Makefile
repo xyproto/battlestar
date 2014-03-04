@@ -8,13 +8,13 @@ all: ../battlestarc hi32 hi64
 	make -C ..
 
 hi32:
-	../battlestarc -bits=32 -f hi.bts -o $(GENERATED_ASM) -co $(GENERATED_C) 2>/dev/null
+	../battlestarc -bits=32 -f hi.bts -o $(GENERATED_ASM) -oc $(GENERATED_C) 2>/dev/null
 	gcc -Os -m32 -nostdlib -c $(GENERATED_C) -o hi_c.o
 	yasm -f elf32 -o hi_bts.o $(GENERATED_ASM)
 	ld -s -melf_i386 --fatal-warnings -relax -o hi32 hi_bts.o hi_c.o
 
 hi64:
-	../battlestarc -bits=64 -f hi.bts -o $(GENERATED_ASM) -co $(GENERATED_C) 2>/dev/null
+	../battlestarc -bits=64 -f hi.bts -o $(GENERATED_ASM) -oc $(GENERATED_C) 2>/dev/null
 	gcc -Os -m64 -nostdlib -c $(GENERATED_C) -o hi_c.o
 	yasm -f elf64 -o hi_bts.o $(GENERATED_ASM)
 	ld -s --fatal-warnings -relax -o hi64 hi_bts.o hi_c.o

@@ -23,5 +23,4 @@ fun main
   c_hi       // Call the C function named c_hi
 end
 
-# vim: set syntax=c
-
+// vim: set syntax=c ts=2 sw=2 et:

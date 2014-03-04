@@ -1,0 +1,3 @@
+mov eax,3
+
+// vim: set syntax=c ts=2 sw=2 et:

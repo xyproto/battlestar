@@ -32,9 +32,9 @@ for f in *.bts; do
   echo "Building $n"
   # Don't output the log if "fail" is in the filename
   if [[ $n != *fail* ]]; then
-    $battlestarc -bits="$bits" -osx="$osx" -f "$f" -o "$n.asm" -co "$n.c" 2> "$n.log" || (cat "$n.log"; rm -f "$n.asm"; echo "$n failed to build!")
+    $battlestarc -bits="$bits" -osx="$osx" -f "$f" -o "$n.asm" -oc "$n.c" 2> "$n.log" || (cat "$n.log"; rm -f "$n.asm"; echo "$n failed to build!")
   else
-    $battlestarc -bits="$bits" -osx="$osx" -f "$f" -o "$n.asm" -co "$n.c" 2> "$n.log" || (rm -f "$n.asm"; echo "$n failed to build (correct)")
+    $battlestarc -bits="$bits" -osx="$osx" -f "$f" -o "$n.asm" -oc "$n.c" 2> "$n.log" || (rm -f "$n.asm"; echo "$n failed to build (correct)")
   fi
   [ -e $n.c ] && ($cccmd -c "$n.c" -o "${n}_c.o" || echo "$n failed to compile")
   [ -e $n.asm ] && ($asmcmd -o "$n.o" "$n.asm" || echo "$n failed to assemble")
