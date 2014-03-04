@@ -2,8 +2,8 @@
 extern c_hi
 
 fun hi
-  intparam[2] = param[0] // Third parameter to the interrupt call is the first parameter to the function
-  intparam[3] = param[1] // Fourth parameter to the interrupt call is the second parameter to the function
+  intparam[2] = param[0] // The first (0) parameter to the function is the third interrupt call parameter (2)
+  intparam[3] = param[1] // The second (1) parameter to the function is the fourth interrupt call parameter (3)
   int(80, 4, 1, _, _)
 end
 
@@ -23,5 +23,4 @@ fun main
   c_hi       // Call the C function named c_hi
 end
 
-# vim: set syntax=c
-
+// vim: set syntax=c ts=2 sw=2 et:
