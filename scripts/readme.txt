@@ -1,1 +1,5 @@
-If the run script is made available as /usr/bin/bts, the hello.bts file can be run directly, like a script.
+hello.bts can be run directly, like a script.
+
+Preconditions:
+    battlestar must be in the path
+    btstool.sh must be available as /usr/bin/bts

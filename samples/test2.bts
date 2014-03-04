@@ -5,4 +5,4 @@ fun _start
     int(80, 4, 1, commence, len(commence))
     int(80, 4, 1, nebula, len(nebula))
     int(80, 1)
-    ret(0)
+    ret 2

@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# Check for needed utilities
+which yasm >/dev/null || (echo Could not find yasm; exit 1)
+
 battlestar=../battlestar
 if [ ! -e $battlestar ]; then
   make -C ..
@@ -25,12 +28,12 @@ fi
 for f in *.bts; do
   n=`echo ${f/.bts} | sed 's/ //'`
   echo "Building $n"
-  $battlestar -bits="$bits" -osx="$osx" -f "$f" -o "$n.asm" -co "$n.c" 2> "$n.log"
-  [ -e $n.c ] && $gcccmd -c "$n.c" -o "${n}_c.o"
-  [ -e $n.asm ] && $asmcmd -o "$n.o" "$n.asm"
+  $battlestar -bits="$bits" -osx="$osx" -f "$f" -o "$n.asm" -co "$n.c" 2> "$n.log" || (cat "$n.log"; rm "$n.asm"; echo "$n failed to build.")
+  [ -e $n.c ] && ($gcccmd -c "$n.c" -o "${n}_c.o" || echo "$n failed to compile")
+  [ -e $n.asm ] && ($asmcmd -o "$n.o" "$n.asm" || echo "$n failed to assemble")
   if [ -e ${n}_c.o -a -e $n.o ]; then
-    $ldcmd "${n}_c.o" "$n.o" -o "$n" || echo "$n failed"
+    $ldcmd "${n}_c.o" "$n.o" -o "$n" || echo "$n failed to link"
   elif [ -e $n.o ]; then
-    $ldcmd "$n.o" -o "$n" || echo "$n failed"
+    $ldcmd "$n.o" -o "$n" || echo "$n failed to link"
   fi
 done

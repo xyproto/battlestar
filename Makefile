@@ -1,3 +1,5 @@
+all: clean battlestar
+
 battlestar:
 	go build
 

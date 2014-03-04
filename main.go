@@ -44,13 +44,14 @@ var (
 	in_function   string              // name of the function we are currently in
 	defined_names []string            // all defined variables/constants/functions
 	variables     map[string][]string // list of variable names per function name
+	types         map[string]string   // type of the defined names
 
 	registers = []string{"ah", "bh", "ch", "dh", "si", "di", "sp", "bp", "ip", // 16-bit
 		"eax", "ebx", "ecx", "edx", "esi", "edi", "esp", "ebp", "eip", // 32-bit
 		"rax", "rbx", "rcx", "rdx", "rsi", "rdi", "rsp", "rbp", "rip", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15", "sil", "dil", "spl", "bpl", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15"} // 64-bit
 
 	operators = []string{"=", "+=", "-=", "*=", "/="}
-	keywords  = []string{"fun", "ret", "const", "call", "extern", "end", "var", "inline_c"}
+	keywords  = []string{"fun", "ret", "const", "call", "extern", "end", "inline_c"}
 	builtins  = []string{"len", "int", "exit"} // built-in functions
 	reserved  = []string{"param", "intparam"}  // built-in variables
 
@@ -298,6 +299,14 @@ func tokenize(program string, debug bool) []Token {
 				}
 				instring = true
 				collected = word + " "
+			} else if strings.Contains("0123456789$", string(word[0])) {
+				// Assume it's a value
+				t = Token{VALUE, word}
+				tokens = append(tokens, t)
+				if debug {
+					log.Println("TOKEN", t)
+				}
+
 			} else {
 				if debug {
 					log.Println("TOKEN", word, "unknown")
@@ -648,7 +657,7 @@ func (st Statement) String() string {
 		return retval
 	} else if (len(st) >= 2) && (st[0].t == KEYWORD) && (st[1].t == VALID_NAME) && (st[0].value == "fun") {
 		if in_function != "" {
-			log.Fatalf("Error: Missing \"ret\"? Already in a function named %s when declaring function %s.\n", in_function, st[1].value)
+			log.Fatalf("Error: Missing \"ret\" or \"end\"? Already in a function named %s when declaring function %s.\n", in_function, st[1].value)
 		}
 		asmcode := ";--- function " + st[1].value + " ---\n"
 		in_function = st[1].value
@@ -658,7 +667,7 @@ func (st Statement) String() string {
 		}
 		defined_names = append(defined_names, in_function)
 		asmcode += "global " + in_function + "\t\t\t; make label available to the linker\n"
-		asmcode += in_function + ":\t\t\t\t; name of the function\n\n"
+		asmcode += in_function + ":\t\t\t; name of the function\n\n"
 		if (in_function == "main") || (in_function == linker_start_function) {
 			log.Println("Not setting up stack frame in the main/_start/start function.")
 			return asmcode
@@ -712,38 +721,16 @@ func (st Statement) String() string {
 		} else {
 			log.Fatalln("Error: No function named:", st[0].value)
 		}
-		// TODO: This catches too much. Narrow and fix.
-		/*	} else if (st[0].t == VALID_NAME) && (st[1].t == ASSIGNMENT) {
-			if !has(defined_names, st[0].value) {
-				// Add the variable name to the defined names
-				defined_names = append(defined_names, st[0].value)
-				log.Println("Note: Declaring local variable", st[0].value, "in function", in_function)
-				if len(variables[in_function]) == 0 {
-					variables[in_function] = make([]string, 0, 0)
-				}
-				variables[in_function] = append(variables[in_function], st[0].value)
-			}
-			// Create a new statement, where the first token is now a VARIABLE instead of just a VALID_NAME
-			newstatement := make(Statement, len(st), len(st))
-			for i, t := range st {
-				newstatement[i] = t
-			}
-			newstatement[0].t = VARIABLE
-			return newstatement.String()  */
 	} else if (st[0].t == VARIABLE) && (st[1].t == ASSIGNMENT) && (len(st) > 2) {
-		reg := "rbp"
-		if platform_bits == 32 {
-			reg = "ebp"
-		}
 		// negative base pointer offset for local variables
 		paramoffset := len(variables[in_function]) - 1
-		offset := strconv.Itoa(paramoffset*4 + 8)
-		asmcode := "\tmov [" + reg + "-" + offset + "], "
-		newstatements := make(Statement, len(st)-2, len(st)-2)
-		for i := 2; i < len(st); i++ {
-			newstatements = append(newstatements, st[i-2])
+		negative_offset := strconv.Itoa(paramoffset*4 + 8)
+	    reg := "ebp"
+		if platform_bits == 64 {
+			negative_offset = strconv.Itoa(paramoffset*8 + 8)
+		    reg = "rbp"
 		}
-		asmcode += newstatements.String()
+		asmcode := "\tmov [" + reg + "-" + negative_offset + "], " + st[2:].String()
 		asmcode += "\t\t; local variable #" + strconv.Itoa(paramoffset) + "\n"
 		return asmcode
 	} else if st[0].value == "const" {
@@ -835,10 +822,18 @@ func ExtractInlineC(code string, debug bool) string {
 
 func add_starting_point_if_missing(asmcode string) string {
 	// Check if the resulting code contains a starting point or not
+	if strings.Contains(asmcode, "extern " + linker_start_function) {
+		log.Println("External starting point for linker, not adding one.")
+		return asmcode
+	}
 	if !strings.Contains(asmcode, linker_start_function) {
 		log.Printf("No %s has been defined, creating one\n", linker_start_function)
 		addstring := "global " + linker_start_function + "\t\t\t; make label available to the linker\n" + linker_start_function + ":\t\t\t\t; starting point of the program\n"
-		if strings.Contains(asmcode, "\nmain:") {
+		if strings.Contains(asmcode, "extern main") {
+			log.Println("External main function, adding starting point that calls it.")
+	        exit_statement := Statement{Token{BUILTIN, "exit"}}
+			return asmcode + "\n" + addstring + "\n\tcall main\t\t; call the external main function\n\n" + exit_statement.String()
+		} else if strings.Contains(asmcode, "\nmain:") {
 			log.Println("...but main has been defined, using that as starting point.")
 			// Add "_start:"/"start" right after "main:"
 			return strings.Replace(asmcode, "\nmain:", "\n"+addstring+"main:", 1)
