@@ -26,18 +26,20 @@ type (
 )
 
 const (
-	REGISTER   = 0
-	ASSIGNMENT = 1
-	VALUE      = 2
-	KEYWORD    = 3
-	BUILTIN    = 4
-	VALID_NAME = 5
-	STRING     = 6
-	DISREGARD  = 7
-	RESERVED   = 8
-	VARIABLE   = 9
-	SEP        = 127
-	UNKNOWN    = 255
+	REGISTER    = 0
+	ASSIGNMENT  = 1
+	VALUE       = 2
+	KEYWORD     = 3
+	BUILTIN     = 4
+	VALID_NAME  = 5
+	STRING      = 6
+	DISREGARD   = 7
+	RESERVED    = 8
+	VARIABLE    = 9
+	ADDITION    = 10
+	SUBTRACTION = 11
+	SEP         = 127
+	UNKNOWN     = 255
 )
 
 // Global variables
@@ -49,7 +51,8 @@ var (
 	variables     map[string][]string // list of variable names per function name
 	types         map[string]string   // type of the defined names
 
-	registers = []string{"ah", "bh", "ch", "dh", "si", "di", "sp", "bp", "ip", // 16-bit
+	registers = []string{"ah", "bh", "ch", "dh", // 8-bit
+		"si", "di", "sp", "bp", "ip", "ax", "bx", "cx", "dx", // 16-bit
 		"eax", "ebx", "ecx", "edx", "esi", "edi", "esp", "ebp", "eip", // 32-bit
 		"rax", "rbx", "rcx", "rdx", "rsi", "rdi", "rsp", "rbp", "rip", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15", "sil", "dil", "spl", "bpl", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15"} // 64-bit
 
@@ -172,8 +175,8 @@ func tokenize(program string, debug bool) []Token {
 	var t Token
 	var instring bool    // Have we encountered a " for any given statement?
 	var collected string // Collected string, until end of line
-	inline_c = false        // Are we in parts of the code that are inline_c ... end ?
-	c_block = false          // Are we in parts of the code that are void ... } ?
+	inline_c = false     // Are we in parts of the code that are inline_c ... end ?
+	c_block = false      // Are we in parts of the code that are void ... } ?
 	var statementnr uint
 	for statementnr_int, statement := range statements {
 		// TODO: Use line number instead of statement number (but statement numbers are better than nothing)
@@ -184,7 +187,7 @@ func tokenize(program string, debug bool) []Token {
 			continue
 		}
 
-		if (words[0] == "void") {
+		if words[0] == "void" {
 			if debug {
 				log.Println("Found void, starting C block")
 			}
@@ -207,7 +210,7 @@ func tokenize(program string, debug bool) []Token {
 			c_block = false
 			// Skip the } keyword of this type of inline C block, don't include "}" as a token
 			continue
-		} else if (words[0] == "inline_c") {
+		} else if words[0] == "inline_c" {
 			if debug {
 				log.Println("Found inline_c, starting inline C block")
 			}
@@ -235,7 +238,18 @@ func tokenize(program string, debug bool) []Token {
 					log.Println("TOKEN", t)
 				}
 			} else if has(operators, word) {
-				t = Token{ASSIGNMENT, word, statementnr}
+				var tokentype TokenType
+				switch word {
+				case "=":
+					tokentype = ASSIGNMENT
+				case "+=":
+					tokentype = ADDITION
+				case "-=":
+					tokentype = SUBTRACTION
+				default:
+					log.Fatalln("Error: Unhandled operator:", word)
+				}
+				t = Token{tokentype, word, statementnr}
 				tokens = append(tokens, t)
 				if debug {
 					log.Println("TOKEN", t)
@@ -589,6 +603,17 @@ func (st Statement) String() string {
 			log.Println(t.value)
 		}
 		os.Exit(1)
+	} else if (st[0].t == VALID_NAME) && (st[1].t == ASSIGNMENT) && (len(st) > 2) {
+		log.Println("local variable", st[0].value)
+		//for _, t := range st[2:] {
+		//    log.Println("new value:", t)
+		//}
+		// TODO: add proper support for 32-bit, 64-bit and local variable offsets
+		//       (-8, -12, -16 etc for 32-bit)
+		//       (-8, -16, -24 etc for 64-bit)
+		// TODO: add the variable name to the proper global maps and slices
+		log.Println("WARNING: Local variables are to be implemented, only one is supported for now")
+		return "\tmov [rbp-8], " + st[2].value + "\t\t\t; " + "local variable 1" + "\n"
 	} else if ((st[0].t == KEYWORD) && (st[0].value == "ret")) || ((st[0].t == BUILTIN) && (st[0].value == "exit")) {
 		asmcode := ""
 		if st[0].value == "ret" {
@@ -648,7 +673,7 @@ func (st Statement) String() string {
 		if inline_c {
 			// Exiting from inline C
 			inline_c = false
-			return "; End of inline C block";
+			return "; End of inline C block"
 		}
 		return asmcode
 	} else if (st[0].t == REGISTER) || (st[0].t == DISREGARD) && (len(st) == 3) {
@@ -685,6 +710,11 @@ func (st Statement) String() string {
 				log.Fatalln("Error: Can only handle \"param\" lists.")
 			}
 		}
+	} else if (len(st) == 4) && (st[0].t == RESERVED) && (st[1].t == VALUE) && (st[2].t == ASSIGNMENT) && (st[3].t == REGISTER) {
+		retval := "\tmov " + reserved_and_value(st[:2]) + ", " + st[3].value + "\t\t\t; "
+		retval += fmt.Sprintf("%s[%s] = %s\n", st[0].value, st[1].value, st[3].value)
+		return retval
+
 	} else if (len(st) == 5) && (st[0].t == RESERVED) && (st[1].t == VALUE) && (st[2].t == ASSIGNMENT) && (st[3].t == RESERVED) && (st[4].t == VALUE) {
 		retval := "\tmov " + reserved_and_value(st[:2]) + ", " + reserved_and_value(st[3:]) + "\t\t\t; "
 		retval += fmt.Sprintf("%s[%s] = %s[%s]\n", st[0].value, st[1].value, st[3].value, st[4].value)
@@ -701,7 +731,7 @@ func (st Statement) String() string {
 		}
 		defined_names = append(defined_names, in_function)
 		asmcode += "global " + in_function + "\t\t\t; make label available to the linker\n"
-		asmcode += in_function + ":\t\t\t; name of the function\n\n"
+		asmcode += in_function + ":\t\t\t\t; name of the function\n\n"
 		if (in_function == "main") || (in_function == linker_start_function) {
 			log.Println("Not setting up stack frame in the main/_start/start function.")
 			return asmcode
@@ -762,10 +792,10 @@ func (st Statement) String() string {
 		// negative base pointer offset for local variables
 		paramoffset := len(variables[in_function]) - 1
 		negative_offset := strconv.Itoa(paramoffset*4 + 8)
-	    reg := "ebp"
+		reg := "ebp"
 		if platform_bits == 64 {
 			negative_offset = strconv.Itoa(paramoffset*8 + 8)
-		    reg = "rbp"
+			reg = "rbp"
 		}
 		asmcode := "\tmov [" + reg + "-" + negative_offset + "], " + st[2:].String()
 		asmcode += "\t\t; local variable #" + strconv.Itoa(paramoffset) + "\n"
@@ -773,7 +803,7 @@ func (st Statement) String() string {
 	} else if (st[0].t == KEYWORD) && (st[0].value == "inline_c") {
 		inline_c = true
 		return "; start of inline C block\n"
-	} else if (st[0].t == KEYWORD ) && (st[0].value == "const") {
+	} else if (st[0].t == KEYWORD) && (st[0].value == "const") {
 		log.Fatalln("Error: Incomprehensible constant:", st.String())
 	} else if st[0].t == BUILTIN {
 		log.Fatalln("Error: Unhandled builtin:", st[0].value)
@@ -879,7 +909,7 @@ func ExtractInlineC(code string, debug bool) string {
 
 func add_starting_point_if_missing(asmcode string) string {
 	// Check if the resulting code contains a starting point or not
-	if strings.Contains(asmcode, "extern " + linker_start_function) {
+	if strings.Contains(asmcode, "extern "+linker_start_function) {
 		log.Println("External starting point for linker, not adding one.")
 		return asmcode
 	}
@@ -888,9 +918,9 @@ func add_starting_point_if_missing(asmcode string) string {
 		addstring := "global " + linker_start_function + "\t\t\t; make label available to the linker\n" + linker_start_function + ":\t\t\t\t; starting point of the program\n"
 		if strings.Contains(asmcode, "extern main") {
 			log.Println("External main function, adding starting point that calls it.")
-			linenr := uint(strings.Count(asmcode+addstring, "\n")+5)
+			linenr := uint(strings.Count(asmcode+addstring, "\n") + 5)
 			// TODO: Check that this is the correct linenr
-	        exit_statement := Statement{Token{BUILTIN, "exit", linenr}}
+			exit_statement := Statement{Token{BUILTIN, "exit", linenr}}
 			return asmcode + "\n" + addstring + "\n\tcall main\t\t; call the external main function\n\n" + exit_statement.String()
 		} else if strings.Contains(asmcode, "\nmain:") {
 			log.Println("...but main has been defined, using that as starting point.")

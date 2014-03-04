@@ -1,4 +1,4 @@
-all: clean battlestar
+all: battlestar
 
 full: clean battlestar
 	make -C test_bits
@@ -9,6 +9,7 @@ full_clean: clean
 	make -C samples clean
 
 battlestar:
+	@rm -f battlestar # Make sure only "battlestarc" is present, not "battlestar"
 	go build -o battlestarc
 
 clean:
