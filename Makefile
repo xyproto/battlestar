@@ -1,7 +1,7 @@
 all: clean battlestar
 
 battlestar:
-	go build
+	go build -o battlestarc
 
 clean:
-	go clean
+	rm -f battlestarc

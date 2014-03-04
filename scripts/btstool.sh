@@ -8,19 +8,21 @@
 #                                         #
 ###########################################
 
-# Check for needed utilities
-which battlestar >/dev/null || (echo Could not find battlestar; exit 1)
-which yasm >/dev/null || (echo Could not find yasm; exit 1)
+# Check for needed utilities (in PATH)
+battlestarc=battlestarc
+which "$battlestarc" >/dev/null || (echo 'Could not find battlestar compiler'; exit 1)
+which yasm >/dev/null || (echo 'Could not find yasm'; exit 1)
+which gcc >/dev/null || echo 'Could not find gcc (optional)'
 
 bits=`getconf LONG_BIT`
 osx=$([[ `uname -s` = Darwin ]] && echo true || echo false)
 asmcmd="yasm -f elf$bits"
 ldcmd='ld -s --fatal-warnings -nostdlib --relax'
-gcccmd="gcc -Os -m64 -nostdlib"
+cccmd="gcc -Os -m64 -nostdlib"
 
 if [[ $bits = 32 ]]; then
   ldcmd='ld -s -melf_i386 --fatal-warnings -nostdlib --relax'
-  gcccmd='gcc -Os -m32 -nostdlib'
+  cccmd='gcc -Os -m32 -nostdlib'
 fi
 
 if [[ $osx = true ]]; then
@@ -45,9 +47,9 @@ function run {
   logfn=`mktemp --suffix=.log`
   
   # Compile and link
-  battlestar -bits="$bits" -osx="$osx" -f $1 -o "$asmfn" -co "$cfn" 2>"$logfn" || (cat "$logfn"; rm "$asmfn"; echo "$1 failed to build.")
+  $battlestarc -bits="$bits" -osx="$osx" -f $1 -o "$asmfn" -co "$cfn" 2>"$logfn" || (cat "$logfn"; rm "$asmfn"; echo "$1 failed to build.")
   if [ -e "$asmfn" ]; then
-    [ -e $cfn ] && ($gcccmd -c "$cfn" -o "${o2fn}" || echo "$1 failed to compile")
+    [ -e $cfn ] && ($cccmd -c "$cfn" -o "${o2fn}" || echo "$1 failed to compile")
     [ -e $asmfn ] && ($asmcmd -o "$o1fn" "$asmfn" || echo "$1 failed to assemble")
     if [ -e ${o2fn} -a -e ${o1fn} ]; then
       $ldcmd "${o2fn}" "$o1fn" -o "$elffn" || echo "$1 failed to link"
