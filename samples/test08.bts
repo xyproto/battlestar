@@ -6,7 +6,7 @@ const msg = "success", 10  // "success" followed by a newline
 
 fun makedir
     inline_c
-	void makedir(char* dirname); // Make function available to C
+        void makedir(char* dirname); // Make function available to C
     end
     intparam[1] = param[0]      // parameter 1 to the interrupt call is parameter 0 to the function
     // syscall: mkdir
@@ -30,4 +30,4 @@ void main() {
     success();
 }
 
-// vim: set syntax=c ts=2 sw=2 et:
+// vim: set syntax=c ts=4 sw=4 et:

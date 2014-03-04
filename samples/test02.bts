@@ -7,4 +7,4 @@ fun _start
     int(80, 1)
     ret 2
 
-// vim: set syntax=c ts=2 sw=2 et:
+// vim: set syntax=c ts=4 sw=4 et:

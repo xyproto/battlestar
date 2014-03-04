@@ -1,11 +1,11 @@
 const msg = "Yes", 10
 
 fun main
-  // Set rdx
-  rdx = len(msg)
+    // Set rdx
+    rdx = len(msg)
 
-  // Then use _ to signify that rdx should be used instead of being set when calling the interrupt
-  int(80, 4, 1, msg, _)
+    // Then use _ to signify that rdx should be used instead of being set when calling the interrupt
+    int(80, 4, 1, msg, _)
 end
 
-// vim: set syntax=c ts=2 sw=2 et:
+// vim: set syntax=c ts=4 sw=4 et:
