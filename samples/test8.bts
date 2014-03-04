@@ -19,9 +19,7 @@ fun removedir
 end
 
 // Define the main function in C
-inline_c
-    void main() {
-	makedir("/tmp/testdir");
-        removedir("/tmp/testdir");
-    }
-end
+void main() {
+    makedir("/tmp/testdir");
+    removedir("/tmp/testdir");
+}

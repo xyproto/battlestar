@@ -19,6 +19,7 @@ type (
 	Token     struct {
 		t     TokenType
 		value string
+		line  uint
 	}
 	TokenDescriptions map[TokenType]string
 	Statement         []Token
@@ -42,6 +43,7 @@ const (
 // Global variables
 var (
 	in_function   string              // name of the function we are currently in
+	inline_c      bool                // are we in a block of inline C?
 	defined_names []string            // all defined variables/constants/functions
 	variables     map[string][]string // list of variable names per function name
 	types         map[string]string   // type of the defined names
@@ -51,9 +53,9 @@ var (
 		"rax", "rbx", "rcx", "rdx", "rsi", "rdi", "rsp", "rbp", "rip", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15", "sil", "dil", "spl", "bpl", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15"} // 64-bit
 
 	operators = []string{"=", "+=", "-=", "*=", "/="}
-	keywords  = []string{"fun", "ret", "const", "call", "extern", "end", "inline_c"}
+	keywords  = []string{"fun", "ret", "const", "call", "extern", "end", "inline_c", "void", "}"}
 	builtins  = []string{"len", "int", "exit"} // built-in functions
-	reserved  = []string{"param", "intparam"}  // built-in variables
+	reserved  = []string{"param", "intparam"}  // built-in lists that can be accessed with [index]
 
 	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard", RESERVED: "reserved", VARIABLE: "variable"}
 
@@ -169,25 +171,38 @@ func tokenize(program string, debug bool) []Token {
 	var t Token
 	var instring bool    // Have we encountered a " for any given statement?
 	var collected string // Collected string, until end of line
-	in_c := false        // Are we in parts of the code that are inline C?
-	for _, statement := range statements {
+	inline_c = false        // Are we in parts of the code that are inline C?
+	inline_needs_an_end := false   // Are we in a inline_c .. end block or void .. } block?
+	var statementnr uint
+	for statementnr_int, statement := range statements {
+		statementnr = uint(statementnr_int)
 		words := maps(strings.Split(statement, " "), strings.TrimSpace)
 
 		if len(words) == 0 {
 			continue
 		}
 
-		// Check for inline C, skip if encountered
-		if words[0] == "inline_c" {
-			// TODO: If we are in a function when encountering inline C, place it in the function in question somehow
-			//       (possibly by putting it in a C function and calling that function from assembly)
-			in_c = true
-		}
-		if in_c && (words[0] == "end") {
-			in_c = false
+		if (words[0] == "void") {
+			inline_c = true
+			inline_needs_an_end = false
+			// Skip as inline C, don't include as token
 			continue
-		}
-		if in_c {
+		} else if inline_c && (words[0] == "end") {
+			inline_c = false
+			inline_needs_an_end = false
+			// Don't skip as inline C, include as token
+		} else if inline_c && (words[0] == "}") {
+			if !inline_needs_an_end {
+				inline_c = false
+			}
+			// Skip as part of inline C
+			continue
+		} else if (words[0] == "inline_c") {
+			inline_c = true
+			inline_needs_an_end = true
+			// Don't skip as inline C, include as token
+		} else if inline_c {
+			// In block of inline C, skip, don't include as tokens
 			continue
 		}
 
@@ -200,49 +215,49 @@ func tokenize(program string, debug bool) []Token {
 			if instring {
 				collected += word + " "
 			} else if has(registers, word) {
-				t = Token{REGISTER, word}
+				t = Token{REGISTER, word, statementnr}
 				tokens = append(tokens, t)
 				if debug {
 					log.Println("TOKEN", t)
 				}
 			} else if has(operators, word) {
-				t = Token{ASSIGNMENT, word}
+				t = Token{ASSIGNMENT, word, statementnr}
 				tokens = append(tokens, t)
 				if debug {
 					log.Println("TOKEN", t)
 				}
 			} else if has(keywords, word) {
-				t = Token{KEYWORD, word}
+				t = Token{KEYWORD, word, statementnr}
 				tokens = append(tokens, t)
 				if debug {
 					log.Println("TOKEN", t)
 				}
 			} else if has(builtins, word) {
-				t = Token{BUILTIN, word}
+				t = Token{BUILTIN, word, statementnr}
 				tokens = append(tokens, t)
 				if debug {
 					log.Println("TOKEN", t)
 				}
 			} else if has(reserved, word) {
-				t = Token{RESERVED, word}
+				t = Token{RESERVED, word, statementnr}
 				tokens = append(tokens, t)
 				if debug {
 					log.Println("TOKEN", t)
 				}
 			} else if _, err := strconv.Atoi(word); err == nil {
-				t = Token{VALUE, word}
+				t = Token{VALUE, word, statementnr}
 				tokens = append(tokens, t)
 				if debug {
 					log.Println("TOKEN", t)
 				}
 			} else if word == "_" {
-				t = Token{DISREGARD, word}
+				t = Token{DISREGARD, word, statementnr}
 				tokens = append(tokens, t)
 				if debug {
 					log.Println("TOKEN", t)
 				}
 			} else if is_valid_name(word) {
-				t = Token{VALID_NAME, word}
+				t = Token{VALID_NAME, word, statementnr}
 				tokens = append(tokens, t)
 				if debug {
 					log.Println("TOKEN", t)
@@ -301,7 +316,7 @@ func tokenize(program string, debug bool) []Token {
 				collected = word + " "
 			} else if strings.Contains("0123456789$", string(word[0])) {
 				// Assume it's a value
-				t = Token{VALUE, word}
+				t = Token{VALUE, word, statementnr}
 				tokens = append(tokens, t)
 				if debug {
 					log.Println("TOKEN", t)
@@ -319,12 +334,12 @@ func tokenize(program string, debug bool) []Token {
 			if debug {
 				log.Println("EXITING STRING AT END OF STATEMENT")
 				log.Println("STRING:", collected)
-				t = Token{STRING, collected}
+				t = Token{STRING, collected, statementnr}
 				tokens = append(tokens, t)
 			}
 			instring = false
 		}
-		t = Token{SEP, ";"}
+		t = Token{SEP, ";", statementnr}
 		tokens = append(tokens, t)
 	}
 	return tokens
@@ -354,7 +369,7 @@ func reduce(st Statement, debug bool) Statement {
 			st = st[:i+1+copy(st[i+1:], st[i+2:])]
 
 			// replace len(name) with _length_of_name
-			st[i] = Token{token_type, "_length_of_" + name}
+			st[i] = Token{token_type, "_length_of_" + name, st[0].line}
 
 			if debug {
 				log.Println("SUCCESSFULL REPLACEMENT WITH", st[i])
@@ -616,6 +631,11 @@ func (st Statement) String() string {
 			// Exiting from the function definition
 			in_function = ""
 		}
+		if inline_c {
+			// Exiting from inline C
+			inline_c = false
+			return "; End of inline C block";
+		}
 		return asmcode
 	} else if (st[0].t == REGISTER) || (st[0].t == DISREGARD) && (len(st) == 3) {
 		// Statements like "eax = 3" are handled here
@@ -704,18 +724,21 @@ func (st Statement) String() string {
 			log.Fatalln("Error: extern with invalid name:", st[1].value)
 		}
 	} else if (st[0].t == KEYWORD) && (st[0].value == "end") && (len(st) == 1) {
-		if in_function != "" {
+		if inline_c {
+			inline_c = false
+			return "; end of inline C block\n"
+		} else if in_function != "" {
 			// Return from the function if "end" is encountered
-			ret := Token{KEYWORD, "ret"}
+			ret := Token{KEYWORD, "ret", st[0].line}
 			newstatement := Statement{ret}
 			return newstatement.String()
 		} else {
-			log.Fatalln("Error: Not in a function, hard to tell what should be ended with \"end\".")
+			log.Fatalln("Error: Not in a function or block of inline C, hard to tell what should be ended with \"end\". Statement nr:", st[0].line)
 		}
 	} else if (st[0].t == VALID_NAME) && (len(st) == 1) {
 		// Just a name, assume it's a function call
 		if has(defined_names, st[0].value) {
-			call := Token{KEYWORD, "call"}
+			call := Token{KEYWORD, "call", st[0].line}
 			newstatement := Statement{call, st[0]}
 			return newstatement.String()
 		} else {
@@ -733,7 +756,10 @@ func (st Statement) String() string {
 		asmcode := "\tmov [" + reg + "-" + negative_offset + "], " + st[2:].String()
 		asmcode += "\t\t; local variable #" + strconv.Itoa(paramoffset) + "\n"
 		return asmcode
-	} else if st[0].value == "const" {
+	} else if (st[0].t == KEYWORD) && (st[0].value == "inline_c") {
+		inline_c = true
+		return "; start of inline C block\n"
+	} else if (st[0].t == KEYWORD ) && (st[0].value == "const") {
 		log.Fatalln("Error: Incomprehensible constant:", st.String())
 	} else if st[0].t == BUILTIN {
 		log.Fatalln("Error: Unhandled builtin:", st[0].value)
@@ -780,7 +806,7 @@ func TokensToAssembly(tokens []Token, debug bool, debug2 bool) (string, string) 
 func ExtractInlineC(code string, debug bool) string {
 	// Fetch the inline C code between the "c" and "end" kewyords
 	clines := ""
-	in_c := false
+	inline_c = false
 	whitespace := -1 // Where to strip whitespace
 	for _, line := range strings.Split(code, "\n") {
 		firstword := strings.TrimSpace(removecomments(line))
@@ -788,15 +814,19 @@ func ExtractInlineC(code string, debug bool) string {
 			words := strings.SplitN(firstword, " ", 1)
 			firstword = words[0]
 		}
-		if firstword == "inline_c" {
-			in_c = true
+		if (firstword == "inline_c") || (firstword == "void") {
+			inline_c = true
+			if firstword == "inline_c" {
+				// Don't include "inline_c" in the inline C code
+				continue
+			}
+		}
+		if (firstword == "end") {
+			inline_c = false
+			// Don't include "end" in the inline C code
 			continue
 		}
-		if firstword == "end" {
-			in_c = false
-			continue
-		}
-		if in_c {
+		if inline_c {
 			// Detect whitespace, once and only for some variations
 			if whitespace == -1 {
 				if strings.HasPrefix(line, "    ") {
@@ -816,6 +846,10 @@ func ExtractInlineC(code string, debug bool) string {
 				clines += line + "\n"
 			}
 		}
+		if firstword == "}" {
+			// Stop the inline C block with } only after first having included it in the inline C source
+			inline_c = false
+		}
 	}
 	return clines
 }
@@ -831,7 +865,9 @@ func add_starting_point_if_missing(asmcode string) string {
 		addstring := "global " + linker_start_function + "\t\t\t; make label available to the linker\n" + linker_start_function + ":\t\t\t\t; starting point of the program\n"
 		if strings.Contains(asmcode, "extern main") {
 			log.Println("External main function, adding starting point that calls it.")
-	        exit_statement := Statement{Token{BUILTIN, "exit"}}
+			linenr := uint(strings.Count(asmcode+addstring, "\n")+5)
+			// TODO: Check that this is the correct linenr
+	        exit_statement := Statement{Token{BUILTIN, "exit", linenr}}
 			return asmcode + "\n" + addstring + "\n\tcall main\t\t; call the external main function\n\n" + exit_statement.String()
 		} else if strings.Contains(asmcode, "\nmain:") {
 			log.Println("...but main has been defined, using that as starting point.")
@@ -856,7 +892,7 @@ func add_exit_token_if_missing(tokens []Token) []Token {
 	}
 
 	// If the last token is ret or end, all is well, return the same tokens
-	if (lasttoken.t == KEYWORD) && ((lasttoken.value == "ret") || (lasttoken.value == "end")) {
+	if (lasttoken.t == KEYWORD) && ((lasttoken.value == "ret") || (lasttoken.value == "end") || (lasttoken.value == "}")) {
 		return tokens
 	}
 
@@ -874,10 +910,12 @@ func add_exit_token_if_missing(tokens []Token) []Token {
 		newtokens[i] = tokens[i]
 	}
 
-	ret_token := Token{BUILTIN, "exit"}
+	// TODO: Check that the line nr is correct
+	ret_token := Token{BUILTIN, "exit", newtokens[len(newtokens)-1].line}
 	newtokens[len(tokens)] = ret_token
 
-	sep_token := Token{SEP, ";"}
+	// TODO: Check that the line nr is correct
+	sep_token := Token{SEP, ";", newtokens[len(newtokens)-1].line}
 	newtokens[len(tokens)+1] = sep_token
 
 	//log.Println(tokens)

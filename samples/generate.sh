@@ -28,6 +28,7 @@ fi
 for f in *.bts; do
   n=`echo ${f/.bts} | sed 's/ //'`
   echo "Building $n"
+  # TODO: Don't output the log if "fail" is in the filename
   $battlestar -bits="$bits" -osx="$osx" -f "$f" -o "$n.asm" -co "$n.c" 2> "$n.log" || (cat "$n.log"; rm "$n.asm"; echo "$n failed to build.")
   [ -e $n.c ] && ($gcccmd -c "$n.c" -o "${n}_c.o" || echo "$n failed to compile")
   [ -e $n.asm ] && ($asmcmd -o "$n.o" "$n.asm" || echo "$n failed to assemble")
