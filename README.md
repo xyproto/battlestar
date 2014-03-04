@@ -17,8 +17,9 @@ In progress
 
 Features
 --------------
-* Battlestar programs compiles almost instantly and can also be run like scripts by including this line at the top
+* Battlestar programs compiles almost instantly and can also be run like scripts by including this line at the top:
   ```#!/usr/bin/bts```
+
 * The resulting executables are tiny (around 600 bytes for hello world).
 * C and Battlestar code can exist in the same source file and calls can be made both ways.
 * Interrupts can be called with the same syntax for both 32-bit and 64-bit x86 on Linux.
