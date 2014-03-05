@@ -1,11 +1,22 @@
 #!/bin/sh
 
+function require {
+  if [ $2 == 0 ]; then
+    hash $1 2>/dev/null || { echo >&2 "Could not find $1 (optional)"; }
+  elif [ $2 == 1 ]; then
+    hash $1 2>/dev/null || { echo >&2 "Could not find $1. Aborting."; exit 1; }
+  else
+    hash $1 2>/dev/null || return 1
+  fi
+  return 0
+}
+
 # Check for needed utilities
-# TODO: Make more elegant. Make it actually exit when utilities are missing.
-which yasm 2>&1 1>/dev/null || (echo 'Could not find yasm'; exit 1)
-which ld 2>&1 1>dev/null || (echo 'Could not find ld'; exit 1)
-which gcc 2>&1 1>/dev/null || echo 'Could not find gcc (optional)'
-which sstrip 2>&1 1>/dev/null || echo 'Could not find sstrip (optional)'
+require yasm 1
+require ld 1
+require gcc 0
+require sstrip 0
+echo
 
 battlestarc=../battlestarc
 if [ ! -e $battlestarc ]; then
@@ -46,7 +57,7 @@ for f in *.bts; do
     $ldcmd "$n.o" -o "$n" || echo "$n failed to link"
   fi
   if [ -e $n ]; then
-    sstrip "$n" || echo "Could not strip $n with sstrip"
+    require sstrip 2 && sstrip "$n"
   fi
   echo
 done

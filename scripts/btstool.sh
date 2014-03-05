@@ -11,13 +11,23 @@
 # Check for needed utilities (in PATH)
 battlestarc=battlestarc
 
-# TODO: Improve this, only check once per executable
-which "$battlestarc" 2>&1 1>/dev/null || echo 'Could not find battlestar compiler'
-which "$battlestarc" 2>&1 1>/dev/null || exit 1
-which yasm 2>&1 1>/dev/null || echo 'Could not find yasm'
-which yasm 2>&1 1>/dev/null || exit 1
-which gcc 2>&1 1>/dev/null || echo 'Could not find gcc (optional)'
-which sstrip 2>&1 1>/dev/null || echo 'Could not find sstrip (optional)'
+function require {
+  if [ $2 == 0 ]; then
+    hash $1 2>/dev/null || { echo >&2 "Could not find $1 in path (optional)."; }
+  elif [ $2 == 1 ]; then
+    hash $1 2>/dev/null || { echo >&2 "Could not find $1 in path. Aborting."; exit 1; }
+  else
+    hash $1 2>/dev/null || return 1
+  fi
+  return 0
+}
+
+# Check for needed utilities
+require "$battlestarc" 1
+require yasm 1
+require ld 1
+require gcc 2
+require sstrip 2
 
 bits=`getconf LONG_BIT`
 osx=$([[ `uname -s` = Darwin ]] && echo true || echo false)
@@ -66,7 +76,7 @@ function run {
     rm -f "${o1fn}" "${o2fn}" "$asmfn" "$cfn" "$logfn"
 
     # Strip the program, if available
-    sstrip "$elffn" || true
+    require sstrip 2 && sstrip "$elffn"
   
     #echo
     #echo "Running $1"
@@ -74,7 +84,6 @@ function run {
     #echo
   
     # Run the program
-    #[ -e $elffn ] && time "$elffn"
     [ -e $elffn ] && "$elffn"
   
     # Remove the program after execution
