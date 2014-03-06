@@ -1,4 +1,4 @@
-all: battlestarc
+all: clean battlestarc
 
 full: clean battlestarc
 	make -C test_bits

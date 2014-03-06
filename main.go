@@ -51,20 +51,23 @@ var (
 	variables     map[string][]string // list of variable names per function name
 	types         map[string]string   // type of the defined names
 
-	registers = []string{"ah", "bh", "ch", "dh", // 8-bit
+	registers = []string{"ah", "al", "bh", "bl", "ch", "cl", "dh", "dl", // 8-bit
 		"si", "di", "sp", "bp", "ip", "ax", "bx", "cx", "dx", // 16-bit
 		"eax", "ebx", "ecx", "edx", "esi", "edi", "esp", "ebp", "eip", // 32-bit
 		"rax", "rbx", "rcx", "rdx", "rsi", "rdi", "rsp", "rbp", "rip", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15", "sil", "dil", "spl", "bpl", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15"} // 64-bit
 
 	operators = []string{"=", "+=", "-=", "*=", "/="}
-	keywords  = []string{"fun", "ret", "const", "call", "extern", "end"}
-	builtins  = []string{"len", "int", "exit"} // built-in functions
+	keywords  = []string{"fun", "ret", "const", "call", "extern", "end", "bootable"}
+	builtins  = []string{"len", "int", "exit", "hang"} // built-in functions
 	reserved  = []string{"param", "intparam"}  // built-in lists that can be accessed with [index]
 
 	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard", RESERVED: "reserved", VARIABLE: "variable"}
 
 	// 32-bit (i686) or 64-bit (x86_64)
 	platform_bits = 32
+
+    // Is this a bootable kernel? (declared with "bootable" at the top)
+    bootable_kernel = false
 
 	// OS X or Linux
 	osx = false
@@ -547,7 +550,11 @@ func (st Statement) String() string {
 			if st[i].value == "_" {
 				codeline = "\t\t"
 			} else {
-				codeline = "\tmov " + reg + ", " + st[i].value
+                if st[i].value == "0" {
+					codeline = "\txor " + reg + ", " + reg
+                } else {
+					codeline = "\tmov " + reg + ", " + st[i].value
+				}
 			}
 
 			// TODO: Find a more elegant way to format the comments in columns
@@ -559,7 +566,13 @@ func (st Statement) String() string {
 		}
 		// Add the interrupt call
 		if st[1].t == VALUE {
-			asmcode += "\tint 0x" + st[1].value + "\t\t\t; perform the call\n"
+            // Assume that interrupts will always be given in hex and that a missing 0x is just forgotten
+            if !strings.HasPrefix(st[1].value, "0x") {
+                log.Println("Note: Adding 0x in front of interrupt", st[1].value)
+				asmcode += "\tint 0x" + st[1].value + "\t\t\t; perform the call\n"
+			} else {
+				asmcode += "\tint " + st[1].value + "\t\t\t; perform the call\n"
+			}
 			return asmcode
 		}
 		log.Fatalln("Error: Need a (hexadecimal) interrupt number to call:\n", st[1].value)
@@ -614,6 +627,13 @@ func (st Statement) String() string {
 		// TODO: add the variable name to the proper global maps and slices
 		log.Println("WARNING: Local variables are to be implemented, only one is supported for now")
 		return "\tmov [rbp-8], " + st[2].value + "\t\t\t; " + "local variable 1" + "\n"
+    } else if (st[0].t == BUILTIN) && (st[0].value == "hang") {
+        asmcode := "\t; --- hang and loop forever ---\n"
+		asmcode += "\tcli\t\t; stop interrupts\n"
+        asmcode += ".hang:\n"
+        asmcode += "\thlt\n"
+        asmcode += "\tjmp .hang\t; loop\n\n"
+        return asmcode
 	} else if ((st[0].t == KEYWORD) && (st[0].value == "ret")) || ((st[0].t == BUILTIN) && (st[0].value == "exit")) {
 		asmcode := ""
 		if st[0].value == "ret" {
@@ -631,7 +651,9 @@ func (st Statement) String() string {
 			}
 		}
 		if in_function != "" {
-			asmcode += "\t;--- return from \"" + in_function + "\" ---\n"
+            if !bootable_kernel {
+				asmcode += "\t;--- return from \"" + in_function + "\" ---\n"
+			}
 		} else if st[0].value == "exit" {
 			asmcode += "\t;--- exit program ---\n"
 		} else {
@@ -655,10 +677,16 @@ func (st Statement) String() string {
 			if (len(st) == 2) && (st[1].t == VALUE) {
 				exit_code = st[1].value
 			}
-			if platform_bits == 32 {
-				asmcode += "\tmov eax, 1\t\t\t; function call: 1\n\tmov ebx, " + exit_code + "\t\t\t; return code " + exit_code + "\n\tint 0x80\t\t\t; exit program\n"
+			if !bootable_kernel {
+				if platform_bits == 32 {
+					asmcode += "\tmov eax, 1\t\t\t; function call: 1\n\tmov ebx, " + exit_code + "\t\t\t; return code " + exit_code + "\n\tint 0x80\t\t\t; exit program\n"
+				} else {
+					asmcode += "\tmov rax, 1\t\t\t; function call: 1\n\tmov rbx, " + exit_code + "\t\t\t; return code " + exit_code + "\n\tint 0x80\t\t\t; exit program\n"
+				}
 			} else {
-				asmcode += "\tmov rax, 1\t\t\t; function call: 1\n\tmov rbx, " + exit_code + "\t\t\t; return code " + exit_code + "\n\tint 0x80\t\t\t; exit program\n"
+				// For bootable kernels, main does not return. Hang instead.
+				log.Println("Warning: Bootable kernels has nowhere to return after the main function. You might want to use the \"hang\" builtin at the end of the main function.")
+				//asmcode += Statement{Token{BUILTIN, "hang", st[0].line}}.String()
 			}
 		} else {
 			log.Println("IN FUNCTION", in_function)
@@ -680,7 +708,11 @@ func (st Statement) String() string {
 		// Statements like "eax = 3" are handled here
 		// TODO: Handle all sorts of equivivalents to assembly statements
 		if (st[0].t == REGISTER) && (st[1].t == ASSIGNMENT) && (st[2].t == VALUE || st[2].t == VALID_NAME) {
-			return "\tmov " + st[0].value + ", " + st[2].value + "\t\t; " + st[0].value + " " + st[1].value + " " + st[2].value
+            if st[2].value == "0" {
+				return "\txor " + st[0].value + ", " + st[0].value + "\t\t; " + st[0].value + " " + st[1].value + " " + st[2].value
+			} else {
+				return "\tmov " + st[0].value + ", " + st[2].value + "\t\t; " + st[0].value + " " + st[1].value + " " + st[2].value
+			}
 		} else if (st[0].t == VALID_NAME) && (st[1].t == ASSIGNMENT) {
 			if has(defined_names, st[0].value) {
 				log.Fatalln("Error:", st[0].value, "has already been defined")
@@ -753,6 +785,41 @@ func (st Statement) String() string {
 		}
 		// TODO: Find a shorter format to describe matching tokens.
 		// Something along the lines of: if match(st, [KEYWORD:"extern"], 2)
+	} else if (st[0].t == KEYWORD) && (st[0].value == "bootable") && (len(st) == 1) {
+       bootable_kernel = true
+		// This program is supposed to be bootable
+	   return `
+; Thanks to http://wiki.osdev.org/Bare_Bones_with_NASM
+
+; Declare constants used for creating a multiboot header.
+MBALIGN     equ  1<<0                   ; align loaded modules on page boundaries
+MEMINFO     equ  1<<1                   ; provide memory map
+FLAGS       equ  MBALIGN | MEMINFO      ; this is the Multiboot 'flag' field
+MAGIC       equ  0x1BADB002             ; 'magic number' lets bootloader find the header
+CHECKSUM    equ -(MAGIC + FLAGS)        ; checksum of above, to prove we are multiboot
+ 
+; Declare a header as in the Multiboot Standard. We put this into a special
+; section so we can force the header to be in the start of the final program.
+; You don't need to understand all these details as it is just magic values that
+; is documented in the multiboot standard. The bootloader will search for this
+; magic sequence and recognize us as a multiboot kernel.
+section .multiboot
+align 4
+	dd MAGIC
+	dd FLAGS
+	dd CHECKSUM
+ 
+; Currently the stack pointer register (esp) points at anything and using it may
+; cause massive harm. Instead, we'll provide our own stack. We will allocate
+; room for a small temporary stack by creating a symbol at the bottom of it,
+; then allocating 16384 bytes for it, and finally creating a symbol at the top.
+section .bootstrap_stack
+align 4
+stack_bottom:
+times 16384 db 0
+stack_top:
+
+    `
 	} else if (st[0].t == KEYWORD) && (st[0].value == "extern") && (len(st) == 2) {
 		if st[1].t == VALID_NAME {
 			extname := st[1].value
@@ -944,13 +1011,13 @@ func add_exit_token_if_missing(tokens []Token) []Token {
 		break
 	}
 
-	// If the last token is ret or end, all is well, return the same tokens
-	if (lasttoken.t == KEYWORD) && ((lasttoken.value == "ret") || (lasttoken.value == "end") || (lasttoken.value == "}")) {
+	// If the last keyword token is ret or end, all is well, return the same tokens
+	if (lasttoken.t == KEYWORD) && ((lasttoken.value == "ret") || (lasttoken.value == "end")) {
 		return tokens
 	}
 
-	// If the last token is exit, all is well, return the same tokens
-	if (lasttoken.t == BUILTIN) && (lasttoken.value == "exit") {
+	// If the last builtin token is exit or hang, all is well, return the same tokens
+	if (lasttoken.t == BUILTIN) && ((lasttoken.value == "exit") || (lasttoken.value == "hang")) {
 		return tokens
 	}
 
@@ -1011,12 +1078,6 @@ func main() {
 	cfile := *c_file
 	btsfile := *bts_file
 
-	// Used when calling interrupts
-	if platform_bits == 32 {
-		interrupt_parameter_registers = []string{"eax", "ebx", "ecx", "edx"}
-	} else {
-		interrupt_parameter_registers = []string{"rax", "rbx", "rcx", "rdx"}
-	}
 
 	// TODO: Consider adding an option for "start" as well, or a custom
 	// start symbol
@@ -1040,9 +1101,30 @@ func main() {
 			// Empty program
 			log.Fatalln("Error: Empty program")
 		}
+
 		t := time.Now()
 		asmdata += fmt.Sprintf("; Generated with %s %s, at %s\n\n", name, version, t.String()[:16])
-		asmdata += fmt.Sprintf("bits %d\n", platform_bits)
+
+		// If "bootable" is the first token
+        bootable := false
+		if temptokens := tokenize(string(bytes), true); (len(temptokens) > 2) && (temptokens[0].t == KEYWORD) && (temptokens[0].value == "bootable") && (temptokens[1].t == SEP) {
+            bootable = true
+		    // Header for bootable kernels, use 32-bit assembly
+		    platform_bits = 32
+			asmdata += fmt.Sprintf("bits %d\n", platform_bits)
+		} else {
+		    // Header for regular programs
+			asmdata += fmt.Sprintf("bits %d\n", platform_bits)
+			asmdata += fmt.Sprintln("section .text\n")
+		}
+
+		// Used when calling interrupts
+		if platform_bits == 32 {
+			interrupt_parameter_registers = []string{"eax", "ebx", "ecx", "edx"}
+		} else {
+			interrupt_parameter_registers = []string{"rax", "rbx", "rcx", "rdx"}
+		}
+
 		tokens := add_exit_token_if_missing(tokenize(string(bytes), true))
 		log.Println("--- Done tokenizing ---")
 		constants, asmcode := TokensToAssembly(tokens, true, false)
@@ -1051,9 +1133,10 @@ func main() {
 			asmdata += fmt.Sprintln(constants + "\n")
 		}
 		if asmcode != "" {
-			asmdata += fmt.Sprintln("section .text\n")
-			asmcode = add_starting_point_if_missing(asmcode)
-			asmdata += fmt.Sprintln(asmcode + "\n")
+			asmdata += fmt.Sprintln(add_starting_point_if_missing(asmcode) + "\n")
+			if bootable {
+				asmdata = strings.Replace(asmdata, "; starting point of the program\n", "; starting point of the program\n\tmov esp, stack_top\t; set the esp register to the top of the stack (special case for bootable kernels)\n", 1)
+			}
 		}
 		ccode := ExtractInlineC(strings.TrimSpace(string(bytes)), true)
 		if ccode != "" {

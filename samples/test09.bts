@@ -1,4 +1,4 @@
-extern main // TODO: this is needed only for the C function to return properly, fix this
+extern main                     // make C function available here
 
 const dirname = "testdir", 0    // zero terminated string
 const permission = 644o         // octal number, yasm style

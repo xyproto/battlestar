@@ -1,22 +1,22 @@
-extern main                    // make C function available here (not strictly needed for the "main" function)
+extern main                    // make C function available here
 
 const dirname = "testdir", 0   // zero terminated string
 const permission = 644o        // octal number, yasm style
-const msg = "success", 10  // "success" followed by a newline
+const msg = "success", 10      // "success" followed by a newline
 
 fun makedir
     inline_c
         void makedir(char* dirname); // Make function available to C
     end
-    intparam[1] = param[0]      // parameter 1 to the interrupt call is parameter 0 to the function
+    intparam[1] = param[0]           // parameter 1 to the interrupt call is parameter 0 to the function
     // syscall: mkdir
-    int(80, 39, _, permission)  // skip parameter 1 to the interrupt call, already set
+    int(80, 39, _, permission)       // skip parameter 1 to the interrupt call, already set
 end
 
 fun removedir
-    intparam[1] = param[0]      // parameter 1 to the interrupt call is parameter 0 to the function
+    intparam[1] = param[0]           // parameter 1 to the interrupt call is parameter 0 to the function
     // syscall: rmdir
-    int(80, 40, _)              // skip parameter 1 to the interrupt call, already set
+    int(80, 40, _)                   // skip parameter 1 to the interrupt call, already set
 end
 
 fun success
