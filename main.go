@@ -59,15 +59,15 @@ var (
 	operators = []string{"=", "+=", "-=", "*=", "/="}
 	keywords  = []string{"fun", "ret", "const", "call", "extern", "end", "bootable"}
 	builtins  = []string{"len", "int", "exit", "hang"} // built-in functions
-	reserved  = []string{"param", "intparam"}  // built-in lists that can be accessed with [index]
+	reserved  = []string{"param", "intparam"}          // built-in lists that can be accessed with [index]
 
 	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard", RESERVED: "reserved", VARIABLE: "variable"}
 
 	// 32-bit (i686) or 64-bit (x86_64)
 	platform_bits = 32
 
-    // Is this a bootable kernel? (declared with "bootable" at the top)
-    bootable_kernel = false
+	// Is this a bootable kernel? (declared with "bootable" at the top)
+	bootable_kernel = false
 
 	// OS X or Linux
 	osx = false
@@ -175,12 +175,14 @@ func removecomments(s string) string {
 func tokenize(program string, debug bool) []Token {
 	statements := maps(maps(strings.Split(program, "\n"), strings.TrimSpace), removecomments)
 	tokens := make([]Token, 0, 0)
-	var t Token
-	var instring bool    // Have we encountered a " for any given statement?
-	var collected string // Collected string, until end of line
-	inline_c = false     // Are we in parts of the code that are inline_c ... end ?
-	c_block = false      // Are we in parts of the code that are void ... } ?
-	var statementnr uint
+	var (
+		t           Token
+		instring    bool    // Have we encountered a " for any given statement?
+		collected   string  // Collected string, until end of line
+		inline_c    = false // Are we in parts of the code that are inline_c ... end ?
+		c_block     = false // Are we in parts of the code that are void ... } ?
+		statementnr uint
+	)
 	for statementnr_int, statement := range statements {
 		// TODO: Use line number instead of statement number (but statement numbers are better than nothing)
 		statementnr = uint(statementnr_int)
@@ -411,8 +413,7 @@ func reduce(st Statement, debug bool) Statement {
 }
 
 func paramnum2reg(num int) string {
-	var offset string
-	var reg string
+	var offset, reg string
 	if platform_bits == 32 {
 		offset = strconv.Itoa(8 + num*4)
 		reg = "ebp"
@@ -550,9 +551,9 @@ func (st Statement) String() string {
 			if st[i].value == "_" {
 				codeline = "\t\t"
 			} else {
-                if st[i].value == "0" {
+				if st[i].value == "0" {
 					codeline = "\txor " + reg + ", " + reg
-                } else {
+				} else {
 					codeline = "\tmov " + reg + ", " + st[i].value
 				}
 			}
@@ -566,9 +567,9 @@ func (st Statement) String() string {
 		}
 		// Add the interrupt call
 		if st[1].t == VALUE {
-            // Assume that interrupts will always be given in hex and that a missing 0x is just forgotten
-            if !strings.HasPrefix(st[1].value, "0x") {
-                log.Println("Note: Adding 0x in front of interrupt", st[1].value)
+			// Assume that interrupts will always be given in hex and that a missing 0x is just forgotten
+			if !strings.HasPrefix(st[1].value, "0x") {
+				log.Println("Note: Adding 0x in front of interrupt", st[1].value)
 				asmcode += "\tint 0x" + st[1].value + "\t\t\t; perform the call\n"
 			} else {
 				asmcode += "\tint " + st[1].value + "\t\t\t; perform the call\n"
@@ -627,13 +628,13 @@ func (st Statement) String() string {
 		// TODO: add the variable name to the proper global maps and slices
 		log.Println("WARNING: Local variables are to be implemented, only one is supported for now")
 		return "\tmov [rbp-8], " + st[2].value + "\t\t\t; " + "local variable 1" + "\n"
-    } else if (st[0].t == BUILTIN) && (st[0].value == "hang") {
-        asmcode := "\t; --- hang and loop forever ---\n"
+	} else if (st[0].t == BUILTIN) && (st[0].value == "hang") {
+		asmcode := "\t; --- hang and loop forever ---\n"
 		asmcode += "\tcli\t\t; stop interrupts\n"
-        asmcode += ".hang:\n"
-        asmcode += "\thlt\n"
-        asmcode += "\tjmp .hang\t; loop\n\n"
-        return asmcode
+		asmcode += ".hang:\n"
+		asmcode += "\thlt\n"
+		asmcode += "\tjmp .hang\t; loop\n\n"
+		return asmcode
 	} else if ((st[0].t == KEYWORD) && (st[0].value == "ret")) || ((st[0].t == BUILTIN) && (st[0].value == "exit")) {
 		asmcode := ""
 		if st[0].value == "ret" {
@@ -651,7 +652,7 @@ func (st Statement) String() string {
 			}
 		}
 		if in_function != "" {
-            if !bootable_kernel {
+			if !bootable_kernel {
 				asmcode += "\t;--- return from \"" + in_function + "\" ---\n"
 			}
 		} else if st[0].value == "exit" {
@@ -679,7 +680,15 @@ func (st Statement) String() string {
 			}
 			if !bootable_kernel {
 				if platform_bits == 32 {
-					asmcode += "\tmov eax, 1\t\t\t; function call: 1\n\tmov ebx, " + exit_code + "\t\t\t; return code " + exit_code + "\n\tint 0x80\t\t\t; exit program\n"
+					if osx {
+						asmcode += "\tpush dword " + exit_code + "\t\t\t; exit code " + exit_code + "\n"
+						asmcode += "\tsub esp, 4\t\t\t; this is the BSD way, push then subtract before calling\n"
+					}
+					asmcode += "\tmov eax, 1\t\t\t; function call: 1\n"
+					if !osx {
+						asmcode += "\tmov ebx, " + exit_code + "\t\t\t; exit code " + exit_code + "\n"
+					}
+					asmcode += "\tint 0x80\t\t\t; exit program\n"
 				} else {
 					asmcode += "\tmov rax, 1\t\t\t; function call: 1\n\tmov rbx, " + exit_code + "\t\t\t; return code " + exit_code + "\n\tint 0x80\t\t\t; exit program\n"
 				}
@@ -708,7 +717,7 @@ func (st Statement) String() string {
 		// Statements like "eax = 3" are handled here
 		// TODO: Handle all sorts of equivivalents to assembly statements
 		if (st[0].t == REGISTER) && (st[1].t == ASSIGNMENT) && (st[2].t == VALUE || st[2].t == VALID_NAME) {
-            if st[2].value == "0" {
+			if st[2].value == "0" {
 				return "\txor " + st[0].value + ", " + st[0].value + "\t\t; " + st[0].value + " " + st[1].value + " " + st[2].value
 			} else {
 				return "\tmov " + st[0].value + ", " + st[2].value + "\t\t; " + st[0].value + " " + st[1].value + " " + st[2].value
@@ -786,9 +795,9 @@ func (st Statement) String() string {
 		// TODO: Find a shorter format to describe matching tokens.
 		// Something along the lines of: if match(st, [KEYWORD:"extern"], 2)
 	} else if (st[0].t == KEYWORD) && (st[0].value == "bootable") && (len(st) == 1) {
-       bootable_kernel = true
+		bootable_kernel = true
 		// This program is supposed to be bootable
-	   return `
+		return `
 ; Thanks to http://wiki.osdev.org/Bare_Bones_with_NASM
 
 ; Declare constants used for creating a multiboot header.
@@ -1000,18 +1009,56 @@ func add_starting_point_if_missing(asmcode string) string {
 	return asmcode
 }
 
-func add_exit_token_if_missing(tokens []Token) []Token {
-	var lasttoken Token
-	for i := len(tokens) - 1; i >= 0; i-- {
-		if tokens[i].t == SEP {
-			continue
+// Creates and returns a function that can check if
+// a given token is one of the allowed types
+type TokenFilter (func(Token) bool)
+
+// Take a list of permitted token types.
+// Return a TokenFilter function.
+func only(tokentypes []TokenType) TokenFilter {
+	return func(t Token) bool {
+		for _, tt := range tokentypes {
+			if t.t == tt {
+				return true
+			}
 		}
-		//log.Println("LAST PROPER TOKEN", tokens[i])
-		lasttoken = tokens[i]
-		break
+		return false
+	}
+}
+
+// Only return the tokens that the given filter function
+// returns true for.
+func filtertokens(tokens []Token, filterfunc TokenFilter) []Token {
+	newtokens := make([]Token, 0, 0)
+	for _, t := range tokens {
+		if filterfunc(t) {
+			newtokens = append(newtokens, t)
+		}
+	}
+	return newtokens
+}
+
+func add_exit_token_if_missing(tokens []Token) []Token {
+	var (
+		twolast   []Token
+		lasttoken Token
+	)
+	filtered_tokens := filtertokens(tokens, only([]TokenType{KEYWORD, BUILTIN, VALUE}))
+	if len(filtered_tokens) >= 2 {
+		twolast = filtered_tokens[len(filtered_tokens)-2:]
+		if twolast[1].t == VALUE {
+			lasttoken = twolast[0]
+		} else {
+			lasttoken = twolast[1]
+		}
+	} else if len(filtered_tokens) == 1 {
+		lasttoken = filtered_tokens[0]
+	} else {
+		// less than one token, don't add anything
+		return tokens
 	}
 
-	// If the last keyword token is ret or end, all is well, return the same tokens
+	// If the last keyword token is ret, exit or end, all is well, return the same tokens
 	if (lasttoken.t == KEYWORD) && ((lasttoken.value == "ret") || (lasttoken.value == "end")) {
 		return tokens
 	}
@@ -1021,10 +1068,7 @@ func add_exit_token_if_missing(tokens []Token) []Token {
 		return tokens
 	}
 
-	//log.Fatalln("Error: Last token is not ret")
-
 	// If not, add an exit statement and return
-
 	newtokens := make([]Token, len(tokens)+2, len(tokens)+2)
 	for i, _ := range tokens {
 		newtokens[i] = tokens[i]
@@ -1037,9 +1081,6 @@ func add_exit_token_if_missing(tokens []Token) []Token {
 	// TODO: Check that the line nr is correct
 	sep_token := Token{SEP, ";", newtokens[len(newtokens)-1].line}
 	newtokens[len(tokens)+1] = sep_token
-
-	//log.Println(tokens)
-	//log.Println(newtokens)
 
 	return newtokens
 }
@@ -1078,7 +1119,6 @@ func main() {
 	cfile := *c_file
 	btsfile := *bts_file
 
-
 	// TODO: Consider adding an option for "start" as well, or a custom
 	// start symbol
 
@@ -1106,14 +1146,14 @@ func main() {
 		asmdata += fmt.Sprintf("; Generated with %s %s, at %s\n\n", name, version, t.String()[:16])
 
 		// If "bootable" is the first token
-        bootable := false
+		bootable := false
 		if temptokens := tokenize(string(bytes), true); (len(temptokens) > 2) && (temptokens[0].t == KEYWORD) && (temptokens[0].value == "bootable") && (temptokens[1].t == SEP) {
-            bootable = true
-		    // Header for bootable kernels, use 32-bit assembly
-		    platform_bits = 32
+			bootable = true
+			// Header for bootable kernels, use 32-bit assembly
+			platform_bits = 32
 			asmdata += fmt.Sprintf("bits %d\n", platform_bits)
 		} else {
-		    // Header for regular programs
+			// Header for regular programs
 			asmdata += fmt.Sprintf("bits %d\n", platform_bits)
 			asmdata += fmt.Sprintln("section .text\n")
 		}

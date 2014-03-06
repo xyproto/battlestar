@@ -1,7 +1,7 @@
 all: boot
 
 boot:
-	@../samples/generate.sh bootable
+	@../scripts/generate.sh bootable
 	@mv boot boot.bin
 	@chmod -x boot.bin
 	@echo 'Try running boot.bin with qemu'

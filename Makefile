@@ -9,6 +9,10 @@ full_clean: clean
 	make -C test_bits clean
 	make -C samples clean
 	make -C kernel clean
+	make -C osx clean
+
+osx:
+	make -C osx
 
 battlestarc:
 	@rm -f battlestar # Make sure only "battlestarc" is present, not "battlestar"

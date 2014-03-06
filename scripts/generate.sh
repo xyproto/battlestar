@@ -116,7 +116,7 @@ for f in *.bts; do
     $ldcmd "$n.o" -o "$n" || echo "$n failed to link"
   fi
   if [ -e $n ]; then
-    require sstrip 2 && sstrip "$n" || strip -R .comment "$n"
+    require sstrip 2 && sstrip "$n" || { [ $osx = false ] && strip -R .comment "$n"; }
   fi
   echo
 done

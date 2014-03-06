@@ -1,0 +1,6 @@
+# This program does nothing but exiting gracefully
+
+fun main
+end
+
+// vim: set syntax=c ts=4 sw=4 et:
