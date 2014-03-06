@@ -29,13 +29,16 @@ asmcmd="yasm -f elf64"
 ldcmd='ld -s --fatal-warnings -nostdlib --relax'
 cccmd="gcc -Os -m64 -nostdlib -nostdinc -std=c99"
 
-if [ $bits = 32 -o $1 == bootable ]; then
+if [ $bits = 32 ]; then
   asmcmd="yasm -f elf32"
   ldcmd='ld -s -melf_i386 --fatal-warnings -nostdlib --relax'
   cccmd='gcc -Os -m32 -nostdlib -nostdinc -std=c99'
 fi
 
 if [[ $1 == bootable ]]; then
+  asmcmd="yasm -f elf32"
+  ldcmd='ld -s -melf_i386 --fatal-warnings -nostdlib --relax'
+  cccmd='gcc -Os -m32 -nostdlib -nostdinc -std=c99'
   echo 'Building a bootable kernel.'
   echo
   cccmd="$cccmd -ffreestanding -Wall -Wextra -fno-exceptions"
