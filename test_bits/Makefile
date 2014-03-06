@@ -18,6 +18,7 @@ hi32:
 	@echo ok
 
 hi64:
+	@[ $(BITS) = 32 ] && { echo 'Skipping the 64-bit version on 32-bit platform'; exit 1; }
 	../battlestarc -bits=64 -f hi.bts -o $(GENERATED_ASM) -oc $(GENERATED_C) 2>/dev/null
 	@hash gcc 2>/dev/null || { echo 'No gcc in path'; exit 1; }
 	gcc -Os -m64 -nostdlib -c $(GENERATED_C) -o hi_c.o
