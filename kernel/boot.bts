@@ -1,0 +1,26 @@
+bootable                       // this is not a regular source file, but a kernel
+
+extern kernel_main             // the C function that is called when booting
+
+fun success
+    int(10, 0x13)              // mode 13h, 320x200 256 colors
+
+    // ref: http://en.wikipedia.org/wiki/INT_10H
+    ah = 0x0C                  // write a pixel
+    al = 28                    // color
+    bh = 0                     // page
+    cx = 0                     // x coordinate
+    dx = 0                     // y coordinate
+    int(10) //, _, 0, 0, 0)
+end
+
+fun main
+    kernel_main
+    hang
+end
+
+void kernel_main() {
+    success();                  // Write a red pixel
+}
+
+// vim: set syntax=c ts=4 sw=4 et:

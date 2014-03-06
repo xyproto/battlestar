@@ -25,13 +25,69 @@ fi
 
 bits=`getconf LONG_BIT`
 osx=$([[ `uname -s` = Darwin ]] && echo true || echo false)
-asmcmd="yasm -f elf$bits"
+asmcmd="yasm -f elf64"
 ldcmd='ld -s --fatal-warnings -nostdlib --relax'
-cccmd="gcc -Os -m64 -nostdlib"
+cccmd="gcc -Os -m64 -nostdlib -nostdinc -std=c99"
 
-if [[ $bits = 32 ]]; then
+if [ $bits = 32 -o $1 == bootable ]; then
+  asmcmd="yasm -f elf32"
   ldcmd='ld -s -melf_i386 --fatal-warnings -nostdlib --relax'
-  cccmd='gcc -Os -m32 -nostdlib'
+  cccmd='gcc -Os -m32 -nostdlib -nostdinc -std=c99'
+fi
+
+if [[ $1 == bootable ]]; then
+  echo 'Building a bootable kernel.'
+  echo
+  cccmd="$cccmd -ffreestanding -Wall -Wextra -fno-exceptions"
+  echo "$cccmd"
+
+  # From http://wiki.osdev.org/Bare_Bones#Linking_the_Kernel
+  cat > linker.ld <<EOF
+ENTRY(_start)
+
+/* Tell where the various sections of the object files will be put in the final
+   kernel image. */
+SECTIONS
+{
+	/* Begin putting sections at 1 MiB, a conventional place for kernels to be
+	   loaded at by the bootloader. */
+	. = 1M;
+
+	/* First put the multiboot header, as it is required to be put very early
+	   early in the image or the bootloader won't recognize the file format.
+	   Next we'll put the .text section. */
+	.text BLOCK(4K) : ALIGN(4K)
+	{
+		*(.multiboot)
+		*(.text)
+	}
+
+	/* Read-only data. */
+	.rodata BLOCK(4K) : ALIGN(4K)
+	{
+		*(.rodata)
+	}
+
+	/* Read-write data (initialized) */
+	.data BLOCK(4K) : ALIGN(4K)
+	{
+		*(.data)
+	}
+
+	/* Read-write data (uninitialized) and stack */
+	.bss BLOCK(4K) : ALIGN(4K)
+	{
+		*(COMMON)
+		*(.bss)
+		*(.bootstrap_stack)
+	}
+
+	/* The compiler may produce other sections, by default it will put them in
+	   a segment with the same name. Simply add stuff here as needed. */
+}
+EOF
+  ldcmd="$ldcmd -T linker.ld"
+  echo $ldcmd
 fi
 
 if [[ $osx = true ]]; then
@@ -57,7 +113,7 @@ for f in *.bts; do
     $ldcmd "$n.o" -o "$n" || echo "$n failed to link"
   fi
   if [ -e $n ]; then
-    require sstrip 2 && sstrip "$n"
+    require sstrip 2 && sstrip "$n" || strip -R .comment "$n"
   fi
   echo
 done
