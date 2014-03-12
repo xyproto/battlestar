@@ -1,0 +1,4 @@
+* Add and fix local variables. Use the .bss section.
+* Remove the [ebp-8] local variable testing code.
+* Add the assembly version of printf.
+* Make it easy to link with OpenGL or SDL2.

@@ -586,7 +586,18 @@ func (st Statement) String() string {
 				if st[i].value == "0" {
 					codeline = "\txor " + reg + ", " + reg
 				} else {
-					codeline = "\tmov " + reg + ", " + st[i].value
+					// TODO: Remove special case, implement general local variables
+					if st[i].value == "x" {
+						if platform_bits == 32 {
+							codeline = "\tmov " + reg + ", ebp"
+							codeline += "\n\tsub " + reg + ", 8"
+						} else {
+							codeline = "\tmov " + reg + ", rbp"
+							codeline += "\n\tsub " + reg + ", 8"
+						}
+					} else {
+						codeline = "\tmov " + reg + ", " + st[i].value
+					}
 				}
 			}
 
@@ -669,7 +680,16 @@ func (st Statement) String() string {
 		// TODO: add the variable name to the proper global maps and slices
 		log.Println("WARNING: Local variables are to be implemented, only one is supported for now")
 		// TODO: Remember to sub ebp/rbp
-		return "\tmov DWORD [rbp-8], " + st[2].value + "\t\t\t; " + "local variable 1" + "\n"
+		// TODO: Remove this special case and implement general local variables
+		codeline := ""
+		if platform_bits == 32 {
+			codeline += "\tsub ebp, 8\n"
+			codeline += "\tmov DWORD [ebp-8], " + st[2].value + "\t\t\t; " + "local variable x!" + "\n"
+		} else {
+			codeline += "\tsub rbp, 16\n"
+			codeline += "\tmov QWORD [rbp-16], " + st[2].value + "\t\t\t; " + "local variable x!" + "\n"
+		}
+		return codeline
 	} else if (st[0].t == BUILTIN) && (st[0].value == "halt") {
 		asmcode := "\t; --- full stop ---\n"
 		asmcode += "\tcli\t\t; clear interrupts\n"
@@ -974,12 +994,16 @@ stack_top:
 		// negative base pointer offset for local variables
 		paramoffset := len(variables[in_function]) - 1
 		negative_offset := strconv.Itoa(paramoffset*4 + 8)
-		reg := "ebp"
-		if platform_bits == 64 {
+		reg := ""
+		asmcode := ""
+		if platform_bits == 32 {
+			reg = "ebp"
+			asmcode = "\tmov DWORD [" + reg + "-" + negative_offset + "], " + st[2:].String()
+		} else {
 			negative_offset = strconv.Itoa(paramoffset*8 + 8)
 			reg = "rbp"
+			asmcode = "\tmov QWORD [" + reg + "-" + negative_offset + "], " + st[2:].String()
 		}
-		asmcode := "\tmov DWORD [" + reg + "-" + negative_offset + "], " + st[2:].String()
 		asmcode += "\t\t; local variable #" + strconv.Itoa(paramoffset) + "\n"
 		return asmcode
 	} else if (st[0].t == KEYWORD) && (st[0].value == "inline_c") {
