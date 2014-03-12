@@ -18,8 +18,8 @@ Features
 * It's possible to write an operating system with only one source file
 * Full support for inline C (with gcc installed)
 * C and Battlestar code can exist in the same source file and calls can be made both ways.
-* Battlestar programs compiles almost instantly and can also be run like scripts by including this line at the top:
-  ```#!/usr/bin/bts```
+* Battlestar programs compiles almost instantly
+* Programs can be run like scripts by including this line at the top: ```#!/usr/bin/bts```
 * Interrupts can be called with the same syntax for both 32-bit and 64-bit x86 on Linux.
 
 In progress
