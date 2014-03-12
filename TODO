@@ -1,4 +1,4 @@
-* Add and fix local variables. Use the .bss section.
+* Add and fix local variables. Use the .bss section. (Remember to include .bss when building kernels)
 * Remove the [ebp-8] local variable testing code.
 * Add the assembly version of printf.
 * Make it easy to link with OpenGL or SDL2.
