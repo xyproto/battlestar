@@ -26,43 +26,48 @@ type (
 )
 
 const (
-	REGISTER    = 0
-	ASSIGNMENT  = 1
-	VALUE       = 2
-	KEYWORD     = 3
-	BUILTIN     = 4
-	VALID_NAME  = 5
-	STRING      = 6
-	DISREGARD   = 7
-	RESERVED    = 8
-	VARIABLE    = 9
-	ADDITION    = 10
-	SUBTRACTION = 11
-	SEP         = 127
-	UNKNOWN     = 255
+	REGISTER       = 0
+	ASSIGNMENT     = 1
+	VALUE          = 2
+	KEYWORD        = 3
+	BUILTIN        = 4
+	VALID_NAME     = 5
+	STRING         = 6
+	DISREGARD      = 7
+	RESERVED       = 8
+	VARIABLE       = 9
+	ADDITION       = 10
+	SUBTRACTION    = 11
+	MULTIPLICATION = 12
+	DIVISION       = 13
+	AND            = 14
+	OR             = 15
+	XOR            = 16
+	SEP            = 127
+	UNKNOWN        = 255
 )
 
 // Global variables
 var (
-	in_function   string              // name of the function we are currently in
-	inline_c      bool                // are we in a block of inline C? (inline_c ... end)
-	c_block       bool                // are we in a block of inline C? (void ... })
-	defined_names []string            // all defined variables/constants/functions
-	data_not_value_types []string     // all defined constants that are data (x: db 1,2,3,4...)
-	variables     map[string][]string // list of variable names per function name
-	types         map[string]string   // type of the defined names
+	in_function          string              // name of the function we are currently in
+	inline_c             bool                // are we in a block of inline C? (inline_c ... end)
+	c_block              bool                // are we in a block of inline C? (void ... })
+	defined_names        []string            // all defined variables/constants/functions
+	data_not_value_types []string            // all defined constants that are data (x: db 1,2,3,4...)
+	variables            map[string][]string // list of variable names per function name
+	types                map[string]string   // type of the defined names
 
 	registers = []string{"ah", "al", "bh", "bl", "ch", "cl", "dh", "dl", // 8-bit
 		"si", "di", "sp", "bp", "ip", "ax", "bx", "cx", "dx", // 16-bit
 		"eax", "ebx", "ecx", "edx", "esi", "edi", "esp", "ebp", "eip", // 32-bit
 		"rax", "rbx", "rcx", "rdx", "rsi", "rdi", "rsp", "rbp", "rip", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15", "sil", "dil", "spl", "bpl", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15"} // 64-bit
 
-	operators = []string{"=", "+=", "-=", "*=", "/="}
+	operators = []string{"=", "+=", "-=", "*=", "/=", "&=", "|="}
 	keywords  = []string{"fun", "ret", "const", "call", "extern", "end", "bootable"}
-	builtins  = []string{"len", "int", "exit", "hang"} // built-in functions
+	builtins  = []string{"len", "int", "exit", "halt"} // built-in functions
 	reserved  = []string{"param", "intparam"}          // built-in lists that can be accessed with [index]
 
-	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard", RESERVED: "reserved", VARIABLE: "variable"}
+	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard", RESERVED: "reserved", VARIABLE: "variable", ADDITION: "addition", SUBTRACTION: "subtraction", MULTIPLICATION: "multiplication", DIVISION: "division"}
 
 	// 32-bit (i686) or 64-bit (x86_64)
 	platform_bits = 32
@@ -87,6 +92,20 @@ func haskey(sm map[TokenType]string, key TokenType) bool {
 	return present
 }
 
+// Represent a Token as a string
+func (tok Token) String() string {
+	if tok.t == SEP {
+		return ";"
+	} else if haskey(token_to_string, tok.t) {
+		return token_to_string[tok.t] + ":" + tok.value
+	}
+	//log.Fatalln("Error when serializing: Unfamiliar token type when representing token as string: " + tok.value)
+	//log.Fatalln("Error: What is this? " + tok.value)
+	log.Fatalln("Error: Unfamiliar token: " + tok.value)
+	return "!?"
+}
+
+// Represent a TokenType as a string
 func (toktyp TokenType) String() string {
 	if toktyp == SEP {
 		return ";"
@@ -94,16 +113,6 @@ func (toktyp TokenType) String() string {
 		return token_to_string[toktyp]
 	}
 	log.Fatalln("Error when serializing: Unfamiliar token type when representing tokentype as string: ", int(toktyp))
-	return "!?"
-}
-
-func (tok Token) String() string {
-	if tok.t == SEP {
-		return ";"
-	} else if haskey(token_to_string, tok.t) {
-		return token_to_string[tok.t] + ":" + tok.value
-	}
-	log.Fatalln("Error when serializing: Unfamiliar token type when representing token as string: " + tok.value)
 	return "!?"
 }
 
@@ -262,6 +271,16 @@ func tokenize(program string, debug bool) []Token {
 					tokentype = ADDITION
 				case "-=":
 					tokentype = SUBTRACTION
+				case "*=":
+					tokentype = MULTIPLICATION
+				case "/=":
+					tokentype = DIVISION
+				case "&=":
+					tokentype = AND
+				case "|=":
+					tokentype = OR
+				case "^=":
+					tokentype = XOR
 				default:
 					log.Fatalln("Error: Unhandled operator:", word)
 				}
@@ -550,7 +569,7 @@ func (st Statement) String() string {
 					} else {
 						if st[i].value == "_" {
 							// When _ is given, use the value already in the corresponding register
-							comment = "parameter #" + n + " is already set"
+							comment = "parameter #" + n + " is supposedly already set"
 						} else if has(data_not_value_types, st[i].value) {
 							comment = "parameter #" + n + " is " + "&" + st[i].value
 						} else {
@@ -649,13 +668,14 @@ func (st Statement) String() string {
 		//       (-8, -16, -24 etc for 64-bit)
 		// TODO: add the variable name to the proper global maps and slices
 		log.Println("WARNING: Local variables are to be implemented, only one is supported for now")
-		return "\tmov [rbp-8], " + st[2].value + "\t\t\t; " + "local variable 1" + "\n"
-	} else if (st[0].t == BUILTIN) && (st[0].value == "hang") {
-		asmcode := "\t; --- hang and loop forever ---\n"
-		asmcode += "\tcli\t\t; stop interrupts\n"
+		// TODO: Remember to sub ebp/rbp
+		return "\tmov DWORD [rbp-8], " + st[2].value + "\t\t\t; " + "local variable 1" + "\n"
+	} else if (st[0].t == BUILTIN) && (st[0].value == "halt") {
+		asmcode := "\t; --- full stop ---\n"
+		asmcode += "\tcli\t\t; clear interrupts\n"
 		asmcode += ".hang:\n"
 		asmcode += "\thlt\n"
-		asmcode += "\tjmp .hang\t; loop\n\n"
+		asmcode += "\tjmp .hang\t; loop forever\n\n"
 		return asmcode
 	} else if ((st[0].t == KEYWORD) && (st[0].value == "ret")) || ((st[0].t == BUILTIN) && (st[0].value == "exit")) {
 		asmcode := ""
@@ -684,12 +704,20 @@ func (st Statement) String() string {
 		}
 		if (len(st) == 2) && (st[1].t == VALUE) {
 			if platform_bits == 32 {
-				asmcode += "\tmov eax, " + st[1].value + "\t\t\t; Error code "
+				if st[1].value == "0" {
+					asmcode += "\txor eax, eax\t\t\t; Error code "
+				} else {
+					asmcode += "\tmov eax, " + st[1].value + "\t\t\t; Error code "
+				}
 			} else {
-				asmcode += "\tmov rax, " + st[1].value + "\t\t\t; Error code "
+				if st[1].value == "0" {
+					asmcode += "\txor rax, rax\t\t\t; Error code "
+				} else {
+					asmcode += "\tmov rax, " + st[1].value + "\t\t\t; Error code "
+				}
 			}
 			if st[1].value == "0" {
-				asmcode += "0 (everything is fine)\n"
+				asmcode += "0 (ok)\n"
 			} else {
 				asmcode += st[1].value + "\n"
 			}
@@ -708,16 +736,28 @@ func (st Statement) String() string {
 					}
 					asmcode += "\tmov eax, 1\t\t\t; function call: 1\n"
 					if !osx {
-						asmcode += "\tmov ebx, " + exit_code + "\t\t\t; exit code " + exit_code + "\n"
+						asmcode += "\t"
+						if exit_code == "0" {
+							asmcode += "xor ebx, ebx"
+						} else {
+							asmcode += "mov ebx, " + exit_code
+						}
+						asmcode += "\t\t\t; exit code " + exit_code + "\n"
 					}
 					asmcode += "\tint 0x80\t\t\t; exit program\n"
 				} else {
-					asmcode += "\tmov rax, 1\t\t\t; function call: 1\n\tmov rbx, " + exit_code + "\t\t\t; return code " + exit_code + "\n\tint 0x80\t\t\t; exit program\n"
+					asmcode += "\tmov rax, 1\t\t\t; function call: 1\n\t"
+					if exit_code == "0" {
+						asmcode += "xor rbx, rbx"
+					} else {
+						asmcode += "mov rbx, " + exit_code
+					}
+					asmcode += "\t\t\t; return code " + exit_code + "\n\tint 0x80\t\t\t; exit program\n"
 				}
 			} else {
 				// For bootable kernels, main does not return. Hang instead.
-				log.Println("Warning: Bootable kernels has nowhere to return after the main function. You might want to use the \"hang\" builtin at the end of the main function.")
-				//asmcode += Statement{Token{BUILTIN, "hang", st[0].line}}.String()
+				log.Println("Warning: Bootable kernels has nowhere to return after the main function. You might want to use the \"halt\" builtin at the end of the main function.")
+				//asmcode += Statement{Token{BUILTIN, "halt", st[0].line}}.String()
 			}
 		} else {
 			log.Println("IN FUNCTION", in_function)
@@ -750,7 +790,7 @@ func (st Statement) String() string {
 			} else {
 				log.Fatalln("Error:", st[0].value, "is not recognized as a register (and there is no const qualifier). Can't assign.")
 			}
-		} else if (st[0].t == DISREGARD) && (st[1].t == ASSIGNMENT) {
+		} else if (st[0].t == DISREGARD) {
 			// TODO: If st[2] is a function, one wishes to call it, then disregard afterwards
 			return "\t\t\t\t; Disregarding: " + st[2].value + "\n"
 		} else if (st[0].t == REGISTER) && (st[1].t == ASSIGNMENT) && (st[2].t == REGISTER) {
@@ -773,6 +813,50 @@ func (st Statement) String() string {
 				log.Fatalln("Error: Can only handle \"param\" lists.")
 			}
 		}
+		if (st[1].t == ADDITION) && (st[2].t == VALUE) {
+			if st[2].value == "1" {
+				return "\tinc " + st[0].value + "\t\t\t; " + st[0].value + "++"
+			}
+			return "\tadd " + st[0].value + ", " + st[2].value + "\t\t; " + st[0].value + " += " + st[2].value
+		} else if (st[1].t == SUBTRACTION) && (st[2].t == VALUE) {
+			if st[2].value == "1" {
+				return "\tdec " + st[0].value + "\t\t\t; " + st[0].value + "--"
+			}
+			return "\tsub " + st[0].value + ", " + st[2].value + "\t\t; " + st[0].value + " -= " + st[2].value
+		} else if (st[1].t == MULTIPLICATION) && (st[2].t == VALUE) {
+			// TODO: Don't use a list, write a function that covers the lot
+			shifts := []string{"2", "4", "8", "16", "32", "64", "128"}
+			if has(shifts, st[2].value) {
+				pos := 0
+				for i, v := range shifts {
+					if v == st[2].value {
+						// Found the appropriate shift value
+						pos = i + 1
+						break
+					}
+				}
+				return "\tshl " + st[0].value + ", " + strconv.Itoa(pos) + "\t\t; " + st[0].value + " *= " + st[2].value
+			} else {
+				return "\timul " + st[0].value + ", " + st[2].value + "\t\t; " + st[0].value + " *= " + st[2].value
+			}
+		} else if (st[1].t == DIVISION) && (st[2].t == VALUE) {
+			// TODO: Don't use a list, write a function that covers the lot
+			shifts := []string{"2", "4", "8", "16", "32", "64", "128"}
+			if has(shifts, st[2].value) {
+				pos := 0
+				for i, v := range shifts {
+					if v == st[2].value {
+						// Found the appropriate shift value
+						pos = i + 1
+						break
+					}
+				}
+				return "\tshr " + st[0].value + ", " + strconv.Itoa(pos) + "\t\t; " + st[0].value + " /= " + st[2].value
+			} else {
+				return "\tidiv " + st[0].value + ", " + st[2].value + "\t\t; " + st[0].value + " /= " + st[2].value
+			}
+		}
+		log.Println("Unfamiliar 3-token expression!")
 	} else if (len(st) == 4) && (st[0].t == RESERVED) && (st[1].t == VALUE) && (st[2].t == ASSIGNMENT) && (st[3].t == REGISTER) {
 		retval := "\tmov " + reserved_and_value(st[:2]) + ", " + st[3].value + "\t\t\t; "
 		retval += fmt.Sprintf("%s[%s] = %s\n", st[0].value, st[1].value, st[3].value)
@@ -886,7 +970,7 @@ stack_top:
 		} else {
 			log.Fatalln("Error: No function named:", st[0].value)
 		}
-	} else if (st[0].t == VARIABLE) && (st[1].t == ASSIGNMENT) && (len(st) > 2) {
+	} else if (len(st) > 2) && (st[0].t == VARIABLE) && (st[1].t == ASSIGNMENT) {
 		// negative base pointer offset for local variables
 		paramoffset := len(variables[in_function]) - 1
 		negative_offset := strconv.Itoa(paramoffset*4 + 8)
@@ -895,7 +979,7 @@ stack_top:
 			negative_offset = strconv.Itoa(paramoffset*8 + 8)
 			reg = "rbp"
 		}
-		asmcode := "\tmov [" + reg + "-" + negative_offset + "], " + st[2:].String()
+		asmcode := "\tmov DWORD [" + reg + "-" + negative_offset + "], " + st[2:].String()
 		asmcode += "\t\t; local variable #" + strconv.Itoa(paramoffset) + "\n"
 		return asmcode
 	} else if (st[0].t == KEYWORD) && (st[0].value == "inline_c") {
@@ -1085,8 +1169,8 @@ func add_exit_token_if_missing(tokens []Token) []Token {
 		return tokens
 	}
 
-	// If the last builtin token is exit or hang, all is well, return the same tokens
-	if (lasttoken.t == BUILTIN) && ((lasttoken.value == "exit") || (lasttoken.value == "hang")) {
+	// If the last builtin token is exit or halt, all is well, return the same tokens
+	if (lasttoken.t == BUILTIN) && ((lasttoken.value == "exit") || (lasttoken.value == "halt")) {
 		return tokens
 	}
 

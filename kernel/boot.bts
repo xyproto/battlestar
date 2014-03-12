@@ -16,7 +16,7 @@ end
 
 fun main
     kernel_main
-    hang
+    halt                       // clear interrupts, halt and loop forever
 end
 
 void kernel_main() {

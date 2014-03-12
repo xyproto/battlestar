@@ -1,10 +1,25 @@
 fun main
-    x = 2
-    ax = x
-    ax += 63 // should now be 65 ('A')
-    param[2] = ax // rcx = ax
-    int(80, 4, 1, _, 1)
-    int(80, 4, 1, 10, 1) // print a newline (byte 10, 1 of them)
+    x = 0
+    rax = 2    // 2
+    rax *= 2   // 4
+    rax -= 5   // -1
+    rax += 1   // 0
+    rax += 2   // 2
+    rax /= 2   // 1
+    rax *= 3   // 3
+    rax *= 3   // 9
+    rax -= 1   // 8
+    rax += 50  // 58
+    rax += 1   // 59
+    rax += 6   // should now be 65 (which is 'A')
+    x = rax
+
+    // Output the value
+    int(80, 4, 1, x, 1)
+
+    // Output a newline too
+    x = 10
+    int(80, 4, 1, x, 1)
 end
 
 // vim: set syntax=c ts=4 sw=4 et:
