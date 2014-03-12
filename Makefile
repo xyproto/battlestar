@@ -1,11 +1,17 @@
+DESTDIR = 
+PREFIX = /usr
+BINDIR = $(PREFIX)/bin
+
 all: clean battlestarc
 
 full: clean battlestarc
+	make -C helloworld
 	make -C test_bits
 	make -C samples
 	make -C kernel
 
 full_clean: clean
+	make -C helloworld clean
 	make -C test_bits clean
 	make -C samples clean
 	make -C kernel clean
@@ -20,3 +26,10 @@ battlestarc:
 
 clean:
 	rm -f battlestarc
+
+install-bin: battlestarc
+	install -Dm755 scripts/btstool.sh "$(DESTDIR)$(BINDIR)/bts"
+	[ -e $(DESTDIR)$(BINDIR)/objdump ] && install -Dm755 scripts/disasm.sh "$(DESTDIR)$(BINDIR)/disasm"
+	install -Dm755 battlestarc "$(DESTDIR)$(BINDIR)/battlestarc"
+
+install: install-bin

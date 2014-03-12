@@ -38,6 +38,7 @@ Optional runtime dependencies
 -----------------------------
 * gcc (for inline C support)
 * sstrip (part of elftools) for even smaller binaries
+* binutils (for disassembling with objdump)
 
 General information
 -------------------
