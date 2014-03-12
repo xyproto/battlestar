@@ -1119,6 +1119,22 @@ func main() {
 	cfile := *c_file
 	btsfile := *bts_file
 
+	if flag.Arg(0) != "" {
+		btsfile = flag.Arg(0)
+	}
+
+	if btsfile == "" {
+		log.Fatalln("Abort: An input filename is needed, either by -f or as first argument")
+	}
+
+	if asmfile == "" {
+		asmfile = btsfile + ".asm"
+	}
+
+	if cfile == "" {
+		cfile = btsfile + ".c"
+	}
+
 	// TODO: Consider adding an option for "start" as well, or a custom
 	// start symbol
 
@@ -1185,11 +1201,14 @@ func main() {
 		}
 	}
 
+	log.Println("--- Finalizing ---")
+
 	if asmdata != "" {
 		err = ioutil.WriteFile(asmfile, []byte(asmdata), 0644)
 		if err != nil {
 			log.Fatalln("Error: Unable to write to", asmfile)
 		}
+		log.Printf("Wrote %s (%d bytes)\n", asmfile, len(asmdata))
 	}
 
 	if cdata != "" {
@@ -1197,5 +1216,8 @@ func main() {
 		if err != nil {
 			log.Fatalln("Error: Unable to write to", cfile)
 		}
+		log.Printf("Wrote %s (%d bytes)\n", cfile, len(cdata))
 	}
+
+	log.Println("Done.")
 }
