@@ -48,6 +48,7 @@ var (
 	inline_c      bool                // are we in a block of inline C? (inline_c ... end)
 	c_block       bool                // are we in a block of inline C? (void ... })
 	defined_names []string            // all defined variables/constants/functions
+	data_not_value_types []string     // all defined constants that are data (x: db 1,2,3,4...)
 	variables     map[string][]string // list of variable names per function name
 	types         map[string]string   // type of the defined names
 
@@ -84,6 +85,16 @@ var (
 func haskey(sm map[TokenType]string, key TokenType) bool {
 	_, present := sm[key]
 	return present
+}
+
+func (toktyp TokenType) String() string {
+	if toktyp == SEP {
+		return ";"
+	} else if haskey(token_to_string, toktyp) {
+		return token_to_string[toktyp]
+	}
+	log.Fatalln("Error when serializing: Unfamiliar token type when representing tokentype as string: ", int(toktyp))
+	return "!?"
 }
 
 func (tok Token) String() string {
@@ -346,7 +357,7 @@ func tokenize(program string, debug bool) []Token {
 					log.Println("ENTERING STRING")
 				}
 				instring = true
-				collected = word + " "
+				collected = word
 			} else if strings.Contains("0123456789$", string(word[0])) {
 				// Assume it's a value
 				t = Token{VALUE, word, statementnr}
@@ -540,8 +551,10 @@ func (st Statement) String() string {
 						if st[i].value == "_" {
 							// When _ is given, use the value already in the corresponding register
 							comment = "parameter #" + n + " is already set"
-						} else {
+						} else if has(data_not_value_types, st[i].value) {
 							comment = "parameter #" + n + " is " + "&" + st[i].value
+						} else {
+							comment = "parameter #" + n + " is " + st[i].value
 						}
 					}
 				}
@@ -595,7 +608,16 @@ func (st Statement) String() string {
 			// Store the name of the declared constant in defined_names
 			defined_names = append(defined_names, constname)
 			// For the .DATA section (recognized by the keyword)
-			asmcode += constname + ":\tdb "
+			if st[3].t == VALUE {
+				if platform_bits == 32 {
+					asmcode += constname + ":\tdw "
+				} else {
+					asmcode += constname + ":\tdq "
+				}
+			} else {
+				asmcode += constname + ":\tdb "
+				data_not_value_types = append(data_not_value_types, constname)
+			}
 			for i := 3; i < len(st); i++ {
 				asmcode += st[i].value
 				// Add a comma between every element but the last one

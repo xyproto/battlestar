@@ -27,21 +27,21 @@ bits=`getconf LONG_BIT`
 osx=$([[ `uname -s` = Darwin ]] && echo true || echo false)
 asmcmd="yasm -f elf64"
 ldcmd='ld -s --fatal-warnings -nostdlib --relax'
-cccmd="gcc -Os -m64 -nostdlib -nostdinc -std=c99"
+stdgcc='gcc -Os -nostdlib -nostdinc -std=c99 -Wno-implicit'
+cccmd="$stdgcc -m64"
 
 if [ $bits = 32 ]; then
   asmcmd="yasm -f elf32"
   ldcmd='ld -s -melf_i386 --fatal-warnings -nostdlib --relax'
-  cccmd='gcc -Os -m32 -nostdlib -nostdinc -std=c99'
+  cccmd="$stdgcc -m32"
 fi
 
 if [[ $1 == bootable ]]; then
   asmcmd="yasm -f elf32"
   ldcmd='ld -s -melf_i386 --fatal-warnings -nostdlib --relax'
-  cccmd='gcc -Os -m32 -nostdlib -nostdinc -std=c99'
   echo 'Building a bootable kernel.'
   echo
-  cccmd="$cccmd -ffreestanding -Wall -Wextra -fno-exceptions"
+  cccmd="$stdgcc -m32 -ffreestanding -Wall -Wextra -fno-exceptions -Wno-implicit"
   echo "$cccmd"
 
   # From http://wiki.osdev.org/Bare_Bones#Linking_the_Kernel

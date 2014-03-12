@@ -5,8 +5,9 @@ const permission = 644o        // octal number, yasm style
 const msg = "success", 10      // "success" followed by a newline
 
 fun makedir
+    // This inline C snippet is optional
     inline_c
-        void makedir(char* dirname); // Make function available to C
+        extern void makedir(char* dirname); // Make function available to C
     end
     intparam[1] = param[0]           // parameter 1 to the interrupt call is parameter 0 to the function
     // syscall: mkdir
@@ -25,6 +26,12 @@ end
 
 // Define the main function in C
 void main() {
+    // This is another way of declaring external functions in C.
+    // These are also optional.
+    //extern void removedir(char* dir);
+    //extern void success();
+
+    // Call the functions
     makedir("/tmp/testdir");
     removedir("/tmp/testdir");
     success();

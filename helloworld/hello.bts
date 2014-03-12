@@ -1,5 +1,7 @@
-const hello = "Hello World!", 10
+#!/usr/bin/bts
+
+const hello = "Hello, world!", 10
 
 fun main
     int(80, 4, 1, hello, len(hello))
-ret
+end

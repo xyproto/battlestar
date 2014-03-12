@@ -17,7 +17,10 @@ full_clean: clean
 	make -C kernel clean
 	make -C osx clean
 
-osx:
+hello: battlestarc
+	make -C helloworld
+
+osx: battlestarc
 	make -C osx
 
 battlestarc:
