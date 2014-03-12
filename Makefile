@@ -1,5 +1,5 @@
-DESTDIR = 
-PREFIX = /usr
+DESTDIR ?= 
+PREFIX ?= /usr
 BINDIR = $(PREFIX)/bin
 
 all: clean battlestarc
@@ -33,3 +33,8 @@ install-bin: battlestarc
 	install -Dm755 battlestarc "$(DESTDIR)$(BINDIR)/battlestarc"
 
 install: install-bin
+
+uninstall:
+	rm -f "$(DESTDIR)$(BINDIR)/bts"
+	rm -f "$(DESTDIR)$(BINDIR)/disasm"
+	rm -f "$(DESTDIR)$(BINDIR)/battlestarc"
