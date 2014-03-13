@@ -166,7 +166,7 @@ func retokenize(word string, sep string, debug bool) []Token {
 	var newtokens []Token
 	words := strings.Split(word, sep)
 	for _, s := range words {
-		tokens := tokenize(s, debug)
+		tokens := tokenize(s, debug, sep)
 		//log.Println("RETOKEN", tokens)
 		for _, t := range tokens {
 			if t.t != SEP {
@@ -192,7 +192,7 @@ func removecomments(s string) string {
 }
 
 // Tokenize a string
-func tokenize(program string, debug bool) []Token {
+func tokenize(program string, debug bool, sep string) []Token {
 	statements := maps(maps(strings.Split(program, "\n"), strings.TrimSpace), removecomments)
 	tokens := make([]Token, 0, 0)
 	var (
@@ -255,7 +255,7 @@ func tokenize(program string, debug bool) []Token {
 			}
 			// TODO: refactor out code that repeats the same thing
 			if instring {
-				collected += word + " "
+				collected += word + sep
 			} else if has(registers, word) {
 				t = Token{REGISTER, word, statementnr}
 				tokens = append(tokens, t)
@@ -376,7 +376,16 @@ func tokenize(program string, debug bool) []Token {
 					log.Println("ENTERING STRING")
 				}
 				instring = true
-				collected = word
+				// TODO: This does not work, see test02.asm and test03.asm
+				if !strings.HasSuffix(word, sep) {
+					if len(collected) == 0 {
+						collected += word + sep
+					} else {
+						collected += word + sep
+					}
+				} else {
+					collected += word + sep + "SEPEND"
+				}
 			} else if strings.Contains("0123456789$", string(word[0])) {
 				// Assume it's a value
 				t = Token{VALUE, word, statementnr}
@@ -397,9 +406,9 @@ func tokenize(program string, debug bool) []Token {
 			if debug {
 				log.Println("EXITING STRING AT END OF STATEMENT")
 				log.Println("STRING:", collected)
-				t = Token{STRING, collected, statementnr}
-				tokens = append(tokens, t)
 			}
+			t = Token{STRING, collected, statementnr}
+			tokens = append(tokens, t)
 			instring = false
 		}
 		t = Token{SEP, ";", statementnr}
@@ -554,16 +563,16 @@ func (st Statement) String() string {
 			comment string
 		)
 
-		from_i := 2 //inclusive
+		from_i := 2     //inclusive
 		to_i := len(st) // exclusive
 		step_i := 1
 		if osx {
 			// arguments are pushed in the opposite order for BSD/OSX
-			from_i = len(st)-1 //inclusive
-			to_i = 1 // exclusive
+			from_i = len(st) - 1 //inclusive
+			to_i = 1             // exclusive
 			step_i = -1
 		}
-		first_i := from_i // 2 for others, len(st)=1 for OSX/BSD
+		first_i := from_i       // 2 for others, len(st)=1 for OSX/BSD
 		last_i := to_i - step_i // 2 for OSX/BSD, len(st)-1 for others
 		for i := from_i; i != to_i; i += step_i {
 			reg = interrupt_parameter_registers[i-2]
@@ -609,8 +618,8 @@ func (st Statement) String() string {
 							codeline += "\n\tsub " + reg + ", 8"
 						}
 					} else {
-					    if osx {
-							if (i == last_i) {
+						if osx {
+							if i == last_i {
 								codeline = "\tmov " + reg + ", " + st[i].value
 							} else {
 								codeline = "\tpush dword " + st[i].value
@@ -631,8 +640,8 @@ func (st Statement) String() string {
 		}
 		// Add the interrupt call
 		if st[1].t == VALUE {
-		    if osx {
-			    // just the way function calls are made on BSD/OSX
+			if osx {
+				// just the way function calls are made on BSD/OSX
 				asmcode += "\tsub esp, 4\t\t\t; BSD system call preparation\n"
 			}
 			// Assume that interrupts will always be given in hex and that a missing 0x is just forgotten
@@ -643,7 +652,7 @@ func (st Statement) String() string {
 				asmcode += "\tint " + st[1].value + "\t\t\t; perform the call\n"
 			}
 			if osx {
-				pushcount := len(st)-2
+				pushcount := len(st) - 2
 				displacement := strconv.Itoa(pushcount * 4) // 4 bytes per push
 				asmcode += "\tadd esp, " + displacement + "\t\t\t; BSD system call cleanup\n"
 			}
@@ -840,7 +849,7 @@ func (st Statement) String() string {
 			} else {
 				log.Fatalln("Error:", st[0].value, "is not recognized as a register (and there is no const qualifier). Can't assign.")
 			}
-		} else if (st[0].t == DISREGARD) {
+		} else if st[0].t == DISREGARD {
 			// TODO: If st[2] is a function, one wishes to call it, then disregard afterwards
 			return "\t\t\t\t; Disregarding: " + st[2].value + "\n"
 		} else if (st[0].t == REGISTER) && (st[1].t == ASSIGNMENT) && (st[2].t == REGISTER) {
@@ -1324,7 +1333,7 @@ func main() {
 
 		// If "bootable" is the first token
 		bootable := false
-		if temptokens := tokenize(string(bytes), true); (len(temptokens) > 2) && (temptokens[0].t == KEYWORD) && (temptokens[0].value == "bootable") && (temptokens[1].t == SEP) {
+		if temptokens := tokenize(string(bytes), true, " "); (len(temptokens) > 2) && (temptokens[0].t == KEYWORD) && (temptokens[0].value == "bootable") && (temptokens[1].t == SEP) {
 			bootable = true
 			// Header for bootable kernels, use 32-bit assembly
 			platform_bits = 32
@@ -1342,7 +1351,7 @@ func main() {
 			interrupt_parameter_registers = []string{"rax", "rbx", "rcx", "rdx"}
 		}
 
-		tokens := add_exit_token_if_missing(tokenize(string(bytes), true))
+		tokens := add_exit_token_if_missing(tokenize(string(bytes), true, " "))
 		log.Println("--- Done tokenizing ---")
 		constants, asmcode := TokensToAssembly(tokens, true, false)
 		if constants != "" {
