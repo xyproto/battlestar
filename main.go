@@ -954,6 +954,7 @@ stack_bottom:
 times 16384 db 0
 stack_top:
 
+section .text
     `
 	} else if (st[0].t == KEYWORD) && (st[0].value == "extern") && (len(st) == 2) {
 		if st[1].t == VALID_NAME {

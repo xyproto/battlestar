@@ -36,6 +36,7 @@ if [ $bits = 32 ]; then
   cccmd="$stdgcc -m32"
 fi
 
+skipstrip=false
 if [[ $1 == bootable ]]; then
   asmcmd="yasm -f elf32"
   ldcmd='gcc -lgcc -nostdlib -Os -s -m32'
@@ -50,6 +51,7 @@ if [[ $1 == bootable ]]; then
     ldcmd="$ldcmd -T linker.ld"
   fi
   echo $ldcmd
+  skipstrip=true
 fi
 
 if [[ $osx = true ]]; then
@@ -74,7 +76,7 @@ for f in *.bts; do
   elif [ -e $n.o ]; then
     $ldcmd "$n.o" -o "$n" || echo "$n failed to link"
   fi
-  if [ -e $n ]; then
+  if [[ $skipstrip == false ]]; then
     [ $osx = false ] && strip -R .comment -R .gnu.version "$n"
     require sstrip 2 && sstrip "$n"
   fi
