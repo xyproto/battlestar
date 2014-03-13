@@ -27,7 +27,7 @@ bits=`getconf LONG_BIT`
 osx=$([[ `uname -s` = Darwin ]] && echo true || echo false)
 asmcmd="yasm -f elf64"
 ldcmd='ld -s --fatal-warnings -nostdlib --relax'
-stdgcc='gcc -Os -nostdlib -nostdinc -std=c99 -Wno-implicit'
+stdgcc='gcc -Os -nostdlib -nostdinc -std=c99 -Wno-implicit -ffast-math -fno-inline -fomit-frame-pointer'
 cccmd="$stdgcc -m64"
 
 if [ $bits = 32 ]; then
@@ -75,7 +75,8 @@ for f in *.bts; do
     $ldcmd "$n.o" -o "$n" || echo "$n failed to link"
   fi
   if [ -e $n ]; then
-    require sstrip 2 && sstrip "$n" || { [ $osx = false ] && strip -R .comment "$n"; }
+    [ $osx = false ] && strip -R .comment -R .gnu.version "$n"
+    require sstrip 2 && sstrip "$n"
   fi
   echo
 done
