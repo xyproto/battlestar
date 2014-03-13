@@ -539,6 +539,7 @@ func (st Statement) String() string {
 	} else if (st[0].t == BUILTIN) && (st[0].value == "int") { // interrrupt call
 		asmcode := "\t;--- call interrupt 0x" + st[1].value + " ---\n"
 		// Check the number of parameters
+		// TODO: Evaluate if more parameters should be supported
 		if len(st) > 6 {
 			log.Println("Error: Too many parameters for interrupt call:")
 			for _, t := range st {
@@ -552,10 +553,22 @@ func (st Statement) String() string {
 			n       string
 			comment string
 		)
-		for i := 2; i < len(st); i++ {
+
+		from_i := 2 //inclusive
+		to_i := len(st) // exclusive
+		step_i := 1
+		if osx {
+			// arguments are pushed in the opposite order for BSD/OSX
+			from_i = len(st)-1 //inclusive
+			to_i = 1 // exclusive
+			step_i = -1
+		}
+		first_i := from_i // 2 for others, len(st)=1 for OSX/BSD
+		last_i := to_i - step_i // 2 for OSX/BSD, len(st)-1 for others
+		for i := from_i; i != to_i; i += step_i {
 			reg = interrupt_parameter_registers[i-2]
 			n = strconv.Itoa(i - 2)
-			if (i - 2) == 0 {
+			if (osx && (i == last_i)) || (!osx && (i == first_i)) {
 				comment = "function call: " + st[i].value
 			} else {
 				if st[i].t == VALUE {
@@ -596,7 +609,15 @@ func (st Statement) String() string {
 							codeline += "\n\tsub " + reg + ", 8"
 						}
 					} else {
-						codeline = "\tmov " + reg + ", " + st[i].value
+					    if osx {
+							if (i == last_i) {
+								codeline = "\tmov " + reg + ", " + st[i].value
+							} else {
+								codeline = "\tpush dword " + st[i].value
+							}
+						} else {
+							codeline = "\tmov " + reg + ", " + st[i].value
+						}
 					}
 				}
 			}
@@ -610,12 +631,21 @@ func (st Statement) String() string {
 		}
 		// Add the interrupt call
 		if st[1].t == VALUE {
+		    if osx {
+			    // just the way function calls are made on BSD/OSX
+				asmcode += "\tsub esp, 4\t\t\t; BSD system call preparation\n"
+			}
 			// Assume that interrupts will always be given in hex and that a missing 0x is just forgotten
 			if !strings.HasPrefix(st[1].value, "0x") {
 				log.Println("Note: Adding 0x in front of interrupt", st[1].value)
 				asmcode += "\tint 0x" + st[1].value + "\t\t\t; perform the call\n"
 			} else {
 				asmcode += "\tint " + st[1].value + "\t\t\t; perform the call\n"
+			}
+			if osx {
+				pushcount := len(st)-2
+				displacement := strconv.Itoa(pushcount * 4) // 4 bytes per push
+				asmcode += "\tadd esp, " + displacement + "\t\t\t; BSD system call cleanup\n"
 			}
 			return asmcode
 		}
@@ -722,7 +752,7 @@ func (st Statement) String() string {
 		} else {
 			asmcode += "\t;--- return ---\n"
 		}
-		if (len(st) == 2) && (st[1].t == VALUE) {
+		if (len(st) == 2) && (st[1].t == VALUE) && !osx {
 			if platform_bits == 32 {
 				if st[1].value == "0" {
 					asmcode += "\txor eax, eax\t\t\t; Error code "
@@ -752,7 +782,7 @@ func (st Statement) String() string {
 				if platform_bits == 32 {
 					if osx {
 						asmcode += "\tpush dword " + exit_code + "\t\t\t; exit code " + exit_code + "\n"
-						asmcode += "\tsub esp, 4\t\t\t; this is the BSD way, push then subtract before calling\n"
+						asmcode += "\tsub esp, 4\t\t\t; the BSD way, push then subtract before calling\n"
 					}
 					asmcode += "\tmov eax, 1\t\t\t; function call: 1\n"
 					if !osx {
