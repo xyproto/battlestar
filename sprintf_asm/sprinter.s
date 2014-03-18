@@ -1,17 +1,7 @@
 /* 
- *
- * At the top, there are quite a few variable declarations for the "sprinter" and "myitoa" functions.
- * sprinter is a proper function that can be called from C, while myito is meant to be called from assembly only (with "call").
- * After the variable declarations, the "sprinter" function follows and then "myatoi" at the bottom.
- * Sprinter is a simplified implementation of the C sprintf function, while myitoa is a helper function for converting an integer to a string.
- * I've tried adding helpful comments and choosing sensible names for loops and variables (even though some of the variables have relatively short names).
- * Looking at the C file that is the draft for this assembly file may be a source of additional explanation, if needed.
- *
- * I've programmed 16-bit size optimized assembly in the past, but thought I should try a more "high level" approach to assembly this time.
- * Sorry in advance if the coding style is somewhat unconventional, using more variables than the average pice of assembly would contain.
- *
- * All tests pass.
- *
+ * "sprinter" uses C funtion calling conventions, while "myitoa" does not.
+ * sprinter is a simplified implementation of the C sprintf function, while myitoa is a helper function for converting an integer to a string.
+ * The c file is a draft for this file, which is why the assembly is so "C-like" (it was an experiment).
  */
 
 .data
@@ -416,7 +406,7 @@ check_formatting_letter:
     jmp	    letter_is_unknown
 
 
-/******************* Formatting letter is 'd' *************************/
+/******************* Formatting letter is 'c' *************************/
 
 letter_is_c:
 
