@@ -197,10 +197,11 @@ func tokenize(program string, debug bool, sep string) []Token {
 	tokens := make([]Token, 0, 0)
 	var (
 		t           Token
-		instring    bool    // Have we encountered a " for any given statement?
-		collected   string  // Collected string, until end of line
-		inline_c    = false // Are we in parts of the code that are inline_c ... end ?
-		c_block     = false // Are we in parts of the code that are void ... } ?
+		instring    = false    // Have we encountered a " for any given statement?
+		constexpr   = false    // Are we in a constant expression?
+		collected   string     // Collected string, until end of line
+		inline_c    = false    // Are we in parts of the code that are inline_c ... end ?
+		c_block     = false    // Are we in parts of the code that are void ... } ?
 		statementnr uint
 	)
 	for statementnr_int, statement := range statements {
@@ -246,6 +247,11 @@ func tokenize(program string, debug bool, sep string) []Token {
 			// In a block of inline C code, skip and don't include as tokens
 			// log.Println("Skipping when tokenizing:", words)
 			continue
+		}
+
+		// If we are defining a constant, ease up on tokenizing the rest of the line recursively
+		if words[0] == "const" {
+			constexpr = true
 		}
 
 		// Tokenize the words
@@ -361,7 +367,7 @@ func tokenize(program string, debug bool, sep string) []Token {
 					tokens = append(tokens, newtoken)
 				}
 				log.Println("NEWTOKENS", newtokens)
-			} else if strings.Contains(word, ",") {
+			} else if (!constexpr) && strings.Contains(word, ",") {
 				if debug {
 					log.Println("RETOKENIZE BECAUSE OF \",\"")
 				}
@@ -410,6 +416,8 @@ func tokenize(program string, debug bool, sep string) []Token {
 			t = Token{STRING, collected, statementnr}
 			tokens = append(tokens, t)
 			instring = false
+			constexpr = false
+			collected = ""
 		}
 		t = Token{SEP, ";", statementnr}
 		tokens = append(tokens, t)
