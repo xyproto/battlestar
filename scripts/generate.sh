@@ -38,13 +38,16 @@ fi
 
 skipstrip=false
 if [[ $1 == bootable ]]; then
-  asmcmd="yasm -f elf32"
-  ldcmd='gcc -lgcc -nostdlib -Os -s -m32'
   echo 'Building a bootable kernel.'
   echo
+
+  asmcmd="yasm -f elf32"
+  echo $asmcmd
+
   cccmd="$stdgcc -m32 -ffreestanding -Wall -Wextra -fno-exceptions -Wno-implicit"
   echo "$cccmd"
 
+  ldcmd='gcc -lgcc -nostdlib -Os -s -m32'
   if [ -e ../scripts/linker.ld ]; then
     ldcmd="$ldcmd -T ../scripts/linker.ld"
   elif [ -e linker.ld ]; then
