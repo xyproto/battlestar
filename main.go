@@ -197,11 +197,11 @@ func tokenize(program string, debug bool, sep string) []Token {
 	tokens := make([]Token, 0, 0)
 	var (
 		t           Token
-		instring    = false    // Have we encountered a " for any given statement?
-		constexpr   = false    // Are we in a constant expression?
-		collected   string     // Collected string, until end of line
-		inline_c    = false    // Are we in parts of the code that are inline_c ... end ?
-		c_block     = false    // Are we in parts of the code that are void ... } ?
+		instring    = false // Have we encountered a " for any given statement?
+		constexpr   = false // Are we in a constant expression?
+		collected   string  // Collected string, until end of line
+		inline_c    = false // Are we in parts of the code that are inline_c ... end ?
+		c_block     = false // Are we in parts of the code that are void ... } ?
 		statementnr uint
 	)
 	for statementnr_int, statement := range statements {
@@ -920,7 +920,99 @@ func (st Statement) String() string {
 				}
 				return "\tshr " + st[0].value + ", " + strconv.Itoa(pos) + "\t\t; " + st[0].value + " /= " + st[2].value
 			} else {
-				return "\tidiv " + st[0].value + ", " + st[2].value + "\t\t; " + st[0].value + " /= " + st[2].value
+				if platform_bits == 32 {
+					// Dividing a 64-bit number in edx:eax by the number in ecx. Clearing out edx and only using 32-bit numbers for now.
+					asmcode := ""
+					// If the register to be divided is rax, do a quicker division than if it's another register
+					if st[0].value == "eax" {
+						// save ecx
+						asmcode += "\tpush ecx\n"
+						// save edx
+						asmcode += "\tpush edx\n"
+						// xor rdx, rdx
+						asmcode += "\txor edx, edx\t\t; Clear out rdx to divide a 64-bit number instead of 128-bit\n"
+						// mov rcx, st[2].value
+						asmcode += "\tmov ecx, " + st[2].value + "\n"
+						// idiv rax
+						asmcode += "\tidiv eax\t\t; Divide rdx:rax by rcx and put result in rax\n"
+						// restore edx
+						asmcode += "\tpop edx\n"
+						// restore ecx
+						asmcode += "\tpop ecx\n"
+					} else {
+						// TODO: if the given register is a different one than eax, ecx and edx,
+						//       just divide directly with that register, like for eax above
+						// save eax
+						asmcode += "\tpush eax\n"
+						// save ecx
+						asmcode += "\tpush ecx\n"
+						// save edx
+						asmcode += "\tpush edx\n"
+						// copy number to be divided to eax
+						asmcode += "\tmov eax, " + st[0].value + "\t\t; Number to be divided\n"
+						// xor edx, edx
+						asmcode += "\txor edx, edx\t\t; Clear out edx to divide a 32-bit number instead of 64-bit\n"
+						// mov ecx, st[2].value
+						asmcode += "\tmov ecx, " + st[2].value + "\n"
+						// idiv eax
+						asmcode += "\tidiv eax\t\t; Divide edx:eax by ecx and put result in eax\n"
+						// restore edx
+						asmcode += "\tpop edx\n"
+						// restore ecx
+						asmcode += "\tpop ecx\n"
+						// mov st[0].value, eax
+						asmcode += "\tmov " + st[0].value + ", eax\t\t; Finally put result in " + st[0].value + "\n"
+						// restore eax
+						asmcode += "\tpop eax\n"
+					}
+					return asmcode
+				} else {
+					// Dividing a 128-bit number in rdx:rax by the number in rcx. Clearing out rdx and only using 64-bit numbers for now.
+					asmcode := ""
+					// If the register to be divided is rax, do a quicker division than if it's another register
+					if st[0].value == "rax" {
+						// save rcx
+						asmcode += "\tmov r8, rcx\n"
+						// save rdx
+						asmcode += "\tmov r9, rdx\n"
+						// xor rdx, rdx
+						asmcode += "\txor rdx, rdx\t\t; Clear out rdx to divide a 64-bit number instead of 128-bit\n"
+						// mov rcx, st[2].value
+						asmcode += "\tmov rcx, " + st[2].value + "\n"
+						// idiv rax
+						asmcode += "\tidiv rax\t\t; Divide rdx:rax by rcx and put result in rax\n"
+						// restore rdx
+						asmcode += "\tmov rdx, r9\n"
+						// restore rcx
+						asmcode += "\tmov rcx, r8\n"
+					} else {
+						// TODO: if the given register is a different one than rax, rcx and rdx,
+						//       just divide directly with that register, like for rax above
+						// save rax
+						asmcode += "\tmov r8, rax\n"
+						// save rcx
+						asmcode += "\tmov r9, rcx\n"
+						// save rdx
+						asmcode += "\tmov r10, rdx\n"
+						// copy number to be divided to rax
+						asmcode += "\tmov rax, " + st[0].value + "\t\t; Number to be divided\n"
+						// xor rdx, rdx
+						asmcode += "\txor rdx, rdx\t\t; Clear out rdx to divide a 64-bit number instead of 128-bit\n"
+						// mov rcx, st[2].value
+						asmcode += "\tmov rcx, " + st[2].value + "\n"
+						// idiv rax
+						asmcode += "\tidiv rax\t\t; Divide rdx:rax by rcx and put result in rax\n"
+						// restore rdx
+						asmcode += "\tmov rdx, r10\n"
+						// restore rcx
+						asmcode += "\tmov rcx, r9\n"
+						// mov st[0].value, rax
+						asmcode += "\tmov " + st[0].value + ", rax\t\t; Finally put result in " + st[0].value + "\n"
+						// restore rax
+						asmcode += "\tmov rax, r8\n"
+					}
+					return asmcode
+				}
 			}
 		}
 		log.Println("Unfamiliar 3-token expression!")

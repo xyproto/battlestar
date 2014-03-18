@@ -1,24 +1,17 @@
 fun main
-    rax = 2    // 2
-    rax *= 2   // 4
-    rax -= 5   // -1
-    rax += 1   // 0
-    rax += 2   // 2
-    rax /= 2   // 1
-    rax *= 3   // 3
-    rax *= 3   // 9
-    rax -= 1   // 8
-    rax += 50  // 58
-    rax += 1   // 59
-    rax += 6   // should now be 65 (which is 'A')
-
-    // Output the value
-    x = rax
-    int(80, 4, 1, x, 1)
-
-    // Output a newline too
-    x = 10
-    int(80, 4, 1, x, 1)
-end
+    rdx = 2    // 2
+    rdx *= 2   // 4
+    rdx -= 5   // -1
+    rdx += 1   // 0
+    rdx += 2   // 2
+    rdx /= 2   // 1
+    rdx *= 3   // 3
+    rdx *= 3   // 9
+    rdx -= 1   // 8
+    rdx += 50  // 58
+    rdx += 2   // 60
+    rdx /= 6   // 10
+    rdx -= 8   // should now be 2
+exit rdx
 
 // vim: set syntax=c ts=4 sw=4 et:
