@@ -166,7 +166,7 @@ func retokenize(word string, sep string, debug bool) []Token {
 	var newtokens []Token
 	words := strings.Split(word, sep)
 	for _, s := range words {
-		tokens := tokenize(s, debug)
+		tokens := tokenize(s, debug, sep)
 		//log.Println("RETOKEN", tokens)
 		for _, t := range tokens {
 			if t.t != SEP {
@@ -192,12 +192,13 @@ func removecomments(s string) string {
 }
 
 // Tokenize a string
-func tokenize(program string, debug bool) []Token {
+func tokenize(program string, debug bool, sep string) []Token {
 	statements := maps(maps(strings.Split(program, "\n"), strings.TrimSpace), removecomments)
 	tokens := make([]Token, 0, 0)
 	var (
 		t           Token
-		instring    bool    // Have we encountered a " for any given statement?
+		instring    = false // Have we encountered a " for any given statement?
+		constexpr   = false // Are we in a constant expression?
 		collected   string  // Collected string, until end of line
 		inline_c    = false // Are we in parts of the code that are inline_c ... end ?
 		c_block     = false // Are we in parts of the code that are void ... } ?
@@ -248,6 +249,11 @@ func tokenize(program string, debug bool) []Token {
 			continue
 		}
 
+		// If we are defining a constant, ease up on tokenizing the rest of the line recursively
+		if words[0] == "const" {
+			constexpr = true
+		}
+
 		// Tokenize the words
 		for _, word := range words {
 			if word == "" {
@@ -255,7 +261,7 @@ func tokenize(program string, debug bool) []Token {
 			}
 			// TODO: refactor out code that repeats the same thing
 			if instring {
-				collected += word + " "
+				collected += word + sep
 			} else if has(registers, word) {
 				t = Token{REGISTER, word, statementnr}
 				tokens = append(tokens, t)
@@ -361,7 +367,7 @@ func tokenize(program string, debug bool) []Token {
 					tokens = append(tokens, newtoken)
 				}
 				log.Println("NEWTOKENS", newtokens)
-			} else if strings.Contains(word, ",") {
+			} else if (!constexpr) && strings.Contains(word, ",") {
 				if debug {
 					log.Println("RETOKENIZE BECAUSE OF \",\"")
 				}
@@ -376,7 +382,16 @@ func tokenize(program string, debug bool) []Token {
 					log.Println("ENTERING STRING")
 				}
 				instring = true
-				collected = word
+				// TODO: This does not work, see test02.asm and test03.asm
+				if !strings.HasSuffix(word, sep) {
+					if len(collected) == 0 {
+						collected += word + sep
+					} else {
+						collected += word + sep
+					}
+				} else {
+					collected += word + sep + "SEPEND"
+				}
 			} else if strings.Contains("0123456789$", string(word[0])) {
 				// Assume it's a value
 				t = Token{VALUE, word, statementnr}
@@ -397,10 +412,12 @@ func tokenize(program string, debug bool) []Token {
 			if debug {
 				log.Println("EXITING STRING AT END OF STATEMENT")
 				log.Println("STRING:", collected)
-				t = Token{STRING, collected, statementnr}
-				tokens = append(tokens, t)
 			}
+			t = Token{STRING, collected, statementnr}
+			tokens = append(tokens, t)
 			instring = false
+			constexpr = false
+			collected = ""
 		}
 		t = Token{SEP, ";", statementnr}
 		tokens = append(tokens, t)
@@ -539,6 +556,7 @@ func (st Statement) String() string {
 	} else if (st[0].t == BUILTIN) && (st[0].value == "int") { // interrrupt call
 		asmcode := "\t;--- call interrupt 0x" + st[1].value + " ---\n"
 		// Check the number of parameters
+		// TODO: Evaluate if more parameters should be supported
 		if len(st) > 6 {
 			log.Println("Error: Too many parameters for interrupt call:")
 			for _, t := range st {
@@ -552,10 +570,22 @@ func (st Statement) String() string {
 			n       string
 			comment string
 		)
-		for i := 2; i < len(st); i++ {
+
+		from_i := 2     //inclusive
+		to_i := len(st) // exclusive
+		step_i := 1
+		if osx {
+			// arguments are pushed in the opposite order for BSD/OSX
+			from_i = len(st) - 1 //inclusive
+			to_i = 1             // exclusive
+			step_i = -1
+		}
+		first_i := from_i       // 2 for others, len(st)=1 for OSX/BSD
+		last_i := to_i - step_i // 2 for OSX/BSD, len(st)-1 for others
+		for i := from_i; i != to_i; i += step_i {
 			reg = interrupt_parameter_registers[i-2]
 			n = strconv.Itoa(i - 2)
-			if (i - 2) == 0 {
+			if (osx && (i == last_i)) || (!osx && (i == first_i)) {
 				comment = "function call: " + st[i].value
 			} else {
 				if st[i].t == VALUE {
@@ -596,7 +626,15 @@ func (st Statement) String() string {
 							codeline += "\n\tsub " + reg + ", 8"
 						}
 					} else {
-						codeline = "\tmov " + reg + ", " + st[i].value
+						if osx {
+							if i == last_i {
+								codeline = "\tmov " + reg + ", " + st[i].value
+							} else {
+								codeline = "\tpush dword " + st[i].value
+							}
+						} else {
+							codeline = "\tmov " + reg + ", " + st[i].value
+						}
 					}
 				}
 			}
@@ -610,12 +648,21 @@ func (st Statement) String() string {
 		}
 		// Add the interrupt call
 		if st[1].t == VALUE {
+			if osx {
+				// just the way function calls are made on BSD/OSX
+				asmcode += "\tsub esp, 4\t\t\t; BSD system call preparation\n"
+			}
 			// Assume that interrupts will always be given in hex and that a missing 0x is just forgotten
 			if !strings.HasPrefix(st[1].value, "0x") {
 				log.Println("Note: Adding 0x in front of interrupt", st[1].value)
 				asmcode += "\tint 0x" + st[1].value + "\t\t\t; perform the call\n"
 			} else {
 				asmcode += "\tint " + st[1].value + "\t\t\t; perform the call\n"
+			}
+			if osx {
+				pushcount := len(st) - 2
+				displacement := strconv.Itoa(pushcount * 4) // 4 bytes per push
+				asmcode += "\tadd esp, " + displacement + "\t\t\t; BSD system call cleanup\n"
 			}
 			return asmcode
 		}
@@ -722,7 +769,7 @@ func (st Statement) String() string {
 		} else {
 			asmcode += "\t;--- return ---\n"
 		}
-		if (len(st) == 2) && (st[1].t == VALUE) {
+		if (len(st) == 2) && (st[1].t == VALUE) && !osx {
 			if platform_bits == 32 {
 				if st[1].value == "0" {
 					asmcode += "\txor eax, eax\t\t\t; Error code "
@@ -752,7 +799,7 @@ func (st Statement) String() string {
 				if platform_bits == 32 {
 					if osx {
 						asmcode += "\tpush dword " + exit_code + "\t\t\t; exit code " + exit_code + "\n"
-						asmcode += "\tsub esp, 4\t\t\t; this is the BSD way, push then subtract before calling\n"
+						asmcode += "\tsub esp, 4\t\t\t; the BSD way, push then subtract before calling\n"
 					}
 					asmcode += "\tmov eax, 1\t\t\t; function call: 1\n"
 					if !osx {
@@ -810,7 +857,7 @@ func (st Statement) String() string {
 			} else {
 				log.Fatalln("Error:", st[0].value, "is not recognized as a register (and there is no const qualifier). Can't assign.")
 			}
-		} else if (st[0].t == DISREGARD) {
+		} else if st[0].t == DISREGARD {
 			// TODO: If st[2] is a function, one wishes to call it, then disregard afterwards
 			return "\t\t\t\t; Disregarding: " + st[2].value + "\n"
 		} else if (st[0].t == REGISTER) && (st[1].t == ASSIGNMENT) && (st[2].t == REGISTER) {
@@ -873,7 +920,99 @@ func (st Statement) String() string {
 				}
 				return "\tshr " + st[0].value + ", " + strconv.Itoa(pos) + "\t\t; " + st[0].value + " /= " + st[2].value
 			} else {
-				return "\tidiv " + st[0].value + ", " + st[2].value + "\t\t; " + st[0].value + " /= " + st[2].value
+				if platform_bits == 32 {
+					// Dividing a 64-bit number in edx:eax by the number in ecx. Clearing out edx and only using 32-bit numbers for now.
+					asmcode := ""
+					// If the register to be divided is rax, do a quicker division than if it's another register
+					if st[0].value == "eax" {
+						// save ecx
+						asmcode += "\tpush ecx\n"
+						// save edx
+						asmcode += "\tpush edx\n"
+						// xor rdx, rdx
+						asmcode += "\txor edx, edx\t\t; Clear out rdx to divide a 64-bit number instead of 128-bit\n"
+						// mov rcx, st[2].value
+						asmcode += "\tmov ecx, " + st[2].value + "\n"
+						// idiv rax
+						asmcode += "\tidiv eax\t\t; Divide rdx:rax by rcx and put result in rax\n"
+						// restore edx
+						asmcode += "\tpop edx\n"
+						// restore ecx
+						asmcode += "\tpop ecx\n"
+					} else {
+						// TODO: if the given register is a different one than eax, ecx and edx,
+						//       just divide directly with that register, like for eax above
+						// save eax
+						asmcode += "\tpush eax\n"
+						// save ecx
+						asmcode += "\tpush ecx\n"
+						// save edx
+						asmcode += "\tpush edx\n"
+						// copy number to be divided to eax
+						asmcode += "\tmov eax, " + st[0].value + "\t\t; Number to be divided\n"
+						// xor edx, edx
+						asmcode += "\txor edx, edx\t\t; Clear out edx to divide a 32-bit number instead of 64-bit\n"
+						// mov ecx, st[2].value
+						asmcode += "\tmov ecx, " + st[2].value + "\n"
+						// idiv eax
+						asmcode += "\tidiv eax\t\t; Divide edx:eax by ecx and put result in eax\n"
+						// restore edx
+						asmcode += "\tpop edx\n"
+						// restore ecx
+						asmcode += "\tpop ecx\n"
+						// mov st[0].value, eax
+						asmcode += "\tmov " + st[0].value + ", eax\t\t; Finally put result in " + st[0].value + "\n"
+						// restore eax
+						asmcode += "\tpop eax\n"
+					}
+					return asmcode
+				} else {
+					// Dividing a 128-bit number in rdx:rax by the number in rcx. Clearing out rdx and only using 64-bit numbers for now.
+					asmcode := ""
+					// If the register to be divided is rax, do a quicker division than if it's another register
+					if st[0].value == "rax" {
+						// save rcx
+						asmcode += "\tmov r8, rcx\n"
+						// save rdx
+						asmcode += "\tmov r9, rdx\n"
+						// xor rdx, rdx
+						asmcode += "\txor rdx, rdx\t\t; Clear out rdx to divide a 64-bit number instead of 128-bit\n"
+						// mov rcx, st[2].value
+						asmcode += "\tmov rcx, " + st[2].value + "\n"
+						// idiv rax
+						asmcode += "\tidiv rax\t\t; Divide rdx:rax by rcx and put result in rax\n"
+						// restore rdx
+						asmcode += "\tmov rdx, r9\n"
+						// restore rcx
+						asmcode += "\tmov rcx, r8\n"
+					} else {
+						// TODO: if the given register is a different one than rax, rcx and rdx,
+						//       just divide directly with that register, like for rax above
+						// save rax
+						asmcode += "\tmov r8, rax\n"
+						// save rcx
+						asmcode += "\tmov r9, rcx\n"
+						// save rdx
+						asmcode += "\tmov r10, rdx\n"
+						// copy number to be divided to rax
+						asmcode += "\tmov rax, " + st[0].value + "\t\t; Number to be divided\n"
+						// xor rdx, rdx
+						asmcode += "\txor rdx, rdx\t\t; Clear out rdx to divide a 64-bit number instead of 128-bit\n"
+						// mov rcx, st[2].value
+						asmcode += "\tmov rcx, " + st[2].value + "\n"
+						// idiv rax
+						asmcode += "\tidiv rax\t\t; Divide rdx:rax by rcx and put result in rax\n"
+						// restore rdx
+						asmcode += "\tmov rdx, r10\n"
+						// restore rcx
+						asmcode += "\tmov rcx, r9\n"
+						// mov st[0].value, rax
+						asmcode += "\tmov " + st[0].value + ", rax\t\t; Finally put result in " + st[0].value + "\n"
+						// restore rax
+						asmcode += "\tmov rax, r8\n"
+					}
+					return asmcode
+				}
 			}
 		}
 		log.Println("Unfamiliar 3-token expression!")
@@ -954,6 +1093,7 @@ stack_bottom:
 times 16384 db 0
 stack_top:
 
+section .text
     `
 	} else if (st[0].t == KEYWORD) && (st[0].value == "extern") && (len(st) == 2) {
 		if st[1].t == VALID_NAME {
@@ -1293,7 +1433,7 @@ func main() {
 
 		// If "bootable" is the first token
 		bootable := false
-		if temptokens := tokenize(string(bytes), true); (len(temptokens) > 2) && (temptokens[0].t == KEYWORD) && (temptokens[0].value == "bootable") && (temptokens[1].t == SEP) {
+		if temptokens := tokenize(string(bytes), true, " "); (len(temptokens) > 2) && (temptokens[0].t == KEYWORD) && (temptokens[0].value == "bootable") && (temptokens[1].t == SEP) {
 			bootable = true
 			// Header for bootable kernels, use 32-bit assembly
 			platform_bits = 32
@@ -1311,7 +1451,7 @@ func main() {
 			interrupt_parameter_registers = []string{"rax", "rbx", "rcx", "rdx"}
 		}
 
-		tokens := add_exit_token_if_missing(tokenize(string(bytes), true))
+		tokens := add_exit_token_if_missing(tokenize(string(bytes), true, " "))
 		log.Println("--- Done tokenizing ---")
 		constants, asmcode := TokensToAssembly(tokens, true, false)
 		if constants != "" {

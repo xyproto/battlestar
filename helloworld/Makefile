@@ -1,6 +1,7 @@
 all:
 	@../scripts/generate.sh
-	@echo "Only `du -b hello | cut -b-3` bytes!"
+	@# du -b does not work on OSX/BSD
+	@echo "Only `ls -l hello | cut -d" " -f8` bytes!"
 
 clean:
 	@echo 'Cleaning...'

@@ -1,5 +1,5 @@
-const commence = "Commence jump prep.", 10
-const nebula = "We're going to the ionian nebula.", 10
+const commence = "Commence jump prep.\n"
+const nebula = "We're going to the ionian nebula.\n"
 
 fun _start
     int(80, 4, 1, commence, len(commence))
