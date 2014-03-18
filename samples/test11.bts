@@ -1,0 +1,11 @@
+fun main
+    rax = 65 // 65 is 'A'
+
+    // Output the value
+    int(80, 4, 1, string(rax), 1)
+
+    // Output a newline too
+    int(80, 4, 1, "\n", 1)
+end
+
+// vim: set syntax=c ts=4 sw=4 et:
