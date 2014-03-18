@@ -20,6 +20,7 @@ type (
 		t     TokenType
 		value string
 		line  uint
+		extra string // Used when coverting from register to string
 	}
 	TokenDescriptions map[TokenType]string
 	Statement         []Token
@@ -64,8 +65,8 @@ var (
 
 	operators = []string{"=", "+=", "-=", "*=", "/=", "&=", "|="}
 	keywords  = []string{"fun", "ret", "const", "call", "extern", "end", "bootable"}
-	builtins  = []string{"len", "int", "exit", "halt"} // built-in functions
-	reserved  = []string{"param", "intparam"}          // built-in lists that can be accessed with [index]
+	builtins  = []string{"len", "int", "exit", "halt", "str"} // built-in functions
+	reserved  = []string{"param", "intparam"}                 // built-in lists that can be accessed with [index]
 
 	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard", RESERVED: "reserved", VARIABLE: "variable", ADDITION: "addition", SUBTRACTION: "subtraction", MULTIPLICATION: "multiplication", DIVISION: "division"}
 
@@ -263,7 +264,7 @@ func tokenize(program string, debug bool, sep string) []Token {
 			if instring {
 				collected += word + sep
 			} else if has(registers, word) {
-				t = Token{REGISTER, word, statementnr}
+				t = Token{REGISTER, word, statementnr, ""}
 				tokens = append(tokens, t)
 				if debug {
 					log.Println("TOKEN", t)
@@ -290,43 +291,43 @@ func tokenize(program string, debug bool, sep string) []Token {
 				default:
 					log.Fatalln("Error: Unhandled operator:", word)
 				}
-				t = Token{tokentype, word, statementnr}
+				t = Token{tokentype, word, statementnr, ""}
 				tokens = append(tokens, t)
 				if debug {
 					log.Println("TOKEN", t)
 				}
 			} else if has(keywords, word) {
-				t = Token{KEYWORD, word, statementnr}
+				t = Token{KEYWORD, word, statementnr, ""}
 				tokens = append(tokens, t)
 				if debug {
 					log.Println("TOKEN", t)
 				}
 			} else if has(builtins, word) {
-				t = Token{BUILTIN, word, statementnr}
+				t = Token{BUILTIN, word, statementnr, ""}
 				tokens = append(tokens, t)
 				if debug {
 					log.Println("TOKEN", t)
 				}
 			} else if has(reserved, word) {
-				t = Token{RESERVED, word, statementnr}
+				t = Token{RESERVED, word, statementnr, ""}
 				tokens = append(tokens, t)
 				if debug {
 					log.Println("TOKEN", t)
 				}
 			} else if _, err := strconv.Atoi(word); err == nil {
-				t = Token{VALUE, word, statementnr}
+				t = Token{VALUE, word, statementnr, ""}
 				tokens = append(tokens, t)
 				if debug {
 					log.Println("TOKEN", t)
 				}
 			} else if word == "_" {
-				t = Token{DISREGARD, word, statementnr}
+				t = Token{DISREGARD, word, statementnr, ""}
 				tokens = append(tokens, t)
 				if debug {
 					log.Println("TOKEN", t)
 				}
 			} else if is_valid_name(word) {
-				t = Token{VALID_NAME, word, statementnr}
+				t = Token{VALID_NAME, word, statementnr, ""}
 				tokens = append(tokens, t)
 				if debug {
 					log.Println("TOKEN", t)
@@ -394,7 +395,7 @@ func tokenize(program string, debug bool, sep string) []Token {
 				}
 			} else if strings.Contains("0123456789$", string(word[0])) {
 				// Assume it's a value
-				t = Token{VALUE, word, statementnr}
+				t = Token{VALUE, word, statementnr, ""}
 				tokens = append(tokens, t)
 				if debug {
 					log.Println("TOKEN", t)
@@ -413,13 +414,13 @@ func tokenize(program string, debug bool, sep string) []Token {
 				log.Println("EXITING STRING AT END OF STATEMENT")
 				log.Println("STRING:", collected)
 			}
-			t = Token{STRING, collected, statementnr}
+			t = Token{STRING, collected, statementnr, ""}
 			tokens = append(tokens, t)
 			instring = false
 			constexpr = false
 			collected = ""
 		}
-		t = Token{SEP, ";", statementnr}
+		t = Token{SEP, ";", statementnr, ""}
 		tokens = append(tokens, t)
 	}
 	return tokens
@@ -449,11 +450,31 @@ func reduce(st Statement, debug bool) Statement {
 			st = st[:i+1+copy(st[i+1:], st[i+2:])]
 
 			// replace len(name) with _length_of_name
-			st[i] = Token{token_type, "_length_of_" + name, st[0].line}
+			st[i] = Token{token_type, "_length_of_" + name, st[0].line, ""}
 
 			if debug {
 				log.Println("SUCCESSFULL REPLACEMENT WITH", st[i])
 			}
+		} else if (st[i].t == BUILTIN) && (st[i].value == "str") && (st[i+1].t == VALID_NAME) {
+			log.Fatalln("To implement: str(name)")
+		} else if (st[i].t == BUILTIN) && (st[i].value == "str") && (st[i+1].t == REGISTER) {
+			register := st[i+1].value
+
+			// remove the element at i+1
+			st = st[:i+1+copy(st[i+1:], st[i+2:])]
+
+			// Replace str(register) with a token VALID_NAME with esp/rsp + register name as the value.
+			// This is not perfect, but allows us to output register values with a system call.
+			if platform_bits == 32 {
+				st[i] = Token{VALID_NAME, "esp", st[0].line, register}
+			} else {
+				st[i] = Token{VALID_NAME, "rsp", st[0].line, register}
+			}
+
+			if debug {
+				log.Println("SUCCESSFULL REPLACEMENT WITH", st[i], "/", register)
+			}
+
 		}
 	}
 	return st
@@ -554,35 +575,29 @@ func (st Statement) String() string {
 		log.Fatalln("Error: Empty statement.")
 		return ""
 	} else if (st[0].t == BUILTIN) && (st[0].value == "int") { // interrrupt call
-		asmcode := "\t;--- call interrupt 0x" + st[1].value + " ---\n"
-		// Check the number of parameters
-		// TODO: Evaluate if more parameters should be supported
-		if len(st) > 6 {
-			log.Println("Error: Too many parameters for interrupt call:")
-			for _, t := range st {
-				log.Println(t.value)
-			}
-			os.Exit(1)
-		}
 		// Store each of the parameters to the appropriate registers
-		var (
-			reg     string
-			n       string
-			comment string
-		)
+		var reg, n, comment, asmcode, precode, postcode string
 
 		from_i := 2     //inclusive
 		to_i := len(st) // exclusive
 		step_i := 1
 		if osx {
 			// arguments are pushed in the opposite order for BSD/OSX
-			from_i = len(st) - 1 //inclusive
+			from_i = len(st) - 1 // inclusive
 			to_i = 1             // exclusive
 			step_i = -1
 		}
 		first_i := from_i       // 2 for others, len(st)=1 for OSX/BSD
 		last_i := to_i - step_i // 2 for OSX/BSD, len(st)-1 for others
 		for i := from_i; i != to_i; i += step_i {
+			if (i - 2) >= len(interrupt_parameter_registers) {
+				log.Println("Error: Too many parameters for interrupt call:")
+				for _, t := range st {
+					log.Println(t.value)
+				}
+				os.Exit(1)
+				break
+			}
 			reg = interrupt_parameter_registers[i-2]
 			n = strconv.Itoa(i - 2)
 			if (osx && (i == last_i)) || (!osx && (i == first_i)) {
@@ -604,6 +619,24 @@ func (st Statement) String() string {
 							comment = "parameter #" + n + " is " + "&" + st[i].value
 						} else {
 							comment = "parameter #" + n + " is " + st[i].value
+							// Already recognized not to be a register
+							if platform_bits == 32 {
+								if st[i].value == "esp" {
+									// Put the value of the register associated with this token at rbp
+									// TODO: Figure out why this doesn't work
+									precode += "\tsub esp, 4\t\t\t; make some space for storing " + st[i].extra + " on the stack\n"
+									precode += "\tmov DWORD [esp], " + st[i].extra + "\t\t; move " + st[i].extra + " to a memory location on the stack\n"
+									postcode += "\tadd esp, 4\t\t\t; move the stack pointer back\n"
+								}
+							} else if platform_bits == 64 {
+								if st[i].value == "rsp" {
+									// Put the value of the register associated with this token at rbp
+									// TODO: Figure out why this doesn't work
+									precode += "\tsub rsp, 8\t\t\t; make some space for storing " + st[i].extra + " on the stack\n"
+									precode += "\tmov QWORD [rsp], " + st[i].extra + "\t\t; move " + st[i].extra + " to a memory location on the stack\n"
+									postcode += "\tadd rsp, 8\t\t\t; move the stack pointer back\n"
+								}
+							}
 						}
 					}
 				}
@@ -611,41 +644,42 @@ func (st Statement) String() string {
 			codeline := ""
 			// Skip parameters/registers that are already set
 			if st[i].value == "_" {
-				codeline = "\t\t"
+				codeline += "\t\t"
 			} else {
 				if st[i].value == "0" {
-					codeline = "\txor " + reg + ", " + reg
+					codeline += "\txor " + reg + ", " + reg
 				} else {
 					// TODO: Remove special case, implement general local variables
 					if st[i].value == "x" {
 						if platform_bits == 32 {
-							codeline = "\tmov " + reg + ", ebp"
+							codeline += "\tmov " + reg + ", ebp"
 							codeline += "\n\tsub " + reg + ", 8"
 						} else {
-							codeline = "\tmov " + reg + ", rbp"
+							codeline += "\tmov " + reg + ", rbp"
 							codeline += "\n\tsub " + reg + ", 8"
 						}
 					} else {
 						if osx {
 							if i == last_i {
-								codeline = "\tmov " + reg + ", " + st[i].value
+								codeline += "\tmov " + reg + ", " + st[i].value
 							} else {
-								codeline = "\tpush dword " + st[i].value
+								codeline += "\tpush dword " + st[i].value
 							}
 						} else {
-							codeline = "\tmov " + reg + ", " + st[i].value
+							codeline += "\tmov " + reg + ", " + st[i].value
 						}
 					}
 				}
 			}
 
 			// TODO: Find a more elegant way to format the comments in columns
-			if len(codeline) > 14 { // for tab formatting
+			if len(codeline) >= 16 { // for tab formatting
 				asmcode += codeline + "\t\t; " + comment + "\n"
 			} else {
 				asmcode += codeline + "\t\t\t; " + comment + "\n"
 			}
 		}
+		precode = "\t;--- call interrupt 0x" + st[1].value + " ---\n" + precode
 		// Add the interrupt call
 		if st[1].t == VALUE {
 			if osx {
@@ -664,7 +698,7 @@ func (st Statement) String() string {
 				displacement := strconv.Itoa(pushcount * 4) // 4 bytes per push
 				asmcode += "\tadd esp, " + displacement + "\t\t\t; BSD system call cleanup\n"
 			}
-			return asmcode
+			return precode + asmcode + postcode
 		}
 		log.Fatalln("Error: Need a (hexadecimal) interrupt number to call:\n", st[1].value)
 	} else if (st[0].t == KEYWORD) && (st[0].value == "const") && (len(st) >= 4) { // constant data
@@ -744,11 +778,13 @@ func (st Statement) String() string {
 		asmcode += "\thlt\n"
 		asmcode += "\tjmp .hang\t; loop forever\n\n"
 		return asmcode
+	} else if (st[0].t == BUILTIN) && (st[0].value == "str") {
+		return "; BLAHRGOMASTER!"
 	} else if ((st[0].t == KEYWORD) && (st[0].value == "ret")) || ((st[0].t == BUILTIN) && (st[0].value == "exit")) {
 		asmcode := ""
 		if st[0].value == "ret" {
 			if (in_function == "main") || (in_function == linker_start_function) {
-				log.Println("Not taking down stack frame in the main/_start/start function.")
+				//log.Println("Not taking down stack frame in the main/_start/start function.")
 			} else {
 				asmcode += "\t;--- takedown stack frame ---\n"
 				if platform_bits == 32 {
@@ -824,7 +860,7 @@ func (st Statement) String() string {
 			} else {
 				// For bootable kernels, main does not return. Hang instead.
 				log.Println("Warning: Bootable kernels has nowhere to return after the main function. You might want to use the \"halt\" builtin at the end of the main function.")
-				//asmcode += Statement{Token{BUILTIN, "halt", st[0].line}}.String()
+				//asmcode += Statement{Token{BUILTIN, "halt", st[0].line, ""}}.String()
 			}
 		} else {
 			log.Println("IN FUNCTION", in_function)
@@ -1044,7 +1080,7 @@ func (st Statement) String() string {
 		asmcode += "global " + in_function + "\t\t\t; make label available to the linker\n"
 		asmcode += in_function + ":\t\t\t\t; name of the function\n\n"
 		if (in_function == "main") || (in_function == linker_start_function) {
-			log.Println("Not setting up stack frame in the main/_start/start function.")
+			//log.Println("Not setting up stack frame in the main/_start/start function.")
 			return asmcode
 		}
 		asmcode += "\t;--- setup stack frame ---\n"
@@ -1060,7 +1096,7 @@ func (st Statement) String() string {
 		if st[1].t == VALID_NAME {
 			return "\t;--- call the \"" + st[1].value + "\" function ---\n\tcall " + st[1].value + "\n"
 		} else {
-			log.Fatalln("Calling an invalid name:", st[1].value)
+			log.Fatalln("Error: Calling an invalid name:", st[1].value)
 		}
 		// TODO: Find a shorter format to describe matching tokens.
 		// Something along the lines of: if match(st, [KEYWORD:"extern"], 2)
@@ -1120,7 +1156,7 @@ section .text
 			return "; end of inline C block\n"
 		} else if in_function != "" {
 			// Return from the function if "end" is encountered
-			ret := Token{KEYWORD, "ret", st[0].line}
+			ret := Token{KEYWORD, "ret", st[0].line, ""}
 			newstatement := Statement{ret}
 			return newstatement.String()
 		} else {
@@ -1129,7 +1165,7 @@ section .text
 	} else if (st[0].t == VALID_NAME) && (len(st) == 1) {
 		// Just a name, assume it's a function call
 		if has(defined_names, st[0].value) {
-			call := Token{KEYWORD, "call", st[0].line}
+			call := Token{KEYWORD, "call", st[0].line, ""}
 			newstatement := Statement{call, st[0]}
 			return newstatement.String()
 		} else {
@@ -1268,13 +1304,13 @@ func add_starting_point_if_missing(asmcode string) string {
 		log.Printf("No %s has been defined, creating one\n", linker_start_function)
 		addstring := "global " + linker_start_function + "\t\t\t; make label available to the linker\n" + linker_start_function + ":\t\t\t\t; starting point of the program\n"
 		if strings.Contains(asmcode, "extern main") {
-			log.Println("External main function, adding starting point that calls it.")
+			//log.Println("External main function, adding starting point that calls it.")
 			linenr := uint(strings.Count(asmcode+addstring, "\n") + 5)
 			// TODO: Check that this is the correct linenr
-			exit_statement := Statement{Token{BUILTIN, "exit", linenr}}
+			exit_statement := Statement{Token{BUILTIN, "exit", linenr, ""}}
 			return asmcode + "\n" + addstring + "\n\tcall main\t\t; call the external main function\n\n" + exit_statement.String()
 		} else if strings.Contains(asmcode, "\nmain:") {
-			log.Println("...but main has been defined, using that as starting point.")
+			//log.Println("...but main has been defined, using that as starting point.")
 			// Add "_start:"/"start" right after "main:"
 			return strings.Replace(asmcode, "\nmain:", "\n"+addstring+"main:", 1)
 		}
@@ -1350,11 +1386,11 @@ func add_exit_token_if_missing(tokens []Token) []Token {
 	}
 
 	// TODO: Check that the line nr is correct
-	ret_token := Token{BUILTIN, "exit", newtokens[len(newtokens)-1].line}
+	ret_token := Token{BUILTIN, "exit", newtokens[len(newtokens)-1].line, ""}
 	newtokens[len(tokens)] = ret_token
 
 	// TODO: Check that the line nr is correct
-	sep_token := Token{SEP, ";", newtokens[len(newtokens)-1].line}
+	sep_token := Token{SEP, ";", newtokens[len(newtokens)-1].line, ""}
 	newtokens[len(tokens)+1] = sep_token
 
 	return newtokens
@@ -1446,7 +1482,6 @@ func main() {
 		} else {
 			// Header for regular programs
 			asmdata += fmt.Sprintf("bits %d\n", platform_bits)
-			asmdata += fmt.Sprintln("section .text\n")
 		}
 
 		// Used when calling interrupts
@@ -1462,6 +1497,9 @@ func main() {
 		if constants != "" {
 			asmdata += fmt.Sprintln("section .data\n")
 			asmdata += fmt.Sprintln(constants + "\n")
+		}
+		if !bootable {
+			asmdata += fmt.Sprintln("section .text\n")
 		}
 		if asmcode != "" {
 			asmdata += fmt.Sprintln(add_starting_point_if_missing(asmcode) + "\n")

@@ -1,35 +1,20 @@
-extern main
+// TODO: Figure out why this program doesn't run.
 
 const astring = "A"
 
-fun get65
-    rdx = 2    // 2
-    rdx *= 2   // 4
-    rdx -= 5   // -1
-    rdx += 1   // 0
-    rdx += 2   // 2
-    rdx /= 2   // 1
-    rdx *= 3   // 3
-    rdx *= 3   // 9
-    rdx -= 1   // 8
-    rdx += 50  // 58
-    rdx += 2   // 60
-    rdx /= 6   // 10
-    rdx -= 8   // should now be 2
-    param[0] = rdx
+fun get10
+    eax = 10
 end
 
-fun a
+fun printa
     int(80, 4, 1, astring, len(astring))
 end
 
-inline_c
 void main() {
-    // Output 'A' 65 times
-    for (int i=0; i < get65(); i++) {
-        a();
-    }
+    // Output 'A' 10 times
+    int i = 0;
+    int ten = get10();
+    for (; i < ten; i++) printa();
 }
-end
 
 // vim: set syntax=c ts=4 sw=4 et:

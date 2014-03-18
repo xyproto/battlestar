@@ -1,11 +1,13 @@
-fun main
-    rax = 65 // 65 is 'A'
+// TODO: Figure out why this program doesn't run.
 
-    // Output the value
-    int(80, 4, 1, string(rax), 1)
+fun main
+    // Output an 'A'
+    rax = 65
+    int(80, 4, 1, str(rax), 4)
 
     // Output a newline too
-    int(80, 4, 1, "\n", 1)
+    rax = 10
+    int(80, 4, 1, str(rax), 4)
 end
 
 // vim: set syntax=c ts=4 sw=4 et:

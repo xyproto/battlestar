@@ -11,6 +11,10 @@ function require {
   return 0
 }
 
+# Should stripping be skipped?
+skipstrip=false
+#skipstrip=true
+
 # Check for needed utilities
 require yasm 1
 require ld 1
@@ -36,7 +40,6 @@ if [ $bits = 32 ]; then
   cccmd="$stdgcc -m32"
 fi
 
-skipstrip=false
 if [[ $1 == bootable ]]; then
   echo 'Building a bootable kernel.'
   echo
