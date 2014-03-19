@@ -687,15 +687,11 @@ func (st Statement) String() string {
 				asmcode += "\tsub esp, 4\t\t\t; BSD system call preparation\n"
 			}
 			// Assume that interrupts will always be given in hex and that a missing 0x is just forgotten
-			if platform_bits == 32 {
-				if !strings.HasPrefix(st[1].value, "0x") {
-					log.Println("Note: Adding 0x in front of interrupt", st[1].value)
-					asmcode += "\tint 0x" + st[1].value + "\t\t\t; perform the call\n"
-				} else {
-					asmcode += "\tint " + st[1].value + "\t\t\t; perform the call\n"
-				}
-			} else if platform_bits == 64 {
-				asmcode += "\tsyscall\t\t\t; perform the call\n"
+			if !strings.HasPrefix(st[1].value, "0x") {
+				log.Println("Note: Adding 0x in front of interrupt", st[1].value)
+				asmcode += "\tint 0x" + st[1].value + "\t\t\t; perform the call\n"
+			} else {
+				asmcode += "\tint " + st[1].value + "\t\t\t; perform the call\n"
 			}
 			if osx {
 				pushcount := len(st) - 2
@@ -841,7 +837,11 @@ func (st Statement) String() string {
 						asmcode += "\tpush dword " + exit_code + "\t\t\t; exit code " + exit_code + "\n"
 						asmcode += "\tsub esp, 4\t\t\t; the BSD way, push then subtract before calling\n"
 					}
-					asmcode += "\tmov eax, 1\t\t\t; function call: 1\n"
+					if platform_bits == 32 {
+						asmcode += "\tmov eax, 1\t\t\t; function call: 1\n"
+					} else if platform_bits == 64 {
+						asmcode += "\tmov rax, 1\t\t\t; function call: 60\n"
+					}
 					if !osx {
 						asmcode += "\t"
 						if exit_code == "0" {

@@ -3,7 +3,9 @@
 const astring = "A"
 
 fun get10
-    eax = 10
+    // TODO: Find out how to return 10 with 64-bit calling conventions
+    rax = 10
+    rdi = 10
 end
 
 fun printa
