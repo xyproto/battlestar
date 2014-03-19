@@ -687,11 +687,15 @@ func (st Statement) String() string {
 				asmcode += "\tsub esp, 4\t\t\t; BSD system call preparation\n"
 			}
 			// Assume that interrupts will always be given in hex and that a missing 0x is just forgotten
-			if !strings.HasPrefix(st[1].value, "0x") {
-				log.Println("Note: Adding 0x in front of interrupt", st[1].value)
-				asmcode += "\tint 0x" + st[1].value + "\t\t\t; perform the call\n"
-			} else {
-				asmcode += "\tint " + st[1].value + "\t\t\t; perform the call\n"
+			if platform_bits == 32 {
+				if !strings.HasPrefix(st[1].value, "0x") {
+					log.Println("Note: Adding 0x in front of interrupt", st[1].value)
+					asmcode += "\tint 0x" + st[1].value + "\t\t\t; perform the call\n"
+				} else {
+					asmcode += "\tint " + st[1].value + "\t\t\t; perform the call\n"
+				}
+			} else if platform_bits == 64 {
+				asmcode += "\tsyscall\t\t\t; perform the call\n"
 			}
 			if osx {
 				pushcount := len(st) - 2
@@ -847,7 +851,11 @@ func (st Statement) String() string {
 						}
 						asmcode += "\t\t\t; exit code " + exit_code + "\n"
 					}
-					asmcode += "\tint 0x80\t\t\t; exit program\n"
+					if platform_bits == 32 {
+						asmcode += "\tint 0x80\t\t\t; exit program\n"
+					} else {
+						asmcode += "\tsyscall\t\t\t; exit program\n"
+					}
 				} else {
 					asmcode += "\tmov rax, 1\t\t\t; function call: 1\n\t"
 					if exit_code == "0" {
@@ -855,7 +863,11 @@ func (st Statement) String() string {
 					} else {
 						asmcode += "mov rbx, " + exit_code
 					}
-					asmcode += "\t\t\t; return code " + exit_code + "\n\tint 0x80\t\t\t; exit program\n"
+					if platform_bits == 32 {
+						asmcode += "\t\t\t; return code " + exit_code + "\n\tint 0x80\t\t\t; exit program\n"
+					} else {
+						asmcode += "\t\t\t; return code " + exit_code + "\n\tsyscall\t\t\t; exit program\n"
+					}
 				}
 			} else {
 				// For bootable kernels, main does not return. Hang instead.
@@ -1484,11 +1496,11 @@ func main() {
 			asmdata += fmt.Sprintf("bits %d\n", platform_bits)
 		}
 
-		// Used when calling interrupts
+		// Used when calling interrupts (or syscall)
 		if platform_bits == 32 {
 			interrupt_parameter_registers = []string{"eax", "ebx", "ecx", "edx"}
 		} else {
-			interrupt_parameter_registers = []string{"rax", "rbx", "rcx", "rdx"}
+			interrupt_parameter_registers = []string{"rax", "rdi", "rsi", "rdx", "rcx", "r8", "r9"}
 		}
 
 		tokens := add_exit_token_if_missing(tokenize(string(bytes), true, " "))

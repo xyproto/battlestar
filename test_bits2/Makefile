@@ -9,7 +9,7 @@ all: ../battlestarc $(NAME)$(BITS)
 	make -C ..
 
 $(NAME)32:
-	../battlestarc -bits=32 -f $(NAME).bts -o $(GENERATED_ASM) -oc $(GENERATED_C) 2>/dev/null
+	../battlestarc -bits=32 -f $(NAME)32.bts -o $(GENERATED_ASM) -oc $(GENERATED_C) 2>/dev/null
 	@hash yasm 2>/dev/null || { echo 'No yasm in path'; exit 1; }
 	yasm -f elf32 -o $(NAME)_bts.o $(GENERATED_ASM)
 	ld -s -melf_i386 --fatal-warnings -relax -o $(NAME)32 $(NAME)_bts.o
@@ -17,7 +17,7 @@ $(NAME)32:
 	@echo ok
 
 $(NAME)64: $(NAME)32
-	../battlestarc -bits=64 -f $(NAME).bts -o $(GENERATED_ASM) -oc $(GENERATED_C) 2>/dev/null
+	../battlestarc -bits=64 -f $(NAME)64.bts -o $(GENERATED_ASM) -oc $(GENERATED_C) 2>/dev/null
 	@hash yasm 2>/dev/null || { echo 'No yasm in path'; exit 1; }
 	yasm -f elf64 -o $(NAME)_bts.o $(GENERATED_ASM)
 	ld -s --fatal-warnings -relax -o $(NAME)64 $(NAME)_bts.o
