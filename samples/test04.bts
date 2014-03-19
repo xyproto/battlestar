@@ -1,5 +1,5 @@
 const hi = "ho", 10
 
-int(80, 4, 1, hi, len(hi))
+write(hi)
 
 // vim: set syntax=c ts=4 sw=4 et:

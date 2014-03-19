@@ -44,6 +44,7 @@ const (
 	AND            = 14
 	OR             = 15
 	XOR            = 16
+	MAGICAL_VALUE  = 17 // Changes depending on the platform
 	SEP            = 127
 	UNKNOWN        = 255
 )
@@ -65,8 +66,8 @@ var (
 
 	operators = []string{"=", "+=", "-=", "*=", "/=", "&=", "|="}
 	keywords  = []string{"fun", "ret", "const", "call", "extern", "end", "bootable"}
-	builtins  = []string{"len", "int", "exit", "halt", "str"} // built-in functions
-	reserved  = []string{"param", "intparam"}                 // built-in lists that can be accessed with [index]
+	builtins  = []string{"len", "int", "exit", "halt", "str", "write", "read"} // built-in functions
+	reserved  = []string{"param", "intparam"} // built-in lists that can be accessed with [index]
 
 	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard", RESERVED: "reserved", VARIABLE: "variable", ADDITION: "addition", SUBTRACTION: "subtraction", MULTIPLICATION: "multiplication", DIVISION: "division"}
 
@@ -455,6 +456,21 @@ func reduce(st Statement, debug bool) Statement {
 			if debug {
 				log.Println("SUCCESSFULL REPLACEMENT WITH", st[i])
 			}
+		} else if (st[i].t == BUILTIN) && (st[i].value == "write") && (st[i+1].t == VALID_NAME) {
+			// replace write(msg) with
+			// int(0x80, 4, msg, len(msg)) on 32-bit 
+			// syscall(1, msg, len(msg)) on 64-bit
+			// TODO: Convert from string to tokens and use them in place of this token
+			cmd := ""
+			var tokens []Token
+			if platform_bits == 32 {
+				cmd = "int(0x80, 4, 1, " + st[i+1].value + ", len(" + st[i+1].value + "))"
+				tokens = tokenize(cmd, true, " ")
+			} else if platform_bits == 64 {
+				cmd = "syscall(1, 1, " + st[i+1].value + ", len(" + st[i+1].value + "))"
+				tokens = tokenize(cmd, true, " ")
+			}
+			log.Fatalln("CMD", cmd, tokens)
 		} else if (st[i].t == BUILTIN) && (st[i].value == "str") && (st[i+1].t == VALID_NAME) {
 			log.Fatalln("To implement: str(name)")
 		} else if (st[i].t == BUILTIN) && (st[i].value == "str") && (st[i+1].t == REGISTER) {
@@ -840,7 +856,7 @@ func (st Statement) String() string {
 					if platform_bits == 32 {
 						asmcode += "\tmov eax, 1\t\t\t; function call: 1\n"
 					} else if platform_bits == 64 {
-						asmcode += "\tmov rax, 1\t\t\t; function call: 60\n"
+						asmcode += "\tmov rax, 60\t\t\t; function call: 60\n"
 					}
 					if !osx {
 						asmcode += "\t"
@@ -857,7 +873,11 @@ func (st Statement) String() string {
 						asmcode += "\tsyscall\t\t\t; exit program\n"
 					}
 				} else {
-					asmcode += "\tmov rax, 1\t\t\t; function call: 1\n\t"
+					if platform_bits == 32 {
+						asmcode += "\tmov rax, 1\t\t\t; function call: 1\n\t"
+					} else if platform_bits == 64 {
+						asmcode += "\tmov rax, 60\t\t\t; function call: 60\n\t"
+					}
 					if exit_code == "0" {
 						asmcode += "xor rbx, rbx"
 					} else {
