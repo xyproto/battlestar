@@ -7,12 +7,14 @@ all: clean battlestarc
 full: clean battlestarc
 	make -C helloworld
 	make -C test_bits
+	make -C test_bits2
 	make -C samples
 	make -C kernel
 
 full_clean: clean
 	make -C helloworld clean
 	make -C test_bits clean
+	make -C test_bits2 clean
 	make -C samples clean
 	make -C kernel clean
 	make -C osx clean

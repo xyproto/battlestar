@@ -417,11 +417,11 @@ func tokenize(program string, debug bool, sep string) []Token {
 			t = Token{STRING, collected, statementnr, ""}
 			tokens = append(tokens, t)
 			instring = false
-			constexpr = false
 			collected = ""
 		}
 		t = Token{SEP, ";", statementnr, ""}
 		tokens = append(tokens, t)
+		constexpr = false
 	}
 	return tokens
 }

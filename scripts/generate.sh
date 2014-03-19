@@ -83,8 +83,8 @@ for f in *.bts; do
     $ldcmd "$n.o" -o "$n" || echo "$n failed to link"
   fi
   if [[ $skipstrip == false ]]; then
-    [ $osx = false ] && strip -R .comment -R .gnu.version "$n"
-    require sstrip 2 && sstrip "$n"
+    [ $osx = false ] && (strip -R .comment -R .gnu.version "$n" 2>/dev/null)
+    require sstrip 2 && (sstrip "$n" 2>/dev/null)
   fi
   echo
 done
