@@ -1,5 +1,7 @@
 * Add and fix local variables. Use the .bss section. (Remember to include .bss when building kernels)
+* Create a write() function
 * Remove the [ebp-8] local variable testing code.
 * Add the assembly version of printf.
 * Make it easy to link with OpenGL or SDL2.
 * Parse trees instead of token lists, for function calls.
+* Use the go module for tokenizing
