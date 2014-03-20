@@ -9,4 +9,4 @@ boot:
 
 clean:
 	@echo 'Cleaning...'
-	@-rm -f *.asm *.c *.o *.log test?? boot linker.ld *.bin core.*
+	@-rm -f *.asm *.c *.o *.log test?? boot linker.ld *.bin core.* a.out
