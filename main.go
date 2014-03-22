@@ -67,7 +67,7 @@ var (
 	operators = []string{"=", "+=", "-=", "*=", "/=", "&=", "|="}
 	keywords  = []string{"fun", "ret", "const", "call", "extern", "end", "bootable"}
 	builtins  = []string{"len", "int", "exit", "halt", "str", "write", "read", "syscall"} // built-in functions
-	reserved  = []string{"param", "intparam"} // built-in lists that can be accessed with [index]
+	reserved  = []string{"param", "intparam"}                                             // built-in lists that can be accessed with [index]
 
 	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard", RESERVED: "reserved", VARIABLE: "variable", ADDITION: "addition", SUBTRACTION: "subtraction", MULTIPLICATION: "multiplication", DIVISION: "division"}
 
@@ -458,7 +458,7 @@ func reduce(st Statement, debug bool) Statement {
 			}
 		} else if (st[i].t == BUILTIN) && (st[i].value == "write") && (st[i+1].t == VALID_NAME) {
 			// replace write(msg) with
-			// int(0x80, 4, msg, len(msg)) on 32-bit 
+			// int(0x80, 4, msg, len(msg)) on 32-bit
 			// syscall(1, msg, len(msg)) on 64-bit
 			// TODO: Convert from string to tokens and use them in place of this token
 			cmd := ""
@@ -702,7 +702,7 @@ func syscall_or_interrupt(st Statement, syscall bool) string {
 		precode = "\t;--- call interrupt 0x" + st[1].value + " ---\n" + precode
 	}
 	// Add the interrupt call
-	if syscall || (st[1].t == VALUE ){
+	if syscall || (st[1].t == VALUE) {
 		if osx {
 			// just the way function calls are made on BSD/OSX
 			asmcode += "\tsub esp, 4\t\t\t; BSD system call preparation\n"
@@ -1553,11 +1553,12 @@ func main() {
 		log.Println("--- Done tokenizing ---")
 		constants, asmcode := TokensToAssembly(tokens, true, false)
 		if constants != "" {
-			asmdata += fmt.Sprintln("section .data\n")
-			asmdata += fmt.Sprintln(constants + "\n")
+			asmdata += fmt.Sprintln("section .data") + "\n"
+			// TODO: Is Sprintln needed here?
+			asmdata += fmt.Sprintln(constants) + "\n"
 		}
 		if !bootable {
-			asmdata += fmt.Sprintln("section .text\n")
+			asmdata += fmt.Sprintln("section .text") + "\n"
 		}
 		if asmcode != "" {
 			asmdata += fmt.Sprintln(add_starting_point_if_missing(asmcode) + "\n")
