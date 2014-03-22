@@ -741,8 +741,9 @@ func (st Statement) String() string {
 		log.Fatalln("Error: Empty statement.")
 		return ""
 	} else if (st[0].t == BUILTIN) && (st[0].value == "int") { // interrrupt call
+		return syscall_or_interrupt(st, false)
 	} else if (st[0].t == BUILTIN) && (st[0].value == "syscall") {
-		return syscall_or_int(st)
+		return syscall_or_interrupt(st, true)
 	} else if (st[0].t == KEYWORD) && (st[0].value == "const") && (len(st) >= 4) { // constant data
 		constname := ""
 		if st[1].t == VALID_NAME {
@@ -821,7 +822,7 @@ func (st Statement) String() string {
 		asmcode += "\tjmp .hang\t; loop forever\n\n"
 		return asmcode
 	} else if (st[0].t == BUILTIN) && (st[0].value == "str") {
-		log.Fatatln("Error: This usage of str() is yet to be implemented")
+		log.Fatalln("Error: This usage of str() is yet to be implemented")
 	} else if ((st[0].t == KEYWORD) && (st[0].value == "ret")) || ((st[0].t == BUILTIN) && (st[0].value == "exit")) {
 		asmcode := ""
 		if st[0].value == "ret" {
