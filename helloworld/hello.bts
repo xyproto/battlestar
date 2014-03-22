@@ -3,7 +3,7 @@
 const hello = "Hello, world!", 10
 
 fun main
-    int(80, 4, 1, hello, len(hello))
+    write(hello)
 end
 
 // vim: set syntax=c ts=4 sw=4 et:

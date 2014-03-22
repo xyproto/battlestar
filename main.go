@@ -66,7 +66,7 @@ var (
 
 	operators = []string{"=", "+=", "-=", "*=", "/=", "&=", "|="}
 	keywords  = []string{"fun", "ret", "const", "call", "extern", "end", "bootable"}
-	builtins  = []string{"len", "int", "exit", "halt", "str", "write", "read"} // built-in functions
+	builtins  = []string{"len", "int", "exit", "halt", "str", "write", "read", "syscall"} // built-in functions
 	reserved  = []string{"param", "intparam"} // built-in lists that can be accessed with [index]
 
 	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard", RESERVED: "reserved", VARIABLE: "variable", ADDITION: "addition", SUBTRACTION: "subtraction", MULTIPLICATION: "multiplication", DIVISION: "division"}
@@ -470,7 +470,13 @@ func reduce(st Statement, debug bool) Statement {
 				cmd = "syscall(1, 1, " + st[i+1].value + ", len(" + st[i+1].value + "))"
 				tokens = tokenize(cmd, true, " ")
 			}
-			log.Fatalln("CMD", cmd, tokens)
+			// remove the current token, twice
+			st = st[:i+1+copy(st[i+1:], st[i+2:])]
+			// replace with the new tokens
+			st[i] = tokens[0]
+			for _, token := range tokens[1:] {
+				st = append(st, token)
+			}
 		} else if (st[i].t == BUILTIN) && (st[i].value == "str") && (st[i+1].t == VALID_NAME) {
 			log.Fatalln("To implement: str(name)")
 		} else if (st[i].t == BUILTIN) && (st[i].value == "str") && (st[i+1].t == REGISTER) {
@@ -580,6 +586,150 @@ func reserved_and_value(st Statement) string {
 	return ""
 }
 
+func syscall_or_interrupt(st Statement, syscall bool) string {
+	if syscall {
+		// TODO: Remove st[1]
+		log.Fatalln("Remove st[1]")
+	}
+
+	// Store each of the parameters to the appropriate registers
+	var reg, n, comment, asmcode, precode, postcode string
+
+	from_i := 2     //inclusive
+	to_i := len(st) // exclusive
+	step_i := 1
+	if osx {
+		// arguments are pushed in the opposite order for BSD/OSX
+		from_i = len(st) - 1 // inclusive
+		to_i = 1             // exclusive
+		step_i = -1
+	}
+	first_i := from_i       // 2 for others, len(st)=1 for OSX/BSD
+	last_i := to_i - step_i // 2 for OSX/BSD, len(st)-1 for others
+	for i := from_i; i != to_i; i += step_i {
+		if (i - 2) >= len(interrupt_parameter_registers) {
+			log.Println("Error: Too many parameters for interrupt call:")
+			for _, t := range st {
+				log.Println(t.value)
+			}
+			os.Exit(1)
+			break
+		}
+		reg = interrupt_parameter_registers[i-2]
+		n = strconv.Itoa(i - 2)
+		if (osx && (i == last_i)) || (!osx && (i == first_i)) {
+			comment = "function call: " + st[i].value
+		} else {
+			if st[i].t == VALUE {
+				comment = "parameter #" + n + " is " + st[i].value
+			} else if st[i].t == REGISTER {
+				log.Fatalln("Error: Can't use a register as a parameter to interrupt calls, since they may be overwritten when preparing for the call.\n" +
+					"You can, however, use _ as a parameter to use the value in the corresponding register.")
+			} else {
+				if strings.HasPrefix(st[i].value, "_length_of_") {
+					comment = "parameter #" + n + " is len(" + st[i].value[11:] + ")"
+				} else {
+					if st[i].value == "_" {
+						// When _ is given, use the value already in the corresponding register
+						comment = "parameter #" + n + " is supposedly already set"
+					} else if has(data_not_value_types, st[i].value) {
+						comment = "parameter #" + n + " is " + "&" + st[i].value
+					} else {
+						comment = "parameter #" + n + " is " + st[i].value
+						// Already recognized not to be a register
+						if platform_bits == 32 {
+							if st[i].value == "esp" {
+								// Put the value of the register associated with this token at rbp
+								// TODO: Figure out why this doesn't work
+								precode += "\tsub esp, 4\t\t\t; make some space for storing " + st[i].extra + " on the stack\n"
+								precode += "\tmov DWORD [esp], " + st[i].extra + "\t\t; move " + st[i].extra + " to a memory location on the stack\n"
+								postcode += "\tadd esp, 4\t\t\t; move the stack pointer back\n"
+							}
+						} else if platform_bits == 64 {
+							if st[i].value == "rsp" {
+								// Put the value of the register associated with this token at rbp
+								// TODO: Figure out why this doesn't work
+								precode += "\tsub rsp, 8\t\t\t; make some space for storing " + st[i].extra + " on the stack\n"
+								precode += "\tmov QWORD [rsp], " + st[i].extra + "\t\t; move " + st[i].extra + " to a memory location on the stack\n"
+								postcode += "\tadd rsp, 8\t\t\t; move the stack pointer back\n"
+							}
+						}
+					}
+				}
+			}
+		}
+		codeline := ""
+		// Skip parameters/registers that are already set
+		if st[i].value == "_" {
+			codeline += "\t\t"
+		} else {
+			if st[i].value == "0" {
+				codeline += "\txor " + reg + ", " + reg
+			} else {
+				// TODO: Remove special case, implement general local variables
+				if st[i].value == "x" {
+					if platform_bits == 32 {
+						codeline += "\tmov " + reg + ", ebp"
+						codeline += "\n\tsub " + reg + ", 8"
+					} else {
+						codeline += "\tmov " + reg + ", rbp"
+						codeline += "\n\tsub " + reg + ", 8"
+					}
+				} else {
+					if osx {
+						if i == last_i {
+							codeline += "\tmov " + reg + ", " + st[i].value
+						} else {
+							codeline += "\tpush dword " + st[i].value
+						}
+					} else {
+						codeline += "\tmov " + reg + ", " + st[i].value
+					}
+				}
+			}
+		}
+
+		// TODO: Find a more elegant way to format the comments in columns
+		if len(codeline) >= 16 { // for tab formatting
+			asmcode += codeline + "\t\t; " + comment + "\n"
+		} else {
+			asmcode += codeline + "\t\t\t; " + comment + "\n"
+		}
+	}
+	if syscall {
+		precode = "\t;--- system call ---\n" + precode
+	} else {
+		precode = "\t;--- call interrupt 0x" + st[1].value + " ---\n" + precode
+	}
+	// Add the interrupt call
+	if syscall || (st[1].t == VALUE ){
+		if osx {
+			// just the way function calls are made on BSD/OSX
+			asmcode += "\tsub esp, 4\t\t\t; BSD system call preparation\n"
+		}
+		if syscall {
+			asmcode += "\tsyscall\t\t\t; perform the call\n"
+		} else {
+			// Assume that interrupts will always be given in hex and that a missing 0x is just forgotten
+			if !strings.HasPrefix(st[1].value, "0x") {
+				log.Println("Note: Adding 0x in front of interrupt", st[1].value)
+				asmcode += "\tint 0x" + st[1].value + "\t\t\t; perform the call\n"
+			} else {
+				asmcode += "\tint " + st[1].value + "\t\t\t; perform the call\n"
+			}
+		}
+		if osx {
+			pushcount := len(st) - 2
+			displacement := strconv.Itoa(pushcount * 4) // 4 bytes per push
+			asmcode += "\tadd esp, " + displacement + "\t\t\t; BSD system call cleanup\n"
+		}
+		return precode + asmcode + postcode
+	} else {
+		log.Fatalln("Error: Need a (hexadecimal) interrupt number to call:\n", st[1].value)
+	}
+	return ""
+}
+
 func (st Statement) String() string {
 	debug := true
 
@@ -591,132 +741,8 @@ func (st Statement) String() string {
 		log.Fatalln("Error: Empty statement.")
 		return ""
 	} else if (st[0].t == BUILTIN) && (st[0].value == "int") { // interrrupt call
-		// Store each of the parameters to the appropriate registers
-		var reg, n, comment, asmcode, precode, postcode string
-
-		from_i := 2     //inclusive
-		to_i := len(st) // exclusive
-		step_i := 1
-		if osx {
-			// arguments are pushed in the opposite order for BSD/OSX
-			from_i = len(st) - 1 // inclusive
-			to_i = 1             // exclusive
-			step_i = -1
-		}
-		first_i := from_i       // 2 for others, len(st)=1 for OSX/BSD
-		last_i := to_i - step_i // 2 for OSX/BSD, len(st)-1 for others
-		for i := from_i; i != to_i; i += step_i {
-			if (i - 2) >= len(interrupt_parameter_registers) {
-				log.Println("Error: Too many parameters for interrupt call:")
-				for _, t := range st {
-					log.Println(t.value)
-				}
-				os.Exit(1)
-				break
-			}
-			reg = interrupt_parameter_registers[i-2]
-			n = strconv.Itoa(i - 2)
-			if (osx && (i == last_i)) || (!osx && (i == first_i)) {
-				comment = "function call: " + st[i].value
-			} else {
-				if st[i].t == VALUE {
-					comment = "parameter #" + n + " is " + st[i].value
-				} else if st[i].t == REGISTER {
-					log.Fatalln("Error: Can't use a register as a parameter to interrupt calls, since they may be overwritten when preparing for the call.\n" +
-						"You can, however, use _ as a parameter to use the value in the corresponding register.")
-				} else {
-					if strings.HasPrefix(st[i].value, "_length_of_") {
-						comment = "parameter #" + n + " is len(" + st[i].value[11:] + ")"
-					} else {
-						if st[i].value == "_" {
-							// When _ is given, use the value already in the corresponding register
-							comment = "parameter #" + n + " is supposedly already set"
-						} else if has(data_not_value_types, st[i].value) {
-							comment = "parameter #" + n + " is " + "&" + st[i].value
-						} else {
-							comment = "parameter #" + n + " is " + st[i].value
-							// Already recognized not to be a register
-							if platform_bits == 32 {
-								if st[i].value == "esp" {
-									// Put the value of the register associated with this token at rbp
-									// TODO: Figure out why this doesn't work
-									precode += "\tsub esp, 4\t\t\t; make some space for storing " + st[i].extra + " on the stack\n"
-									precode += "\tmov DWORD [esp], " + st[i].extra + "\t\t; move " + st[i].extra + " to a memory location on the stack\n"
-									postcode += "\tadd esp, 4\t\t\t; move the stack pointer back\n"
-								}
-							} else if platform_bits == 64 {
-								if st[i].value == "rsp" {
-									// Put the value of the register associated with this token at rbp
-									// TODO: Figure out why this doesn't work
-									precode += "\tsub rsp, 8\t\t\t; make some space for storing " + st[i].extra + " on the stack\n"
-									precode += "\tmov QWORD [rsp], " + st[i].extra + "\t\t; move " + st[i].extra + " to a memory location on the stack\n"
-									postcode += "\tadd rsp, 8\t\t\t; move the stack pointer back\n"
-								}
-							}
-						}
-					}
-				}
-			}
-			codeline := ""
-			// Skip parameters/registers that are already set
-			if st[i].value == "_" {
-				codeline += "\t\t"
-			} else {
-				if st[i].value == "0" {
-					codeline += "\txor " + reg + ", " + reg
-				} else {
-					// TODO: Remove special case, implement general local variables
-					if st[i].value == "x" {
-						if platform_bits == 32 {
-							codeline += "\tmov " + reg + ", ebp"
-							codeline += "\n\tsub " + reg + ", 8"
-						} else {
-							codeline += "\tmov " + reg + ", rbp"
-							codeline += "\n\tsub " + reg + ", 8"
-						}
-					} else {
-						if osx {
-							if i == last_i {
-								codeline += "\tmov " + reg + ", " + st[i].value
-							} else {
-								codeline += "\tpush dword " + st[i].value
-							}
-						} else {
-							codeline += "\tmov " + reg + ", " + st[i].value
-						}
-					}
-				}
-			}
-
-			// TODO: Find a more elegant way to format the comments in columns
-			if len(codeline) >= 16 { // for tab formatting
-				asmcode += codeline + "\t\t; " + comment + "\n"
-			} else {
-				asmcode += codeline + "\t\t\t; " + comment + "\n"
-			}
-		}
-		precode = "\t;--- call interrupt 0x" + st[1].value + " ---\n" + precode
-		// Add the interrupt call
-		if st[1].t == VALUE {
-			if osx {
-				// just the way function calls are made on BSD/OSX
-				asmcode += "\tsub esp, 4\t\t\t; BSD system call preparation\n"
-			}
-			// Assume that interrupts will always be given in hex and that a missing 0x is just forgotten
-			if !strings.HasPrefix(st[1].value, "0x") {
-				log.Println("Note: Adding 0x in front of interrupt", st[1].value)
-				asmcode += "\tint 0x" + st[1].value + "\t\t\t; perform the call\n"
-			} else {
-				asmcode += "\tint " + st[1].value + "\t\t\t; perform the call\n"
-			}
-			if osx {
-				pushcount := len(st) - 2
-				displacement := strconv.Itoa(pushcount * 4) // 4 bytes per push
-				asmcode += "\tadd esp, " + displacement + "\t\t\t; BSD system call cleanup\n"
-			}
-			return precode + asmcode + postcode
-		}
-		log.Fatalln("Error: Need a (hexadecimal) interrupt number to call:\n", st[1].value)
+	} else if (st[0].t == BUILTIN) && (st[0].value == "syscall") {
+		return syscall_or_int(st)
 	} else if (st[0].t == KEYWORD) && (st[0].value == "const") && (len(st) >= 4) { // constant data
 		constname := ""
 		if st[1].t == VALID_NAME {
@@ -795,7 +821,7 @@ func (st Statement) String() string {
 		asmcode += "\tjmp .hang\t; loop forever\n\n"
 		return asmcode
 	} else if (st[0].t == BUILTIN) && (st[0].value == "str") {
-		return "; BLAHRGOMASTER!"
+		log.Fatatln("Error: This usage of str() is yet to be implemented")
 	} else if ((st[0].t == KEYWORD) && (st[0].value == "ret")) || ((st[0].t == BUILTIN) && (st[0].value == "exit")) {
 		asmcode := ""
 		if st[0].value == "ret" {
