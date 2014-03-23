@@ -39,6 +39,9 @@ install-bin: battlestarc
 
 install: install-bin
 
+devinstall: battlestarc
+	ln -sf /home/alexander/checkout/battlestar/battlestarc /usr/bin/battlestarc
+
 uninstall:
 	rm -f "$(DESTDIR)$(BINDIR)/bts"
 	rm -f "$(DESTDIR)$(BINDIR)/disasm"

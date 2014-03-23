@@ -458,7 +458,7 @@ func reduce(st Statement, debug bool) Statement {
 			}
 		} else if (st[i].t == BUILTIN) && (st[i].value == "write") && (st[i+1].t == VALID_NAME) {
 			// replace write(msg) with
-			// int(0x80, 4, msg, len(msg)) on 32-bit
+			// int(0x80, 4, 1, msg, len(msg)) on 32-bit
 			// syscall(1, msg, len(msg)) on 64-bit
 			// TODO: Convert from string to tokens and use them in place of this token
 			cmd := ""
@@ -470,8 +470,8 @@ func reduce(st Statement, debug bool) Statement {
 				cmd = "syscall(1, 1, " + st[i+1].value + ", len(" + st[i+1].value + "))"
 				tokens = tokenize(cmd, true, " ")
 			}
-			// remove the current token, twice
-			st = st[:i+1+copy(st[i+1:], st[i+2:])]
+			// remove the current token
+			st = st[:i+1+copy(st[i+1:], st[i+1:])]
 			// replace with the new tokens
 			st[i] = tokens[0]
 			for _, token := range tokens[1:] {
@@ -588,8 +588,9 @@ func reserved_and_value(st Statement) string {
 
 func syscall_or_interrupt(st Statement, syscall bool) string {
 	if syscall {
-		// TODO: Remove st[1]
-		log.Fatalln("Remove st[1]")
+		// Remove st[-1]
+		i := len(st)-1;
+		st = st[:i+copy(st[i:], st[i+1:])]
 	}
 
 	// Store each of the parameters to the appropriate registers
