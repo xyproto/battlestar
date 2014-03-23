@@ -115,6 +115,8 @@ if [[ $1 == clean ]]; then
       done
     fi
   done
+  # Clean *~ and a.out as well
+  rm -fv a.out *~
   exit 0
 fi
 

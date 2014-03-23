@@ -33,7 +33,7 @@ function build {
     require sstrip 2 && (sstrip "$n" 2>/dev/null)
   fi
   # Save the filenames for later cleaning
-  echo -e "\n$n $n.asm $n.c $n.o $n.log" >> "$n.log"
+  echo -e "\n$n $n.asm $n.c $n.o ${n}_c.o $n.log" >> "$n.log"
 }
 
 # Should stripping be skipped?
