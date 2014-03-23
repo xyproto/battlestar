@@ -1,0 +1,26 @@
+// Make the external C function accessible
+extern c_hi
+
+fun hi
+    intparam[2] = param[0] // Third parameter to the interrupt call is the first parameter to the function
+    intparam[3] = param[1] // Fourth parameter to the interrupt call is the second parameter to the function
+    syscall(1, 1, _, _)
+end
+
+inline_c
+    void hi(char* msg, int len); // External battlestar function
+
+    void c_hi() {
+        char *c = "hi ";
+        hi(c, 3);
+        hi("you\n", 4);
+    }
+end
+
+fun main
+    // Call a C function that then calls the hi function above
+    // hi "you" 3 // Call the hi function, with parameters
+    c_hi          // Call the C function named c_hi
+end
+
+// vim: set syntax=c ts=4 sw=4 et:

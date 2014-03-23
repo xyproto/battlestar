@@ -1,7 +1,7 @@
 const hi = "hello", 10
 
 fun main
-    write(hi)
+    int(80, 4, 1, hi, len(hi))
     ret
 
 // vim: set syntax=c ts=4 sw=4 et:

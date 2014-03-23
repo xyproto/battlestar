@@ -2,9 +2,8 @@ const commence = "Commence jump prep.", 10
 const nebula = "We're going to the ionian nebula.", 10
 
 fun _start
-    int(80, 4, 1, commence, len(commence))
-    int(80, 4, 1, nebula, len(nebula))
-    int(80, 1)
+    write(commence)
+    write(nebula)
     ret 2
 
 // vim: set syntax=c ts=4 sw=4 et:

@@ -1,7 +1,7 @@
 const msg = "Yes", 10
 
 fun main
-    // Set edx (ok for both 32-bit and 64-bit)
+    // Set edx, fourth parameter on 32-bit
     edx = len(msg)
 
     // Then use _ to signify that rdx should be used instead of being set when calling the interrupt

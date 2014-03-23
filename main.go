@@ -852,15 +852,15 @@ func (st Statement) String() string {
 		if (len(st) == 2) && (st[1].t == VALUE) && !osx {
 			if platform_bits == 32 {
 				if st[1].value == "0" {
-					asmcode += "\txor eax, eax\t\t\t; Error code "
+					asmcode += "\t;NEEDED? xor eax, eax\t\t\t; Error code "
 				} else {
-					asmcode += "\tmov eax, " + st[1].value + "\t\t\t; Error code "
+					asmcode += "\t;NEEDED? mov eax, " + st[1].value + "\t\t\t; Error code "
 				}
 			} else {
 				if st[1].value == "0" {
-					asmcode += "\txor rax, rax\t\t\t; Error code "
+					asmcode += "\t;NEEDED? xor rdi, rdi\t\t\t; Error code "
 				} else {
-					asmcode += "\tmov rax, " + st[1].value + "\t\t\t; Error code "
+					asmcode += "\t;NEEDED? mov rdi, " + st[1].value + "\t\t\t; Error code "
 				}
 			}
 			if st[1].value == "0" {
@@ -881,11 +881,7 @@ func (st Statement) String() string {
 						asmcode += "\tpush dword " + exit_code + "\t\t\t; exit code " + exit_code + "\n"
 						asmcode += "\tsub esp, 4\t\t\t; the BSD way, push then subtract before calling\n"
 					}
-					if platform_bits == 32 {
-						asmcode += "\tmov eax, 1\t\t\t; function call: 1\n"
-					} else if platform_bits == 64 {
-						asmcode += "\tmov rax, 60\t\t\t; function call: 60\n"
-					}
+					asmcode += "\tmov eax, 1\t\t\t; function call: 1\n"
 					if !osx {
 						asmcode += "\t"
 						if exit_code == "0" {
@@ -895,27 +891,15 @@ func (st Statement) String() string {
 						}
 						asmcode += "\t\t\t; exit code " + exit_code + "\n"
 					}
-					if platform_bits == 32 {
-						asmcode += "\tint 0x80\t\t\t; exit program\n"
-					} else {
-						asmcode += "\tsyscall\t\t\t; exit program\n"
-					}
+					asmcode += "\tint 0x80\t\t\t; exit program\n"
 				} else {
-					if platform_bits == 32 {
-						asmcode += "\tmov rax, 1\t\t\t; function call: 1\n\t"
-					} else if platform_bits == 64 {
-						asmcode += "\tmov rax, 60\t\t\t; function call: 60\n\t"
-					}
+					asmcode += "\tmov rax, 60\t\t\t; function call: 60\n\t"
 					if exit_code == "0" {
-						asmcode += "xor rbx, rbx"
+						asmcode += "xor rdi, rdi"
 					} else {
-						asmcode += "mov rbx, " + exit_code
+						asmcode += "mov rdi, " + exit_code
 					}
-					if platform_bits == 32 {
-						asmcode += "\t\t\t; return code " + exit_code + "\n\tint 0x80\t\t\t; exit program\n"
-					} else {
-						asmcode += "\t\t\t; return code " + exit_code + "\n\tsyscall\t\t\t; exit program\n"
-					}
+					asmcode += "\t\t\t; return code " + exit_code + "\n\tsyscall\t\t\t; exit program\n"
 				}
 			} else {
 				// For bootable kernels, main does not return. Hang instead.
