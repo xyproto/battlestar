@@ -98,8 +98,36 @@ if [[ $1 == run ]]; then
 fi
 
 if [[ $1 == build ]]; then
-  echo To implement: build
-  exit 1
+  shift
+  btsbuild $@
+  exit 0
+fi
+
+if [[ $1 == clean ]]; then
+  # For each log file
+  for log in *.log; do
+    if [[ -f $log ]]; then
+      # Remove all the files mentioned at the end
+      for fn in `tail -1 $log`; do
+	if [[ -f $fn ]]; then
+	  rm -fv "$fn"
+	fi
+      done
+    fi
+  done
+  exit 0
+fi
+
+if [[ $1 == size ]]; then
+  # For each log file, print the size of the resulting executable
+  for log in *.log; do
+    n=`echo ${log/.log} | sed 's/ //'`
+    if [[ -f $n ]]; then
+      # du -b does not work on OSX/BSD
+      [ `uname -s` = Linux ] && echo "$n is `du -b $n | cut -f1 ` bytes" || echo "$n is `ls -l $n | cut -d" " -f8` bytes"
+    fi
+  done
+  exit 0
 fi
 
 # Unknown command, assume run, for ease of use of #!/usr/bin/bts at top of scripts

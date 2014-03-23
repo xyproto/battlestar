@@ -26,7 +26,8 @@ osx: battlestarc
 	make -C osx
 
 battlestarc:
-	@rm -f battlestar # Make sure only "battlestarc" is present, not "battlestar"
+	@# Make sure only "battlestarc" is present, not "battlestar"
+	@rm -f battlestar
 	go build -o battlestarc
 
 clean:
@@ -34,6 +35,7 @@ clean:
 
 install-bin: battlestarc
 	install -Dm755 scripts/btstool.sh "$(DESTDIR)$(BINDIR)/bts"
+	install -Dm755 scripts/btsbuild.sh "$(DESTDIR)$(BINDIR)/btsbuild"
 	[ -e $(DESTDIR)$(BINDIR)/objdump ] && install -Dm755 scripts/disasm.sh "$(DESTDIR)$(BINDIR)/disasm"
 	install -Dm755 battlestarc "$(DESTDIR)$(BINDIR)/battlestarc"
 
@@ -41,6 +43,8 @@ install: install-bin
 
 devinstall: battlestarc
 	ln -sf /home/alexander/checkout/battlestar/battlestarc /usr/bin/battlestarc
+	ln -sf /home/alexander/checkout/battlestar/scripts/btstool.sh /usr/bin/bts
+	ln -sf /home/alexander/checkout/battlestar/scripts/build.sh /usr/bin/btsbuild
 
 uninstall:
 	rm -f "$(DESTDIR)$(BINDIR)/bts"

@@ -11,6 +11,31 @@ function require {
   return 0
 }
 
+function build {
+  f=$1
+  echo "Building $f"
+  n=`echo ${f/.bts} | sed 's/ //'`
+  # Don't output the log if "fail" is in the filename
+  if [[ $n != *fail* ]]; then
+    $battlestarc -bits="$bits" -osx="$osx" -f "$f" -o "$n.asm" -oc "$n.c" 2> "$n.log" || (cat "$n.log"; rm -f "$n.asm"; echo "$n failed to build!")
+  else
+    $battlestarc -bits="$bits" -osx="$osx" -f "$f" -o "$n.asm" -oc "$n.c" 2> "$n.log" || (rm -f "$n.asm"; echo "$n failed to build (correct)")
+  fi
+  [ -e $n.c ] && ($cccmd -c "$n.c" -o "${n}_c.o" || echo "$n failed to compile")
+  [ -e $n.asm ] && ($asmcmd -o "$n.o" "$n.asm" || echo "$n failed to assemble")
+  if [ -e ${n}_c.o -a -e $n.o ]; then
+    $ldcmd "${n}_c.o" "$n.o" -o "$n" || echo "$n failed to link"
+  elif [ -e $n.o ]; then
+    $ldcmd "$n.o" -o "$n" || echo "$n failed to link"
+  fi
+  if [[ $skipstrip == false ]]; then
+    [ $osx = false ] && (strip -R .comment -R .gnu.version "$n" 2>/dev/null)
+    require sstrip 2 && (sstrip "$n" 2>/dev/null)
+  fi
+  # Save the filenames for later cleaning
+  echo -e "\n$n $n.asm $n.c $n.o $n.log" >> "$n.log"
+}
+
 # Should stripping be skipped?
 skipstrip=false
 #skipstrip=true
@@ -20,7 +45,6 @@ require yasm 1
 require ld 1
 require gcc 0
 require sstrip 0
-echo
 
 battlestarc=../battlestarc
 if [ ! -e $battlestarc ]; then
@@ -41,6 +65,8 @@ if [ $bits = 32 ]; then
 fi
 
 if [[ $1 == bootable ]]; then
+  shift
+
   echo 'Building a bootable kernel.'
   echo
 
@@ -66,25 +92,13 @@ if [[ $osx = true ]]; then
   bits=32
 fi
 
-for f in *.bts; do
-  n=`echo ${f/.bts} | sed 's/ //'`
-  echo "Building $n"
-  # Don't output the log if "fail" is in the filename
-  if [[ $n != *fail* ]]; then
-    $battlestarc -bits="$bits" -osx="$osx" -f "$f" -o "$n.asm" -oc "$n.c" 2> "$n.log" || (cat "$n.log"; rm -f "$n.asm"; echo "$n failed to build!")
-  else
-    $battlestarc -bits="$bits" -osx="$osx" -f "$f" -o "$n.asm" -oc "$n.c" 2> "$n.log" || (rm -f "$n.asm"; echo "$n failed to build (correct)")
-  fi
-  [ -e $n.c ] && ($cccmd -c "$n.c" -o "${n}_c.o" || echo "$n failed to compile")
-  [ -e $n.asm ] && ($asmcmd -o "$n.o" "$n.asm" || echo "$n failed to assemble")
-  if [ -e ${n}_c.o -a -e $n.o ]; then
-    $ldcmd "${n}_c.o" "$n.o" -o "$n" || echo "$n failed to link"
-  elif [ -e $n.o ]; then
-    $ldcmd "$n.o" -o "$n" || echo "$n failed to link"
-  fi
-  if [[ $skipstrip == false ]]; then
-    [ $osx = false ] && (strip -R .comment -R .gnu.version "$n" 2>/dev/null)
-    require sstrip 2 && (sstrip "$n" 2>/dev/null)
-  fi
-  echo
-done
+# Build one file or *.bts
+if [[ -f $1 ]]; then
+  build $1
+else
+  for f in *.bts; do
+    if [[ -f $f ]]; then
+      build $f
+    fi
+  done
+fi

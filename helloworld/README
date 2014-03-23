@@ -1,0 +1,19 @@
+hello.bts can be run directly, like a script, if /usr/bin/bts is present.
+
+Just run:
+
+./hello.bts
+
+It can also be built to an executable if bts and btsbuild is in the path.
+
+Just run:
+
+bts build hello.bts
+
+Check the size of the executable:
+
+bts size
+
+And clean up:
+
+bts clean
