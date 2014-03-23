@@ -5,3 +5,4 @@
 * Make it easy to link with OpenGL or SDL2.
 * Parse trees instead of token lists, for function calls.
 * Use the go module for tokenizing
+* Test on Cygwin on Wine as well, possibly change the uses of uname
