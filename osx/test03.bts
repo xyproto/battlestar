@@ -1,7 +1,0 @@
-const msg = "hi", 10
-
-fun main
-    int(80, 4, 1, msg, len(msg))
-end
-
-// vim: set syntax=c ts=4 sw=4 et:

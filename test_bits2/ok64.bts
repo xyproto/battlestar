@@ -6,15 +6,15 @@ const nl = 10
 
 fun main
     // Output a 'O' a newline
-    int(80, 1, 1, o, len(o))
+    syscall(1, 1, o, len(o))
 
     // TODO: Figure out why this segfaults
     // Output an 'K'
     rax = 75
-    int(80, 1, 1, str(rax), 4)
+    syscall(1, 1, str(rax), 4)
 
     // Output a newline
-    int(80, 1, 1, nl, len(nl))
+    syscall(1, 1, nl, len(nl))
 end
 
 // vim: set syntax=c ts=4 sw=4 et:

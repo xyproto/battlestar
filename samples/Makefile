@@ -1,6 +1,6 @@
 all:
-	@../scripts/generate.sh
+	bts build
+	bts size
 
 clean:
-	@echo 'Cleaning...'
-	@-rm -f *.asm *.c *.o *.log test?? core.*
+	bts clean

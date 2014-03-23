@@ -11,19 +11,16 @@ full: clean battlestarc
 	make -C samples
 	make -C kernel
 
-full_clean: clean
+full_clean:
 	make -C helloworld clean
 	make -C test_bits clean
 	make -C test_bits2 clean
 	make -C samples clean
 	make -C kernel clean
-	make -C osx clean
+	make -C . clean
 
 hello: battlestarc
 	make -C helloworld
-
-osx: battlestarc
-	make -C osx
 
 battlestarc:
 	@# Make sure only "battlestarc" is present, not "battlestar"
