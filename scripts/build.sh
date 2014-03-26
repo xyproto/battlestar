@@ -36,12 +36,20 @@ function build {
     #echo battlestarc $params -f "$f" -o "$n.asm" -oc "$n.c" 2> "$n.log" || (rm -f "$n.asm"; echo "$n failed to build (correct)")
     battlestarc $params -f "$f" -o "$n.asm" -oc "$n.c" 2> "$n.log" || (rm -f "$n.asm"; echo "$n failed to build (correct)")
   fi
-  [ -e $n.c ] && ($cccmd -c "$n.c" -o "${n}_c.o" || echo "$n failed to compile")
+  if [[ $linkfail = false ]]; then
+    [ -e $n.c ] && ($cccmd -c "$n.c" -o "${n}_c.o" || echo "$n failed to compile")
+  else
+    echo "WARNING: Can't compile inline C for 64-bit executables on a 32-bit system."
+  fi
   [ -e $n.asm ] && ($asmcmd -o "$n.o" "$n.asm" || echo "$n failed to assemble")
-  if [ -e ${n}_c.o -a -e $n.o ]; then
-    $ldcmd "${n}_c.o" "$n.o" -o "$n" || echo "$n failed to link"
-  elif [ -e $n.o ]; then
-    $ldcmd "$n.o" -o "$n" || echo "$n failed to link"
+  if [[ $linkfail = false ]]; then
+    if [ -e ${n}_c.o -a -e $n.o ]; then
+      $ldcmd "${n}_c.o" "$n.o" -o "$n" || echo "$n failed to link"
+    elif [ -e $n.o ]; then
+      $ldcmd "$n.o" -o "$n" || echo "$n failed to link"
+    fi
+  else
+    echo "WARNING: Can't link 64-bit executables on a 32-bit system."
   fi
   if [[ $skipstrip == false ]]; then
     [ $osx = false ] && (strip -R .comment -R .gnu.version "$n" 2>/dev/null)
@@ -61,12 +69,19 @@ require ld 1
 require gcc 0
 require sstrip 0
 
+# Discover if we are on a 32-bit or 64-bit system (bits is set to 32 or 64, or more?)
 bits=`getconf LONG_BIT`
+
+# Is it likely that gcc and ld will fail? (dealing with 64-bit executables on a 32-bit system)
+linkfail=false
 
 # Set bits if "bits=32" or "bits=64" is found in the arguments
 if [[ $@ = *'bits=32'* ]]; then
   bits=32
 elif [[ $@ = *'bits=64'* ]]; then
+  if [[ $bits == 32 ]]; then
+    linkfail=true
+  fi
   bits=64
 fi
 
