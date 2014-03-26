@@ -589,7 +589,21 @@ func reserved_and_value(st Statement) string {
 func syscall_or_interrupt(st Statement, syscall bool) string {
 	if syscall {
 		// Remove st[-1]
-		i := len(st)-1;
+		i := len(st) - 1
+		log.Printf("REMOVING ", st[i]);
+		st = st[:i+copy(st[i:], st[i+1:])]
+	} else {
+		// Remove st[1], if it's not a value
+		i := 1
+		if st[i].t != VALUE {
+		//	log.Println("REMOVING ", st[i]);
+			st = st[:i+copy(st[i:], st[i+1:])]
+		//} else {
+		//	log.Println("NOT REMOVING ", st[i]);
+		}
+		// Remove st[-1] (;)
+		i = len(st) - 1
+		log.Printf("REMOVING ", st[i]);
 		st = st[:i+copy(st[i:], st[i+1:])]
 	}
 
@@ -700,7 +714,13 @@ func syscall_or_interrupt(st Statement, syscall bool) string {
 	if syscall {
 		precode = "\t;--- system call ---\n" + precode
 	} else {
-		precode = "\t;--- call interrupt 0x" + st[1].value + " ---\n" + precode
+		comment := "\t;--- call interrupt "
+		if !strings.HasPrefix(st[1].value, "0x") {
+			// add 0x if missing, assume interrupts will always be called by hex
+			comment += "0x"
+		}
+		comment += st[1].value + " ---\n"
+		precode = comment + precode
 	}
 	// Add the interrupt call
 	if syscall || (st[1].t == VALUE) {
@@ -711,13 +731,13 @@ func syscall_or_interrupt(st Statement, syscall bool) string {
 		if syscall {
 			asmcode += "\tsyscall\t\t\t; perform the call\n"
 		} else {
-			// Assume that interrupts will always be given in hex and that a missing 0x is just forgotten
+			// Add 0x if missing, assume interrupts will always be called by hex
+			asmcode += "\tint "
 			if !strings.HasPrefix(st[1].value, "0x") {
 				log.Println("Note: Adding 0x in front of interrupt", st[1].value)
-				asmcode += "\tint 0x" + st[1].value + "\t\t\t; perform the call\n"
-			} else {
-				asmcode += "\tint " + st[1].value + "\t\t\t; perform the call\n"
+				asmcode += "0x"
 			}
+			asmcode += st[1].value + "\t\t\t; perform the call\n"
 		}
 		if osx {
 			pushcount := len(st) - 2
@@ -850,24 +870,24 @@ func (st Statement) String() string {
 			asmcode += "\t;--- return ---\n"
 		}
 		if (len(st) == 2) && (st[1].t == VALUE) && !osx {
-			if platform_bits == 32 {
-				if st[1].value == "0" {
-					asmcode += "\t;NEEDED? xor eax, eax\t\t\t; Error code "
-				} else {
-					asmcode += "\t;NEEDED? mov eax, " + st[1].value + "\t\t\t; Error code "
-				}
-			} else {
-				if st[1].value == "0" {
-					asmcode += "\t;NEEDED? xor rdi, rdi\t\t\t; Error code "
-				} else {
-					asmcode += "\t;NEEDED? mov rdi, " + st[1].value + "\t\t\t; Error code "
-				}
-			}
-			if st[1].value == "0" {
-				asmcode += "0 (ok)\n"
-			} else {
-				asmcode += st[1].value + "\n"
-			}
+			//if platform_bits == 32 {
+			//	if st[1].value == "0" {
+			//		asmcode += "\t;NEEDED? xor eax, eax\t\t\t; Error code "
+			//	} else {
+			//		asmcode += "\t;NEEDED? mov eax, " + st[1].value + "\t\t\t; Error code "
+			//	}
+			//} else {
+			//	if st[1].value == "0" {
+			//		asmcode += "\t;NEEDED? xor rdi, rdi\t\t\t; Error code "
+			//	} else {
+			//		asmcode += "\t;NEEDED? mov rdi, " + st[1].value + "\t\t\t; Error code "
+			//	}
+			//}
+			//if st[1].value == "0" {
+			//	asmcode += "0 (ok)\n"
+			//} else {
+			//	asmcode += st[1].value + "\n"
+			//}
 		}
 		if (st[0].value == "exit") || (in_function == "main") || (in_function == linker_start_function) {
 			// Not returning from main/_start/start function, but exiting properly
