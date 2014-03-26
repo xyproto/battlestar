@@ -1,5 +1,7 @@
-const hi = "ho", 10
+const hi = "hello", 10
 
-write(hi)
+fun main
+    write(hi)
+    ret
 
 // vim: set syntax=c ts=4 sw=4 et:

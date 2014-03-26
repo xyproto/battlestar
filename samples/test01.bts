@@ -1,4 +1,5 @@
-# This program does nothing but exiting gracefully
-
 fun main
-end
+    # Exit with error code 99
+    exit 99
+
+// vim: set syntax=c ts=4 sw=4 et:

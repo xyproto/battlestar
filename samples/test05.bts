@@ -1,15 +1,5 @@
-const commence = "Commence jump prep.", 10
-const nebula = "We're going to the ionian nebula.", 10
-const hi = "Hi", 10
+const hi = "ho", 10
 
-fun hello
-    write(commence)
-    write(nebula)
-    ret
-
-fun main
-    write(hi)
-    call hello
-    call hello
+write(hi)
 
 // vim: set syntax=c ts=4 sw=4 et:

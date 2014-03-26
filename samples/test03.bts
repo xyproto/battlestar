@@ -1,7 +1,9 @@
-const hi = "hello", 10
+const commence = "Commence jump prep.", 10
+const nebula = "We're going to the ionian nebula.", 10
 
-fun main
-    write(hi)
-    ret
+fun _start
+    write(commence)
+    write(nebula)
+    ret 2
 
 // vim: set syntax=c ts=4 sw=4 et:
