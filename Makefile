@@ -1,6 +1,7 @@
 DESTDIR ?= 
 PREFIX ?= /usr
 BINDIR = $(PREFIX)/bin
+PWD = $(shell pwd)
 
 all: clean battlestarc
 
@@ -39,9 +40,9 @@ install-bin: battlestarc
 install: install-bin
 
 devinstall: battlestarc
-	ln -sf /home/alexander/checkout/battlestar/battlestarc /usr/bin/battlestarc
-	ln -sf /home/alexander/checkout/battlestar/scripts/btstool.sh /usr/bin/bts
-	ln -sf /home/alexander/checkout/battlestar/scripts/build.sh /usr/bin/btsbuild
+	ln -sf $(PWD)/battlestarc /usr/bin/battlestarc
+	ln -sf $(PWD)/scripts/btstool.sh /usr/bin/bts
+	ln -sf $(PWD)/scripts/build.sh /usr/bin/btsbuild
 
 uninstall:
 	rm -f "$(DESTDIR)$(BINDIR)/bts"
