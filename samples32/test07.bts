@@ -1,26 +1,40 @@
-// Make the external C function accessible
-extern c_hi
+extern main                    // make C function available here
 
-fun hi
-    intparam[2] = param[0] // Third parameter to the interrupt call is the first parameter to the function
-    intparam[3] = param[1] // Fourth parameter to the interrupt call is the second parameter to the function
-    int(80, 4, 1, _, _)
+const dirname = "testdir", 0   // zero terminated string
+const permission = 644o        // octal number, yasm style
+const msg = "success", 10      // "success" followed by a newline
+
+fun makedir
+    // This inline C snippet is optional
+    inline_c
+        extern void makedir(char* dirname); // Make function available to C
+    end
+    intparam[1] = param[0]           // parameter 1 to the interrupt call is parameter 0 to the function
+    // syscall: mkdir
+    int(80, 39, _, permission)       // skip parameter 1 to the interrupt call, already set
 end
 
-inline_c
-    void hi(char* msg, int len); // External battlestar function
-
-    void c_hi() {
-        char *c = "hi ";
-        hi(c, 3);
-        hi("you\n", 4);
-    }
+fun removedir
+    intparam[1] = param[0]           // parameter 1 to the interrupt call is parameter 0 to the function
+    // syscall: rmdir
+    int(80, 40, _)                   // skip parameter 1 to the interrupt call, already set
 end
 
-fun main
-    // Call a C function that then calls the hi function above
-    // hi "you" 3 // Call the hi function, with parameters
-    c_hi          // Call the C function named c_hi
+fun success
+    int(80, 4, 1, msg, len(msg))
 end
+
+// Define the main function in C
+void main() {
+    // This is another way of declaring external functions in C.
+    // These are also optional.
+    //extern void removedir(char* dir);
+    //extern void success();
+
+    // Call the functions
+    makedir("/tmp/testdir");
+    removedir("/tmp/testdir");
+    success();
+}
 
 // vim: set syntax=c ts=4 sw=4 et:

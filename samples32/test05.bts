@@ -1,15 +1,11 @@
-const commence = "Commence jump prep.", 10
-const nebula = "We're going to the ionian nebula.", 10
-const hi = "Hi", 10
-
-fun hello
-    int(80, 4, 1, commence, len(commence))
-    int(80, 4, 1, nebula, len(nebula))
-    ret
+const msg = "Yes", 10
 
 fun main
-    int(80, 4, 1, hi, len(hi))
-    call hello
-    call hello
+    // Set edx, fourth parameter on 32-bit
+    edx = len(msg)
+
+    // Then use _ to signify that rdx should be used instead of being set when calling the interrupt
+    int(80, 4, 1, msg, _)
+end
 
 // vim: set syntax=c ts=4 sw=4 et:
