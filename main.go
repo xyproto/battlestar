@@ -219,6 +219,11 @@ func tokenize(program string, debug bool, sep string) []Token {
 			if debug {
 				log.Println("Found void, starting C block")
 			}
+			if (len(words) > 1) && (strings.HasPrefix(words[1], "main(")) {
+				log.Println("External main function detected!", words[1])
+				// TODO: Add "extern main" to the top of the source
+				log.Println("Remember to add \"extern main\" at the top of the file!")
+			}
 			c_block = true
 			// Skip the start of this type of inline C, don't include "void" as a token
 			continue

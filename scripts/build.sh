@@ -11,6 +11,11 @@ function require {
   return 0
 }
 
+function abort {
+  echo "$@"
+  exit 1
+}
+
 function build {
   f=$1
   shift
@@ -37,13 +42,15 @@ function build {
     battlestarc $params -f "$f" -o "$n.asm" -oc "$n.c" 2> "$n.log" || (rm -f "$n.asm"; echo "$n failed to build (correct)")
   fi
   if [[ $linkfail = false ]]; then
-    [ -e $n.c ] && ($cccmd -c "$n.c" -o "${n}_c.o" || echo "$n failed to compile")
+    compiledc=false
+    [ -e $n.c ] && ($cccmd -c "$n.c" -o "${n}_c.o" || abort "$n failed to compile")
+    [ -e $n.c ] && compiledc=true
   else
     echo "WARNING: Can't compile inline C for 64-bit executables on a 32-bit system."
   fi
   [ -e $n.asm ] && ($asmcmd -o "$n.o" "$n.asm" || echo "$n failed to assemble")
   if [[ $linkfail = false ]]; then
-    if [ -e ${n}_c.o -a -e $n.o ]; then
+    if [[ $compiledc = true ]]; then
       $ldcmd "${n}_c.o" "$n.o" -o "$n" || echo "$n failed to link"
     elif [ -e $n.o ]; then
       $ldcmd "$n.o" -o "$n" || echo "$n failed to link"

@@ -1,22 +1,25 @@
-// TODO: Figure out why this program doesn't run.
+extern main
 
-const astring = "A"
+const bstring = "B"
+const nl = 10
 
-fun get10
-    // TODO: Find out how to return 10 with 64-bit calling conventions
-    rax = 10
-    rdi = 10
+fun printb
+    write(bstring)
 end
 
-fun printa
-    write(astring)
+fun newline
+    write(nl)
+end
+
+fun get7
+    rax = 7
 end
 
 void main() {
-    // Output 'A' 10 times
-    int i = 0;
-    int ten = get10();
-    for (; i < ten; i++) printa();
+    // Output 'B' 7 times
+    for (int i=0; i < get7(); i++) printb();
+    // And a newline
+    newline();
 }
 
 // vim: set syntax=c ts=4 sw=4 et:
