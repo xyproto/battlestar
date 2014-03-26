@@ -1,7 +1,7 @@
 
 NOTE: Work in progress, currently does not work as expected.
       Does not build on OS X, last time I tried (only Linux).
-      Fails at boot.
+      Fails to boot.
 
       If you still want to try it, install qemu (including qemu-system-i386)
       and run "make boot".

@@ -71,6 +71,7 @@ skipstrip=false
 #skipstrip=true
 
 # Check for needed utilities
+require battlestarc 1
 require yasm 1
 require ld 1
 require gcc 0

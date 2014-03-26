@@ -1,7 +1,6 @@
 // TODO: Figure out why this program doesn't output "OK\n"
 
 const o = "O"
-
 const nl = 10
 
 fun main
@@ -14,7 +13,7 @@ fun main
     syscall(1, 1, str(rax), 4)
 
     // Output a newline
-    syscall(1, 1, nl, len(nl))
+    write(nl)
 end
 
 // vim: set syntax=c ts=4 sw=4 et:

@@ -19,13 +19,7 @@ function require {
   return 0
 }
 
-# Check for needed utilities
-require battlestarc 1
-require btsbuild 1
-require yasm 1
-require ld 1
-require gcc 2
-require sstrip 2
+require uname 1
 
 bits=`getconf LONG_BIT`
 osx=$([[ `uname -s` = Darwin ]] && echo true || echo false)
@@ -91,6 +85,13 @@ function run {
 
 # The "run" command
 if [[ $1 == run ]]; then
+  # Check for needed utilities
+  require battlestarc 1
+  require yasm 1
+  require ld 1
+  require gcc 2
+  require sstrip 2
+
   shift
   run $@
   exit 0
@@ -98,6 +99,8 @@ fi
 
 # The "build" command
 if [[ $1 == build ]]; then
+  require btsbuild 1
+
   shift
   btsbuild $@
   exit 0
