@@ -601,10 +601,12 @@ func syscall_or_interrupt(st Statement, syscall bool) string {
 		//} else {
 		//	log.Println("NOT REMOVING ", st[i]);
 		}
-		// Remove st[-1] (;)
+		// Remove st[-1] if it's a SEP
 		i = len(st) - 1
-		log.Printf("REMOVING ", st[i]);
-		st = st[:i+copy(st[i:], st[i+1:])]
+		if st[i].t == SEP {
+			log.Printf("REMOVING ", st[i]);
+			st = st[:i+copy(st[i:], st[i+1:])]
+		}
 	}
 
 	// Store each of the parameters to the appropriate registers
