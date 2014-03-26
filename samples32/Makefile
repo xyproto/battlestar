@@ -1,5 +1,5 @@
 all:
-	bts build
+	bts build -bits=32
 	bts size
 
 clean:

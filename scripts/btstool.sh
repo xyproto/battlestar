@@ -91,18 +91,21 @@ function run {
   fi
 }
 
-# Check for a command
+# The "run" command
 if [[ $1 == run ]]; then
-  run $2
+  shift
+  run $@
   exit 0
 fi
 
+# The "build" command
 if [[ $1 == build ]]; then
   shift
   btsbuild $@
   exit 0
 fi
 
+# The "clean" command
 if [[ $1 == clean ]]; then
   # For each log file
   for log in *.log; do
@@ -120,6 +123,7 @@ if [[ $1 == clean ]]; then
   exit 0
 fi
 
+# The "size" command
 if [[ $1 == size ]]; then
   # For each log file, print the size of the resulting executable
   for log in *.log; do

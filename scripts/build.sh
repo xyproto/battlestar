@@ -13,13 +13,28 @@ function require {
 
 function build {
   f=$1
+  shift
+  params=$@
   echo "Building $f"
   n=`echo ${f/.bts} | sed 's/ //'`
+
+  # TODO: This could probably be more robust
+  if [[ $params != *bits* ]]; then
+    params="$params -bits=$bits"
+  fi
+
+  # TODO: This could probably be more robust
+  if [[ $params != *osx* ]]; then
+    params="$params -osx=$osx"
+  fi
+
   # Don't output the log if "fail" is in the filename
   if [[ $n != *fail* ]]; then
-    $battlestarc -bits="$bits" -osx="$osx" -f "$f" -o "$n.asm" -oc "$n.c" 2> "$n.log" || (cat "$n.log"; rm -f "$n.asm"; echo "$n failed to build!")
+    #echo battlestarc $params -f "$f" -o "$n.asm" -oc "$n.c" 2> "$n.log" || (cat "$n.log"; rm -f "$n.asm"; echo "$n failed to build!")
+    battlestarc $params -f "$f" -o "$n.asm" -oc "$n.c" 2> "$n.log" || (cat "$n.log"; rm -f "$n.asm"; echo "$n failed to build!")
   else
-    $battlestarc -bits="$bits" -osx="$osx" -f "$f" -o "$n.asm" -oc "$n.c" 2> "$n.log" || (rm -f "$n.asm"; echo "$n failed to build (correct)")
+    #echo battlestarc $params -f "$f" -o "$n.asm" -oc "$n.c" 2> "$n.log" || (rm -f "$n.asm"; echo "$n failed to build (correct)")
+    battlestarc $params -f "$f" -o "$n.asm" -oc "$n.c" 2> "$n.log" || (rm -f "$n.asm"; echo "$n failed to build (correct)")
   fi
   [ -e $n.c ] && ($cccmd -c "$n.c" -o "${n}_c.o" || echo "$n failed to compile")
   [ -e $n.asm ] && ($asmcmd -o "$n.o" "$n.asm" || echo "$n failed to assemble")
@@ -46,12 +61,15 @@ require ld 1
 require gcc 0
 require sstrip 0
 
-battlestarc=../battlestarc
-if [ ! -e $battlestarc ]; then
-  make -C ..
+bits=`getconf LONG_BIT`
+
+# Set bits if "bits=32" or "bits=64" is found in the arguments
+if [[ $@ = *'bits=32'* ]]; then
+  bits=32
+elif [[ $@ = *'bits=64'* ]]; then
+  bits=64
 fi
 
-bits=`getconf LONG_BIT`
 osx=$([[ `uname -s` = Darwin ]] && echo true || echo false)
 asmcmd="yasm -f elf64"
 ldcmd='ld -s --fatal-warnings -nostdlib --relax'
@@ -94,11 +112,17 @@ fi
 
 # Build one file or *.bts
 if [[ -f $1 ]]; then
-  build $1
+  build $@
 else
+  # TODO: If the first argument is a parameter, pass it on when building *.bts.
+  #       If it looks like a filename, abort (already checked that it does not exist).
+  #if [[ $1 != "" ]]; then
+  #  echo 'Could not find $1!'
+  #  exit 1
+  #fi
   for f in *.bts; do
     if [[ -f $f ]]; then
-      build $f
+      build $f $@
     fi
   done
 fi
