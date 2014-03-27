@@ -77,9 +77,13 @@ function run {
   
     # Run the program
     [ -e $elffn ] && "$elffn"
+    retval=$?
   
     # Remove the program after execution
     [ -e $elffn ] && rm "$elffn"
+
+    # Exit with the same exit code as the program
+    exit $retval
   fi
 }
 
