@@ -60,7 +60,7 @@ Project 4 - run as a script
 
 1. Add this at the top of hello.bts:
 
-    #!/usr/bin/bts
+    ``#!/usr/bin/bts``
 
 2. Make it executable:
 
