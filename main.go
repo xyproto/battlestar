@@ -475,13 +475,8 @@ func reduce(st Statement, debug bool) Statement {
 				cmd = "syscall(1, 1, " + st[i+1].value + ", len(" + st[i+1].value + "))"
 				tokens = tokenize(cmd, true, " ")
 			}
-			// remove the current token
-			st = st[:i+1+copy(st[i+1:], st[i+1:])]
-			// replace with the new tokens
-			st[i] = tokens[0]
-			for _, token := range tokens[1:] {
-				st = append(st, token)
-			}
+			// Replace the current statement with the newly generated tokens
+			st = tokens
 		} else if (st[i].t == BUILTIN) && (st[i].value == "str") && (st[i+1].t == VALID_NAME) {
 			log.Fatalln("To implement: str(name)")
 		} else if (st[i].t == BUILTIN) && (st[i].value == "str") && (st[i+1].t == REGISTER) {
@@ -595,33 +590,48 @@ func syscall_or_interrupt(st Statement, syscall bool) string {
 	if syscall {
 		// Remove st[-1]
 		i := len(st) - 1
-		log.Printf("REMOVING ", st[i]);
-		st = st[:i+copy(st[i:], st[i+1:])]
+		if st[i].t == SEP {
+			log.Println("syscall: ignoring: ", st[i]);
+			st = st[:i+copy(st[i:], st[i+1:])]
+		}
 	} else {
 		// Remove st[1], if it's not a value
 		i := 1
 		if st[i].t != VALUE {
 		//	log.Println("REMOVING ", st[i]);
 			st = st[:i+copy(st[i:], st[i+1:])]
-		//} else {
-		//	log.Println("NOT REMOVING ", st[i]);
 		}
 		// Remove st[-1] if it's a SEP
 		i = len(st) - 1
 		if st[i].t == SEP {
-			log.Printf("REMOVING ", st[i]);
+			log.Println("interrupt call: ignoring: ", st[i]);
 			st = st[:i+copy(st[i:], st[i+1:])]
 		}
 	}
 
+	log.Println("system call:")
+	for _, token := range st {
+		log.Println(token)
+	}
+	// Debugging
+	//if st[3].value != "o" {
+	//	log.Fatalln("break at " + st[3].value)
+	//}
+
 	// Store each of the parameters to the appropriate registers
 	var reg, n, comment, asmcode, precode, postcode string
 
-	from_i := 2     //inclusive
+	// How many tokens to skip before start reading arguments
+	preskip := 2
+	if syscall {
+		preskip = 1
+	}
+
+	from_i := preskip     //inclusive
 	to_i := len(st) // exclusive
 	step_i := 1
 	if osx {
-		// arguments are pushed in the opposite order for BSD/OSX
+		// arguments are pushed in the opposite order for BSD/OSX (32-bit)
 		from_i = len(st) - 1 // inclusive
 		to_i = 1             // exclusive
 		step_i = -1
@@ -629,7 +639,7 @@ func syscall_or_interrupt(st Statement, syscall bool) string {
 	first_i := from_i       // 2 for others, len(st)=1 for OSX/BSD
 	last_i := to_i - step_i // 2 for OSX/BSD, len(st)-1 for others
 	for i := from_i; i != to_i; i += step_i {
-		if (i - 2) >= len(interrupt_parameter_registers) {
+		if (i - preskip) >= len(interrupt_parameter_registers) {
 			log.Println("Error: Too many parameters for interrupt call:")
 			for _, t := range st {
 				log.Println(t.value)
@@ -637,8 +647,8 @@ func syscall_or_interrupt(st Statement, syscall bool) string {
 			os.Exit(1)
 			break
 		}
-		reg = interrupt_parameter_registers[i-2]
-		n = strconv.Itoa(i - 2)
+		reg = interrupt_parameter_registers[i-preskip]
+		n = strconv.Itoa(i - preskip)
 		if (osx && (i == last_i)) || (!osx && (i == first_i)) {
 			comment = "function call: " + st[i].value
 		} else {
