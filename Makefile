@@ -32,10 +32,9 @@ clean:
 	rm -f battlestarc
 
 install-bin: battlestarc
-	install -Dm755 scripts/btstool.sh "$(DESTDIR)$(BINDIR)/bts"
-	install -Dm755 scripts/btsbuild.sh "$(DESTDIR)$(BINDIR)/btsbuild"
-	[ -e $(DESTDIR)$(BINDIR)/objdump ] && install -Dm755 scripts/disasm.sh "$(DESTDIR)$(BINDIR)/disasm"
-	install -Dm755 battlestarc "$(DESTDIR)$(BINDIR)/battlestarc"
+	install -Dm755 "$(PWD)/scripts/btstool.sh" "$(DESTDIR)$(BINDIR)/bts"
+	install -Dm755 "$(PWD)/scripts/build.sh" "$(DESTDIR)$(BINDIR)/btsbuild"
+	install -Dm755 "$(PWD)/battlestarc" "$(DESTDIR)$(BINDIR)/battlestarc"
 
 install: install-bin
 
