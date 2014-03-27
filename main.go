@@ -67,7 +67,7 @@ var (
 	operators = []string{"=", "+=", "-=", "*=", "/=", "&=", "|="}
 	keywords  = []string{"fun", "ret", "const", "call", "extern", "end", "bootable"}
 	builtins  = []string{"len", "int", "exit", "halt", "str", "write", "read", "syscall"} // built-in functions
-	reserved  = []string{"param", "intparam"}                                             // built-in lists that can be accessed with [index]
+	reserved  = []string{"funparam", "sysparam"}                                             // built-in lists that can be accessed with [index]
 
 	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard", RESERVED: "reserved", VARIABLE: "variable", ADDITION: "addition", SUBTRACTION: "subtraction", MULTIPLICATION: "multiplication", DIVISION: "division"}
 
@@ -563,13 +563,13 @@ func paramnum2reg(num int) string {
 }
 
 func reserved_and_value(st Statement) string {
-	if st[0].value == "param" {
+	if st[0].value == "funparam" {
 		paramoffset, err := strconv.Atoi(st[1].value)
 		if err != nil {
 			log.Fatalln("Error: Invalid offset for", st[0].value+":", st[1].value)
 		}
 		return paramnum2reg(paramoffset)
-	} else if st[0].value == "intparam" {
+	} else if st[0].value == "sysparam" {
 		paramoffset, err := strconv.Atoi(st[1].value)
 		if err != nil {
 			log.Fatalln("Error: Invalid offset for", st[0].value+":", st[1].value)
@@ -580,7 +580,7 @@ func reserved_and_value(st Statement) string {
 		return interrupt_parameter_registers[paramoffset]
 	} else {
 		// TODO: Implement support for other lists
-		log.Fatalln("Error: Can only handle \"param\" reserved words.")
+		log.Fatalln("Error: Can only handle \"funparam\" and \"sysparam\" reserved words.")
 	}
 	log.Fatalln("Error: Unable to handle reserved word and value:", st[0].value, st[1].value)
 	return ""

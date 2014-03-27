@@ -1,7 +1,5 @@
 const hi = "hi", 10
 
-// TODO: Find out why this currently does not work
-
 fun main
     syscall(1, 1, hi, len(hi))
 end

@@ -8,7 +8,7 @@ const msg = "success", 10       // "success" followed by a newline
 // First argument is the directory name as a zero terminated string
 // The directory is created with permission 644 (in octal)
 fun makedir
-    intparam[1] = param[0]      // parameter 1 to the interrupt call is parameter 0 to the function
+    sysparam[1] = funparam[0]      // parameter 1 to the interrupt call is parameter 0 to the function
     // syscall: mkdir
     int(80, 39, _, permission)  // skip parameter 1 to the interrupt call, already set
 end
@@ -16,7 +16,7 @@ end
 // Function for removing a directory
 // First argument is the directory name as a zero terminated string
 fun removedir
-    intparam[1] = param[0]      // parameter 1 to the interrupt call is parameter 0 to the function
+    sysparam[1] = funparam[0]      // parameter 1 to the interrupt call is parameter 0 to the function
     // syscall: rmdir
     int(80, 40, _)              // skip parameter 1 to the interrupt call, already set
 end

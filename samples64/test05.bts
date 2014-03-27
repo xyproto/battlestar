@@ -1,11 +1,9 @@
 extern c_hi
 
-// TODO: Find out why this currently does not work
-
 fun hi
-    intparam[3] = param[1] // Fourth parameter to the interrupt call is the second parameter to the function
-    intparam[2] = param[0] // Third parameter to the interrupt call is the first parameter to the function
-    syscall(1, 1, _, _)
+    sysparam[3] = funparam[1] // Fourth parameter to the syscall is the second parameter to the function
+    sysparam[2] = funparam[0] // Third parameter to the syscall is the first parameter to the function
+    syscall(1, 1, _, _) // write to stdout
 end
 
 inline_c
