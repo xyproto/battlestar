@@ -746,7 +746,7 @@ func syscall_or_interrupt(st Statement, syscall bool) string {
 			asmcode += "\tsub esp, 4\t\t\t; BSD system call preparation\n"
 		}
 		if syscall {
-			asmcode += "\tsyscall\t\t\t; perform the call\n"
+			asmcode += "\tsyscall\t\t\t\t; perform the call\n"
 		} else {
 			// Add 0x if missing, assume interrupts will always be called by hex
 			asmcode += "\tint "
@@ -936,7 +936,8 @@ func (st Statement) String() string {
 					} else {
 						asmcode += "mov rdi, " + exit_code
 					}
-					asmcode += "\t\t\t; return code " + exit_code + "\n\tsyscall\t\t\t; exit program\n"
+					asmcode += "\t\t\t; return code " + exit_code + "\n"
+					asmcode += "\tsyscall\t\t\t\t; exit program\n"
 				}
 			} else {
 				// For bootable kernels, main does not return. Hang instead.
