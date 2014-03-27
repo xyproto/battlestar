@@ -1,6 +1,10 @@
 Battlestar
 ==========
 
+* Version: 0.1
+* License: MIT
+* Author: Alexander Rødseth
+
 What is Battlestar?
 -------------------
 
@@ -39,10 +43,3 @@ Optional runtime dependencies
 * gcc (for inline C support)
 * sstrip (part of elftools) for even smaller binaries
 * binutils (for disassembling with objdump)
-
-General information
--------------------
-* Version: 0.1
-* License: MIT
-* Author: Alexander Rødseth
-
