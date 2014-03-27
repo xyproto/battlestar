@@ -220,9 +220,9 @@ func tokenize(program string, debug bool, sep string) []Token {
 				log.Println("Found void, starting C block")
 			}
 			if (len(words) > 1) && (strings.HasPrefix(words[1], "main(")) {
-				log.Println("External main function detected!", words[1])
-				// TODO: Add "extern main" to the top of the source
-				log.Println("Remember to add \"extern main\" at the top of the file!")
+				log.Println("External main function detected.", words[1])
+				// Automatically added
+				//log.Println("Remember to add \"extern main\" at the top of the file!")
 			}
 			c_block = true
 			// Skip the start of this type of inline C, don't include "void" as a token
@@ -1375,6 +1375,29 @@ func ExtractInlineC(code string, debug bool) string {
 	return clines
 }
 
+func add_extern_main_if_missing(bts_code string) string {
+	// If there is a line starting with "void main", but no line starting with "extern main",
+	// add "extern main" at the top.
+	found_main := false
+	found_extern := false
+	trimline := ""
+	for _, line := range strings.Split(bts_code, "\n") {
+		trimline = strings.TrimSpace(line)
+		if strings.HasPrefix(trimline, "void main") {
+			found_main = true
+		} else if strings.HasPrefix(trimline, "extern main") {
+			found_extern = true
+		}
+		if found_main && found_extern {
+			break
+		}
+	}
+	if found_main && !found_extern {
+		return "extern main\n" + bts_code
+	}
+	return bts_code
+}
+
 func add_starting_point_if_missing(asmcode string) string {
 	// Check if the resulting code contains a starting point or not
 	if strings.Contains(asmcode, "extern "+linker_start_function) {
@@ -1572,7 +1595,8 @@ func main() {
 			interrupt_parameter_registers = []string{"rax", "rdi", "rsi", "rdx", "rcx", "r8", "r9"}
 		}
 
-		tokens := add_exit_token_if_missing(tokenize(string(bytes), true, " "))
+		bts_code := add_extern_main_if_missing(string(bytes))
+		tokens := add_exit_token_if_missing(tokenize(bts_code, true, " "))
 		log.Println("--- Done tokenizing ---")
 		constants, asmcode := TokensToAssembly(tokens, true, false)
 		if constants != "" {

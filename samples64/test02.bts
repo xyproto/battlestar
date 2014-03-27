@@ -1,5 +1,3 @@
-extern main
-
 const astring = "A"
 const nl = 10
 

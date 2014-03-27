@@ -1,4 +1,4 @@
-extern main
+extern main  // Added automatically if void main is found
 
 const bstring = "B"
 const nl = 10
