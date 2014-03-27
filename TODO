@@ -1,10 +1,15 @@
-* Make syscall() work correctly, ref hi64.bts
+* Local variables (.bss section or on the stack? )
+* Return values
 
 * Add and fix local variables. Use the .bss section. (Remember to include .bss when building kernels)
-* Create a write() function [done]
 * Remove the [ebp-8] local variable testing code.
 * Add the assembly version of printf.
 * Make it easy to link with OpenGL or SDL2.
 * Parse trees instead of token lists, for function calls.
 * Use the go module for tokenizing
 * Test on Cygwin on Wine as well, possibly change the uses of uname
+
+
+--- done ---
+* Make syscall() work correctly, ref hi64.bts [done]
+* Create a write() function [done]
