@@ -23,18 +23,18 @@ Project 2 - hello world
 
 2. Type in:
 
-    ``
+    ~~
     const hi = "Hello, World!", 10
     write(hi)
-    ``
+    ~~
 
 3. Compile and run:
 
     ``bts run hello.bts``
 
-4. See:
+4. The output should be:
 
-    "Hello, World!"
+    ``"Hello, World!"``
 
 
 Project 3 - compile, run and clean

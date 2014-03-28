@@ -66,8 +66,8 @@ var (
 
 	operators = []string{"=", "+=", "-=", "*=", "/=", "&=", "|="}
 	keywords  = []string{"fun", "ret", "const", "call", "extern", "end", "bootable"}
-	builtins  = []string{"len", "int", "exit", "halt", "str", "write", "read", "syscall"} // built-in functions
-	reserved  = []string{"funparam", "sysparam"}                                             // built-in lists that can be accessed with [index]
+	builtins  = []string{"len", "int", "exit", "halt", "str", "write", "read", "syscall"}    // built-in functions
+	reserved  = []string{"funparam", "sysparam"}                                                     // built-in lists that can be accessed with [index]
 
 	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard", RESERVED: "reserved", VARIABLE: "variable", ADDITION: "addition", SUBTRACTION: "subtraction", MULTIPLICATION: "multiplication", DIVISION: "division"}
 
@@ -270,7 +270,7 @@ func tokenize(program string, debug bool, sep string) []Token {
 			if instring {
 				collected += word + sep
 			} else if has(registers, word) {
-				t = Token{REGISTER, word, statementnr, ""}
+				t = Token{REGISTER, word, statementnr, "?"}
 				tokens = append(tokens, t)
 				if debug {
 					log.Println("TOKEN", t)
@@ -433,52 +433,81 @@ func tokenize(program string, debug bool, sep string) []Token {
 }
 
 // Replace built-in function calls with more basic code
+// Note that only replacements that can be done within one statement will work!
 func reduce(st Statement, debug bool) Statement {
 	for i := 0; i < (len(st) - 1); i++ {
 		// The built-in len() function
-		if (st[i].t == BUILTIN) && (st[i].value == "len") && (st[i+1].t == VALID_NAME) {
-			// len followed by a valid name
-			// replace with the length of the given value
+		if (st[i].t == BUILTIN) && (st[i].value == "len") {
 
-			name := st[i+1].value
+			var name string
+			var token_type TokenType
 
-			if !has(defined_names, name) {
-				log.Fatalln("Error:", name, "is unfamiliar. Can not find length.")
+			if (st[i+1].t == VALID_NAME) {
+				// len followed by a valid name
+				// replace with the length of the given value
+
+				name = st[i+1].value
+
+				if has(variables[in_function], name) {
+					// TODO: Find a way to find the length of local variables
+					log.Fatalln("Error: finding the length of a local variable is currently not implemented")
+				}
+				if !has(defined_names, name) {
+					log.Fatalln("Error:", name, "is unfamiliar. Can not find length.")
+				}
+
+				token_type = st[i+1].t
+
+				// remove the element at i+1
+				st = st[:i+1+copy(st[i+1:], st[i+2:])]
+
+				// replace len(name) with _length_of_name
+				st[i] = Token{token_type, "_length_of_" + name, st[0].line, ""}
+			} else if st[i+1].t == REGISTER {
+				var length string
+				if platform_bits == 64 {
+					length = "4"
+				} else {
+					length = "2"
+				}
+
+				// remove the element at i+1
+				st = st[:i+1+copy(st[i+1:], st[i+2:])]
+
+				// replace len(register) with the appropriate length
+				st[i] = Token{VALUE, length, st[0].line, ""}
 			}
-			if has(variables[in_function], name) {
-				// TODO: Find a way to find the length of local variables
-				log.Fatalln("Error: finding the length of a local variable is currently not implemented")
-			}
-
-			token_type := st[i+1].t
-
-			// remove the element at i+1
-			st = st[:i+1+copy(st[i+1:], st[i+2:])]
-
-			// replace len(name) with _length_of_name
-			st[i] = Token{token_type, "_length_of_" + name, st[0].line, ""}
 
 			if debug {
 				log.Println("SUCCESSFULL REPLACEMENT WITH", st[i])
 			}
-		} else if (st[i].t == BUILTIN) && (st[i].value == "write") && (st[i+1].t == VALID_NAME) {
+		} else if (st[i].t == BUILTIN) && (st[i].value == "write") && ((st[i+1].t == VALID_NAME) || (st[i+1].t == REGISTER)) {
 			// replace write(msg) with
 			// int(0x80, 4, 1, msg, len(msg)) on 32-bit
 			// syscall(1, msg, len(msg)) on 64-bit
-			// TODO: Convert from string to tokens and use them in place of this token
 			cmd := ""
 			var tokens []Token
+			var tokenpos int
+			extra := st[i+1].extra
 			if platform_bits == 32 {
 				cmd = "int(0x80, 4, 1, " + st[i+1].value + ", len(" + st[i+1].value + "))"
 				tokens = tokenize(cmd, true, " ")
+				// Position of the token that is to be written
+				tokenpos = 4
 			} else if platform_bits == 64 {
 				cmd = "syscall(1, 1, " + st[i+1].value + ", len(" + st[i+1].value + "))"
 				tokens = tokenize(cmd, true, " ")
+				// Position of the token that is to be written
+				tokenpos = 3
 			}
+			tokens[tokenpos].extra = extra
 			// Replace the current statement with the newly generated tokens
 			st = tokens
+			//log.Fatalln(st[tokenpos], st[tokenpos].extra)
+		//} else if (st[i].t == BUILTIN) && (st[i].value == "write") {
+		//	log.Fatalln("Error: Using write on", st[i+1], "is unimplemented.")
 		} else if (st[i].t == BUILTIN) && (st[i].value == "str") && (st[i+1].t == VALID_NAME) {
-			log.Fatalln("To implement: str(name)")
+			log.Fatalln("Error: str of a name is to be implemented")
 		} else if (st[i].t == BUILTIN) && (st[i].value == "str") && (st[i+1].t == REGISTER) {
 			register := st[i+1].value
 
@@ -488,9 +517,9 @@ func reduce(st Statement, debug bool) Statement {
 			// Replace str(register) with a token VALID_NAME with esp/rsp + register name as the value.
 			// This is not perfect, but allows us to output register values with a system call.
 			if platform_bits == 32 {
-				st[i] = Token{VALID_NAME, "esp", st[0].line, register}
+				st[i] = Token{REGISTER, "esp", st[0].line, register}
 			} else {
-				st[i] = Token{VALID_NAME, "rsp", st[0].line, register}
+				st[i] = Token{REGISTER, "rsp", st[0].line, register}
 			}
 
 			if debug {
@@ -587,26 +616,21 @@ func reserved_and_value(st Statement) string {
 }
 
 func syscall_or_interrupt(st Statement, syscall bool) string {
-	if syscall {
-		// Remove st[-1]
-		i := len(st) - 1
-		if st[i].t == SEP {
-			log.Println("syscall: ignoring: ", st[i]);
-			st = st[:i+copy(st[i:], st[i+1:])]
-		}
-	} else {
+	var i int
+
+	if !syscall {
 		// Remove st[1], if it's not a value
-		i := 1
+		i = 1
 		if st[i].t != VALUE {
 		//	log.Println("REMOVING ", st[i]);
 			st = st[:i+copy(st[i:], st[i+1:])]
 		}
-		// Remove st[-1] if it's a SEP
-		i = len(st) - 1
-		if st[i].t == SEP {
-			log.Println("interrupt call: ignoring: ", st[i]);
-			st = st[:i+copy(st[i:], st[i+1:])]
-		}
+	}
+
+	// Remove st[-1] if it's a SEP
+	i = len(st) - 1
+	if st[i].t == SEP {
+		st = st[:i+copy(st[i:], st[i+1:])]
 	}
 
 	log.Println("system call:")
@@ -654,9 +678,6 @@ func syscall_or_interrupt(st Statement, syscall bool) string {
 		} else {
 			if st[i].t == VALUE {
 				comment = "parameter #" + n + " is " + st[i].value
-			} else if st[i].t == REGISTER {
-				log.Fatalln("Error: Can't use a register as a parameter to interrupt calls, since they may be overwritten when preparing for the call.\n" +
-					"You can, however, use _ as a parameter to use the value in the corresponding register.")
 			} else {
 				if strings.HasPrefix(st[i].value, "_length_of_") {
 					comment = "parameter #" + n + " is len(" + st[i].value[11:] + ")"
@@ -787,7 +808,7 @@ func (st Statement) String() string {
 		if st[1].t == VALID_NAME {
 			constname = st[1].value
 		} else {
-			log.Fatalln(st[1].value, "is not a valid name for a constant")
+			log.Fatalln("Error: " + st[1].value, "is not a valid name for a constant")
 		}
 		asmcode := ""
 		if (st[1].t == VALID_NAME) && (st[2].t == ASSIGNMENT) && ((st[3].t == STRING) || (st[3].t == VALUE) || (st[3].t == VALID_NAME)) {
@@ -1540,7 +1561,7 @@ func main() {
 	}
 
 	if btsfile == "" {
-		log.Fatalln("Abort: An input filename is needed, either by -f or as first argument")
+		log.Fatalln("Abort: source filename is needed, either by -f or as first argument")
 	}
 
 	if asmfile == "" {

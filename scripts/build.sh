@@ -35,12 +35,22 @@ function build {
 
   # Don't output the log if "fail" is in the filename
   if [[ $n != *fail* ]]; then
-    #echo battlestarc $params -f "$f" -o "$n.asm" -oc "$n.c" 2> "$n.log" || (cat "$n.log"; rm -f "$n.asm"; echo "$n failed to build!")
-    battlestarc $params -f "$f" -o "$n.asm" -oc "$n.c" 2> "$n.log" || (cat "$n.log"; rm -f "$n.asm"; echo "$n failed to build!")
+    battlestarc $params -f "$f" -o "$n.asm" -oc "$n.c" 2> "$n.log" || (cat "$n.log"; rm -f "$n.asm"; echo "$n failed to build!"; return 1; )
   else
-    #echo battlestarc $params -f "$f" -o "$n.asm" -oc "$n.c" 2> "$n.log" || (rm -f "$n.asm"; echo "$n failed to build (correct)")
-    battlestarc $params -f "$f" -o "$n.asm" -oc "$n.c" 2> "$n.log" || (rm -f "$n.asm"; echo "$n failed to build (correct)")
+    battlestarc $params -f "$f" -o "$n.asm" -oc "$n.c" 2> "$n.log" || (rm -f "$n.asm"; echo "$n failed to build (correct)"; return 2; )
   fi
+
+  # Only return with an error code of the build failed and was not meant to fail
+  retval=$?
+  if [[ $retval == 2 ]]; then
+    # Save the filenames for later cleaning
+    echo -e "\n$n $n.asm $n.c $n.log" >> "$n.log"
+    # Meant to fail, not a problem, return 0
+    return 0
+  elif [[ $retval != 0 ]]; then
+    return $retval
+  fi
+
   if [[ $linkfail = false ]]; then
     compiledc=false
     [ -e $n.c ] && ($cccmd -c "$n.c" -o "${n}_c.o" || abort "$n failed to compile")
@@ -64,6 +74,9 @@ function build {
   fi
   # Save the filenames for later cleaning
   echo -e "\n$n $n.asm $n.c $n.o ${n}_c.o $n.log" >> "$n.log"
+
+  # Check if an executable has been generated and return a value accordingly
+  [ -e $n ] && return 0 || return 1
 }
 
 # Should stripping be skipped?
@@ -137,15 +150,15 @@ fi
 if [[ -f $1 ]]; then
   build $@
 else
-  # TODO: If the first argument is a parameter, pass it on when building *.bts.
-  #       If it looks like a filename, abort (already checked that it does not exist).
-  #if [[ $1 != "" ]]; then
-  #  echo 'Could not find $1!'
-  #  exit 1
-  #fi
+  retval=0
   for f in *.bts; do
     if [[ -f $f ]]; then
       build $f $@
+      retval=$?
+      if [[ $retval != 0 ]]; then
+	break
+      fi
     fi
   done
+  exit $retval
 fi

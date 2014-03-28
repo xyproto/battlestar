@@ -10,9 +10,9 @@
 
 function require {
   if [ $2 == 0 ]; then
-    hash $1 2>/dev/null || { echo >&2 "Could not find $1 in path (optional)."; }
+    hash $1 2>/dev/null || ( echo >&2 "Could not find $1 in path (optional)."; )
   elif [ $2 == 1 ]; then
-    hash $1 2>/dev/null || { echo >&2 "Could not find $1 in path. Aborting."; exit 1; }
+    hash $1 2>/dev/null || ( echo >&2 "Could not find $1 in path. Aborting."; exit 1; )
   else
     hash $1 2>/dev/null || return 1
   fi
@@ -98,7 +98,7 @@ if [[ $1 == run ]]; then
 
   shift
   run $@
-  exit 0
+  exit $?
 fi
 
 # The "build" command
@@ -107,7 +107,7 @@ if [[ $1 == build ]]; then
 
   shift
   btsbuild $@
-  exit 0
+  exit $?
 fi
 
 # The "clean" command
@@ -138,7 +138,7 @@ if [[ $1 == size ]]; then
       [ `uname -s` = Linux ] && echo "$n is `du -b $n | cut -f1 ` bytes" || echo "$n is `ls -l $n | cut -d" " -f8` bytes"
     fi
   done
-  exit 0
+  exit $?
 fi
 
 # Unknown command, assume run, for ease of use of #!/usr/bin/bts at top of scripts

@@ -1,0 +1,12 @@
+const nl = 10
+
+fun main
+    // Write an 'A'
+    rax = 65
+    write(str(rax))
+
+    // Output a newline
+    write(nl)
+end
+
+// vim: set syntax=c ts=4 sw=4 et:

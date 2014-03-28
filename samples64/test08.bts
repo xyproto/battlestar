@@ -1,0 +1,15 @@
+const nl = 10
+
+// Add 48 to make 7 become the ascii letter "7"
+fun todigit
+    rax += 48
+end
+
+fun main
+    rax = 7
+    todigit
+    write(str(rax))
+    write(nl)
+end
+
+// vim: set syntax=c ts=4 sw=4 et:
