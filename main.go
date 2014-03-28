@@ -66,8 +66,8 @@ var (
 
 	operators = []string{"=", "+=", "-=", "*=", "/=", "&=", "|="}
 	keywords  = []string{"fun", "ret", "const", "call", "extern", "end", "bootable"}
-	builtins  = []string{"len", "int", "exit", "halt", "str", "write", "read", "syscall"}    // built-in functions
-	reserved  = []string{"funparam", "sysparam"}                                                     // built-in lists that can be accessed with [index]
+	builtins  = []string{"len", "int", "exit", "halt", "str", "write", "read", "syscall"} // built-in functions
+	reserved  = []string{"funparam", "sysparam"}                                          // built-in lists that can be accessed with [index]
 
 	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard", RESERVED: "reserved", VARIABLE: "variable", ADDITION: "addition", SUBTRACTION: "subtraction", MULTIPLICATION: "multiplication", DIVISION: "division"}
 
@@ -442,7 +442,7 @@ func reduce(st Statement, debug bool) Statement {
 			var name string
 			var token_type TokenType
 
-			if (st[i+1].t == VALID_NAME) {
+			if st[i+1].t == VALID_NAME {
 				// len followed by a valid name
 				// replace with the length of the given value
 
@@ -504,8 +504,8 @@ func reduce(st Statement, debug bool) Statement {
 			// Replace the current statement with the newly generated tokens
 			st = tokens
 			//log.Fatalln(st[tokenpos], st[tokenpos].extra)
-		//} else if (st[i].t == BUILTIN) && (st[i].value == "write") {
-		//	log.Fatalln("Error: Using write on", st[i+1], "is unimplemented.")
+			//} else if (st[i].t == BUILTIN) && (st[i].value == "write") {
+			//	log.Fatalln("Error: Using write on", st[i+1], "is unimplemented.")
 		} else if (st[i].t == BUILTIN) && (st[i].value == "str") && (st[i+1].t == VALID_NAME) {
 			log.Fatalln("Error: str of a name is to be implemented")
 		} else if (st[i].t == BUILTIN) && (st[i].value == "str") && (st[i+1].t == REGISTER) {
@@ -622,7 +622,7 @@ func syscall_or_interrupt(st Statement, syscall bool) string {
 		// Remove st[1], if it's not a value
 		i = 1
 		if st[i].t != VALUE {
-		//	log.Println("REMOVING ", st[i]);
+			//	log.Println("REMOVING ", st[i]);
 			st = st[:i+copy(st[i:], st[i+1:])]
 		}
 	}
@@ -651,8 +651,8 @@ func syscall_or_interrupt(st Statement, syscall bool) string {
 		preskip = 1
 	}
 
-	from_i := preskip     //inclusive
-	to_i := len(st) // exclusive
+	from_i := preskip //inclusive
+	to_i := len(st)   // exclusive
 	step_i := 1
 	if osx {
 		// arguments are pushed in the opposite order for BSD/OSX (32-bit)
@@ -808,7 +808,7 @@ func (st Statement) String() string {
 		if st[1].t == VALID_NAME {
 			constname = st[1].value
 		} else {
-			log.Fatalln("Error: " + st[1].value, "is not a valid name for a constant")
+			log.Fatalln("Error: "+st[1].value, "is not a valid name for a constant")
 		}
 		asmcode := ""
 		if (st[1].t == VALID_NAME) && (st[2].t == ASSIGNMENT) && ((st[3].t == STRING) || (st[3].t == VALUE) || (st[3].t == VALID_NAME)) {
