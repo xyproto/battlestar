@@ -1,6 +1,13 @@
-* Inline Lua!
-* Automatic linking of libraries and inclusion of header files in a block of inline C when functions are not found. Like printf, sin, cos and SDL_CreateRenderer.
-* Possibly syntax for linking with libraries, that connects with pkg-config? "use sdl" should use the right link and inclusions.
+1. Automatic linking of libraries and inclusion of header files in a block of inline C when functions are not found. Like printf, sin, cos and SDL_CreateRenderer.
+2. Use the token module that comes with Go
+3. Write code for matching { and }, so that void main() { is not confused by a premature }
+
+* Built in Quaternions, Matrices, Lists, Vectors and doubles. No floats.
+
+* Inline Lua
+* Inline Go
+
+(* Possibly syntax for linking with libraries, that connects with pkg-config? "use sdl" should use the right link and inclusions.)
 
 * Local variables (.bss section or on the stack? ) or heap?
         * .data for constants
