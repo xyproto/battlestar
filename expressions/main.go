@@ -7,29 +7,28 @@ import (
 )
 
 type ParseTree struct {
-	left *ParseTree
+	left  *ParseTree
 	right *ParseTree
 	value string
 }
 
 var (
-	order = map[string]int{"^":2, "*":1, "/":1, "+":0, "-":0}
+	order = map[string]int{"^": 2, "*": 1, "/": 1, "+": 0, "-": 0}
 )
 
 const (
 	MAX_ORDERNUM = 2
 )
 
-
 //
 // Somehwat cumbersome way to define functions that check if a string only contains a set of letters
 //
 
-type OnlyFunction func (string) bool
+type OnlyFunction func(string) bool
 
 // Generate a function that checks if a given string consists only of the letters given here.
 func OnlyGenerator(checkletters string) OnlyFunction {
-	return func (word string) bool {
+	return func(word string) bool {
 		for _, letter := range word {
 			if !strings.Contains(checkletters, string(letter)) {
 				return false
@@ -41,7 +40,7 @@ func OnlyGenerator(checkletters string) OnlyFunction {
 
 // Combine two OnlyFunctions into one, where the result is or-ed.
 func OrGenerator(a, b OnlyFunction) OnlyFunction {
-	return func (word string) bool {
+	return func(word string) bool {
 		return a(word) || b(word)
 	}
 }
@@ -55,12 +54,11 @@ func KeysAsString(m map[string]int) string {
 }
 
 var (
-	OnlyLetters = OnlyGenerator("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-	OnlyDigits = OnlyGenerator("0123456789")
-	OnlyOperators = OnlyGenerator(KeysAsString(order))
+	OnlyLetters         = OnlyGenerator("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	OnlyDigits          = OnlyGenerator("0123456789")
+	OnlyOperators       = OnlyGenerator(KeysAsString(order))
 	OnlyLettersOrDigits = OrGenerator(OnlyLetters, OnlyDigits)
 )
-
 
 //
 // Functions that actually does something
@@ -71,7 +69,7 @@ func spaceify(s string) string {
 	ns := s
 	log.Println("ORIGINAL!", ns)
 	for _, operator := range KeysAsString(order) {
-		ns = strings.Replace(ns, string(operator), " " + string(operator) + " ", -1)
+		ns = strings.Replace(ns, string(operator), " "+string(operator)+" ", -1)
 	}
 	log.Println("SPACED!", ns)
 	for strings.Contains(ns, "  ") {
@@ -90,7 +88,7 @@ func flatparse(s string) []string {
 	word := ""
 	inparen := 0
 	for _, letter := range s {
-		switch letter{
+		switch letter {
 		case ' ':
 			if inparen == 0 {
 				// Register the word
