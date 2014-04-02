@@ -63,7 +63,20 @@ function build {
     if [[ $compiledc = true ]]; then
       $ldcmd "${n}_c.o" "$n.o" -o "$n" || echo "$n failed to link"
     elif [ -e $n.o ]; then
-      $ldcmd "$n.o" -o "$n" || echo "$n failed to link"
+      if [[ $bits = 16 ]]; then
+      	# The output file is a .com file
+        mv "$n.o" "$n.com"
+	# Create a script for running it with dosbox
+	echo '#!/bin/sh' > "$n.sh"
+	echo "dosbox -c \"mount c .\" -c \"c:\" -c cls -c $n.com -c pause -c exit > /dev/null" >> "$n.sh"
+	chmod +x "$n.sh"
+	# Save the filenames for later cleaning
+	echo -e "\n$n.asm $n.c $n.com ${n}_c.o $n.log $n.sh" >> "$n.log"
+	# Check if a .com file has been created and return a value accordingly
+	[ -e $n.com ] && return 0 || return 1
+      else
+        $ldcmd "$n.o" -o "$n" || echo "$n failed to link"
+      fi
     fi
   else
     echo "WARNING: Can't link 64-bit executables on a 32-bit system."
@@ -96,7 +109,7 @@ bits=`getconf LONG_BIT`
 # Is it likely that gcc and ld will fail? (dealing with 64-bit executables on a 32-bit system)
 linkfail=false
 
-# Set bits if "bits=32" or "bits=64" is found in the arguments
+# Set bits if "bits=32", "bits=64" or "bits=16" is found in the arguments
 if [[ $@ = *'bits=32'* ]]; then
   bits=32
 elif [[ $@ = *'bits=64'* ]]; then
@@ -104,6 +117,8 @@ elif [[ $@ = *'bits=64'* ]]; then
     linkfail=true
   fi
   bits=64
+elif [[ $@ = *'bits=16'* ]]; then
+  bits=16
 fi
 
 osx=$([[ `uname -s` = Darwin ]] && echo true || echo false)
@@ -116,6 +131,12 @@ if [ $bits = 32 ]; then
   asmcmd="yasm -f elf32"
   ldcmd='ld -s -melf_i386 --fatal-warnings -nostdlib --relax'
   cccmd="$stdgcc -m32"
+fi
+
+if [ $bits = 16 ]; then
+  asmcmd="yasm -f bin"
+  ldcmd='SKIP'
+  cccmd="$stdgcc -m16"
 fi
 
 if [[ $1 == bootable ]]; then

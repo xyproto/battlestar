@@ -71,7 +71,7 @@ var (
 
 	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard", RESERVED: "reserved", VARIABLE: "variable", ADDITION: "addition", SUBTRACTION: "subtraction", MULTIPLICATION: "multiplication", DIVISION: "division"}
 
-	// 32-bit (i686) or 64-bit (x86_64)
+	// 32-bit (i686), 64-bit (x86_64) or 16-bit (i386)
 	platform_bits = 32
 
 	// Is this a bootable kernel? (declared with "bootable" at the top)
@@ -131,6 +131,16 @@ func maps(sl []string, f func(string) string) []string {
 func has(sl []string, s string) bool {
 	for _, e := range sl {
 		if e == s {
+			return true
+		}
+	}
+	return false
+}
+
+// Checks if a slice of ints has the given int
+func hasi(il []int, i int) bool {
+	for _, e := range il {
+		if e == i {
 			return true
 		}
 	}
@@ -465,10 +475,13 @@ func reduce(st Statement, debug bool) Statement {
 				st[i] = Token{token_type, "_length_of_" + name, st[0].line, ""}
 			} else if st[i+1].t == REGISTER {
 				var length string
-				if platform_bits == 64 {
+				switch platform_bits {
+				case 64:
 					length = "4"
-				} else {
+				case 32:
 					length = "2"
+				case 16:
+					length = "1"
 				}
 
 				// remove the element at i+1
@@ -489,16 +502,20 @@ func reduce(st Statement, debug bool) Statement {
 			var tokens []Token
 			var tokenpos int
 			extra := st[i+1].extra
-			if platform_bits == 32 {
-				cmd = "int(0x80, 4, 1, " + st[i+1].value + ", len(" + st[i+1].value + "))"
-				tokens = tokenize(cmd, true, " ")
-				// Position of the token that is to be written
-				tokenpos = 4
-			} else if platform_bits == 64 {
+			switch platform_bits {
+			case 64:
 				cmd = "syscall(1, 1, " + st[i+1].value + ", len(" + st[i+1].value + "))"
 				tokens = tokenize(cmd, true, " ")
 				// Position of the token that is to be written
 				tokenpos = 3
+			case 32:
+				cmd = "int(0x80, 4, 1, " + st[i+1].value + ", len(" + st[i+1].value + "))"
+				tokens = tokenize(cmd, true, " ")
+				// Position of the token that is to be written
+				tokenpos = 4
+			case 16:
+				// No simple reduction for 16-bit assembly, it needs several lines of assembly code
+				return st
 			}
 			tokens[tokenpos].extra = extra
 			// Replace the current statement with the newly generated tokens
@@ -511,20 +528,27 @@ func reduce(st Statement, debug bool) Statement {
 		} else if (st[i].t == BUILTIN) && (st[i].value == "str") && (st[i+1].t == REGISTER) {
 			register := st[i+1].value
 
-			// remove the element at i+1
-			st = st[:i+1+copy(st[i+1:], st[i+2:])]
-
 			// Replace str(register) with a token VALID_NAME with esp/rsp + register name as the value.
 			// This is not perfect, but allows us to output register values with a system call.
-			if platform_bits == 32 {
-				st[i] = Token{REGISTER, "esp", st[0].line, register}
-			} else {
+			switch platform_bits {
+			case 64:
+				// remove the element at i+1
+				st = st[:i+1+copy(st[i+1:], st[i+2:])]
+				// replace with the register that contains the address of the string
 				st[i] = Token{REGISTER, "rsp", st[0].line, register}
+			case 32:
+				// remove the element at i+1
+				st = st[:i+1+copy(st[i+1:], st[i+2:])]
+				// replace with the register that contains the address of the string
+				st[i] = Token{REGISTER, "esp", st[0].line, register}
+			case 16:
+				// No simple reduction for 16-bit assembly
+				return st
 			}
 
-			if debug {
-				log.Println("SUCCESSFULL REPLACEMENT WITH", st[i], "/", register)
-			}
+			//if debug {
+			//	log.Println("SUCCESSFULL REPLACEMENT WITH", st[i], "/", register)
+			//}
 
 		}
 	}
@@ -533,10 +557,8 @@ func reduce(st Statement, debug bool) Statement {
 
 func paramnum2reg(num int) string {
 	var offset, reg string
-	if platform_bits == 32 {
-		offset = strconv.Itoa(8 + num*4)
-		reg = "ebp"
-	} else if platform_bits == 64 {
+	switch platform_bits {
+	case 64:
 		offset = strconv.Itoa(num * 8)
 		// ref: page 34 at http://people.freebsd.org/~obrien/amd64-elf-abi.pdf (Figure 3.17)
 		switch offset {
@@ -587,6 +609,11 @@ func paramnum2reg(num int) string {
 			// TODO: Test if the above offsets and registers are correct
 		}
 		reg = "rbp"
+	case 32:
+		offset = strconv.Itoa(8 + num*4)
+		reg = "ebp"
+	case 16:
+		log.Fatalln("Error: PARAMETERS are not implemented for 16-bit assembly, yet")
 	}
 	return "[" + reg + "+" + offset + "]"
 }
@@ -690,15 +717,8 @@ func syscall_or_interrupt(st Statement, syscall bool) string {
 					} else {
 						comment = "parameter #" + n + " is " + st[i].value
 						// Already recognized not to be a register
-						if platform_bits == 32 {
-							if st[i].value == "esp" {
-								// Put the value of the register associated with this token at rbp
-								// TODO: Figure out why this doesn't work
-								precode += "\tsub esp, 4\t\t\t; make some space for storing " + st[i].extra + " on the stack\n"
-								precode += "\tmov DWORD [esp], " + st[i].extra + "\t\t; move " + st[i].extra + " to a memory location on the stack\n"
-								postcode += "\tadd esp, 4\t\t\t; move the stack pointer back\n"
-							}
-						} else if platform_bits == 64 {
+						switch platform_bits {
+						case 64:
 							if st[i].value == "rsp" {
 								// Put the value of the register associated with this token at rbp
 								// TODO: Figure out why this doesn't work
@@ -706,6 +726,16 @@ func syscall_or_interrupt(st Statement, syscall bool) string {
 								precode += "\tmov QWORD [rsp], " + st[i].extra + "\t\t; move " + st[i].extra + " to a memory location on the stack\n"
 								postcode += "\tadd rsp, 8\t\t\t; move the stack pointer back\n"
 							}
+						case 32:
+							if st[i].value == "esp" {
+								// Put the value of the register associated with this token at rbp
+								// TODO: Figure out why this doesn't work
+								precode += "\tsub esp, 4\t\t\t; make some space for storing " + st[i].extra + " on the stack\n"
+								precode += "\tmov DWORD [esp], " + st[i].extra + "\t\t; move " + st[i].extra + " to a memory location on the stack\n"
+								postcode += "\tadd esp, 4\t\t\t; move the stack pointer back\n"
+							}
+						case 16:
+							log.Fatalln("Error: PARAMETERS are not implemented for 16-bit, yet")
 						}
 					}
 				}
@@ -715,18 +745,22 @@ func syscall_or_interrupt(st Statement, syscall bool) string {
 		// Skip parameters/registers that are already set
 		if st[i].value == "_" {
 			codeline += "\t\t"
+
 		} else {
 			if st[i].value == "0" {
 				codeline += "\txor " + reg + ", " + reg
 			} else {
 				// TODO: Remove special case, implement general local variables
 				if st[i].value == "x" {
-					if platform_bits == 32 {
-						codeline += "\tmov " + reg + ", ebp"
-						codeline += "\n\tsub " + reg + ", 8"
-					} else {
+					switch platform_bits {
+					case 64:
 						codeline += "\tmov " + reg + ", rbp"
 						codeline += "\n\tsub " + reg + ", 8"
+					case 32:
+						codeline += "\tmov " + reg + ", ebp"
+						codeline += "\n\tsub " + reg + ", 8"
+					case 16:
+						log.Fatalln("Error: LOCAL VARIABLES are not implemented yet")
 					}
 				} else {
 					if osx {
@@ -822,10 +856,13 @@ func (st Statement) String() string {
 			defined_names = append(defined_names, constname)
 			// For the .DATA section (recognized by the keyword)
 			if st[3].t == VALUE {
-				if platform_bits == 32 {
-					asmcode += constname + ":\tdw "
-				} else {
+				switch platform_bits {
+				case 64:
 					asmcode += constname + ":\tdq "
+				case 32:
+					asmcode += constname + ":\tdw "
+				case 16:
+					asmcode += constname + ":\tdb "
 				}
 			} else {
 				asmcode += constname + ":\tdb "
@@ -865,12 +902,15 @@ func (st Statement) String() string {
 		// TODO: Remember to sub ebp/rbp
 		// TODO: Remove this special case and implement general local variables
 		codeline := ""
-		if platform_bits == 32 {
-			codeline += "\tsub ebp, 8\n"
-			codeline += "\tmov DWORD [ebp-8], " + st[2].value + "\t\t\t; " + "local variable x!" + "\n"
-		} else {
+		switch platform_bits {
+		case 64:
 			codeline += "\tsub rbp, 16\n"
 			codeline += "\tmov QWORD [rbp-16], " + st[2].value + "\t\t\t; " + "local variable x!" + "\n"
+		case 32:
+			codeline += "\tsub ebp, 8\n"
+			codeline += "\tmov DWORD [ebp-8], " + st[2].value + "\t\t\t; " + "local variable x!" + "\n"
+		case 16:
+			log.Fatalln("Error: LOCAL VARIABLES are not implemented yet")
 		}
 		return codeline
 	} else if (st[0].t == BUILTIN) && (st[0].value == "halt") {
@@ -888,13 +928,15 @@ func (st Statement) String() string {
 			if (in_function == "main") || (in_function == linker_start_function) {
 				//log.Println("Not taking down stack frame in the main/_start/start function.")
 			} else {
-				asmcode += "\t;--- takedown stack frame ---\n"
-				if platform_bits == 32 {
-					asmcode += "\tmov esp, ebp\t\t\t; use base pointer as new stack pointer\n"
-					asmcode += "\tpop ebp\t\t\t\t; get the old base pointer\n\n"
-				} else {
+				switch platform_bits {
+				case 64:
+					asmcode += "\t;--- takedown stack frame ---\n"
 					asmcode += "\tmov rsp, rbp\t\t\t; use base pointer as new stack pointer\n"
 					asmcode += "\tpop rbp\t\t\t\t; get the old base pointer\n\n"
+				case 32:
+					asmcode += "\t;--- takedown stack frame ---\n"
+					asmcode += "\tmov esp, ebp\t\t\t; use base pointer as new stack pointer\n"
+					asmcode += "\tpop ebp\t\t\t\t; get the old base pointer\n\n"
 				}
 			}
 		}
@@ -907,26 +949,6 @@ func (st Statement) String() string {
 		} else {
 			asmcode += "\t;--- return ---\n"
 		}
-		if (len(st) == 2) && (st[1].t == VALUE) && !osx {
-			//if platform_bits == 32 {
-			//	if st[1].value == "0" {
-			//		asmcode += "\t;NEEDED? xor eax, eax\t\t\t; Error code "
-			//	} else {
-			//		asmcode += "\t;NEEDED? mov eax, " + st[1].value + "\t\t\t; Error code "
-			//	}
-			//} else {
-			//	if st[1].value == "0" {
-			//		asmcode += "\t;NEEDED? xor rdi, rdi\t\t\t; Error code "
-			//	} else {
-			//		asmcode += "\t;NEEDED? mov rdi, " + st[1].value + "\t\t\t; Error code "
-			//	}
-			//}
-			//if st[1].value == "0" {
-			//	asmcode += "0 (ok)\n"
-			//} else {
-			//	asmcode += st[1].value + "\n"
-			//}
-		}
 		if (st[0].value == "exit") || (in_function == "main") || (in_function == linker_start_function) {
 			// Not returning from main/_start/start function, but exiting properly
 			exit_code := "0"
@@ -934,7 +956,17 @@ func (st Statement) String() string {
 				exit_code = st[1].value
 			}
 			if !bootable_kernel {
-				if platform_bits == 32 {
+				switch platform_bits {
+				case 64:
+					asmcode += "\tmov rax, 60\t\t\t; function call: 60\n\t"
+					if exit_code == "0" {
+						asmcode += "xor rdi, rdi"
+					} else {
+						asmcode += "mov rdi, " + exit_code
+					}
+					asmcode += "\t\t\t; return code " + exit_code + "\n"
+					asmcode += "\tsyscall\t\t\t\t; exit program\n"
+				case 32:
 					if osx {
 						asmcode += "\tpush dword " + exit_code + "\t\t\t; exit code " + exit_code + "\n"
 						asmcode += "\tsub esp, 4\t\t\t; the BSD way, push then subtract before calling\n"
@@ -950,15 +982,20 @@ func (st Statement) String() string {
 						asmcode += "\t\t\t; exit code " + exit_code + "\n"
 					}
 					asmcode += "\tint 0x80\t\t\t; exit program\n"
-				} else {
-					asmcode += "\tmov rax, 60\t\t\t; function call: 60\n\t"
-					if exit_code == "0" {
-						asmcode += "xor rdi, rdi"
+				case 16:
+					// Unless "exit" is specified explicitly, use "ret"
+					if st[0].value == "exit" {
+						// Since we are not building a kernel, calling DOS interrupt 21h makes sense
+						asmcode += "\tmov ah, 0x4c\t\t\t; function 4C\n"
+						if exit_code == "0" {
+							asmcode += "\txor al, al\t\t\t; exit code " + exit_code + "\n"
+						} else {
+							asmcode += "\tmov al, " + exit_code + "\t\t\t; exit code " + exit_code + "\n"
+						}
+						asmcode += "\tint 0x21\t\t\t; exit program\n"
 					} else {
-						asmcode += "mov rdi, " + exit_code
+						asmcode += "\tret\t\t\t; exit program\n"
 					}
-					asmcode += "\t\t\t; return code " + exit_code + "\n"
-					asmcode += "\tsyscall\t\t\t\t; exit program\n"
 				}
 			} else {
 				// For bootable kernels, main does not return. Hang instead.
@@ -1183,19 +1220,23 @@ func (st Statement) String() string {
 			log.Fatalln("Error: Can not declare function, name is already defined:", in_function)
 		}
 		defined_names = append(defined_names, in_function)
-		asmcode += "global " + in_function + "\t\t\t; make label available to the linker\n"
+		if platform_bits != 16 {
+			asmcode += "global " + in_function + "\t\t\t; make label available to the linker\n"
+		}
 		asmcode += in_function + ":\t\t\t\t; name of the function\n\n"
 		if (in_function == "main") || (in_function == linker_start_function) {
 			//log.Println("Not setting up stack frame in the main/_start/start function.")
 			return asmcode
 		}
-		asmcode += "\t;--- setup stack frame ---\n"
-		if platform_bits == 32 {
-			asmcode += "\tpush ebp\t\t\t; save old base pointer\n"
-			asmcode += "\tmov ebp, esp\t\t\t; use stack pointer as new base pointer\n"
-		} else {
+		switch platform_bits {
+		case 64:
+			asmcode += "\t;--- setup stack frame ---\n"
 			asmcode += "\tpush rbp\t\t\t; save old base pointer\n"
 			asmcode += "\tmov rbp, rsp\t\t\t; use stack pointer as new base pointer\n"
+		case 32:
+			asmcode += "\t;--- setup stack frame ---\n"
+			asmcode += "\tpush ebp\t\t\t; save old base pointer\n"
+			asmcode += "\tmov ebp, esp\t\t\t; use stack pointer as new base pointer\n"
 		}
 		return asmcode
 	} else if (st[0].t == KEYWORD) && (st[0].value == "call") && (len(st) == 2) {
@@ -1431,7 +1472,11 @@ func add_starting_point_if_missing(asmcode string) string {
 	}
 	if !strings.Contains(asmcode, linker_start_function) {
 		log.Printf("No %s has been defined, creating one\n", linker_start_function)
-		addstring := "global " + linker_start_function + "\t\t\t; make label available to the linker\n" + linker_start_function + ":\t\t\t\t; starting point of the program\n"
+		var addstring string
+		if platform_bits != 16 {
+			addstring += "global " + linker_start_function + "\t\t\t; make label available to the linker\n"
+		}
+		addstring += linker_start_function + ":\t\t\t\t; starting point of the program\n"
 		if strings.Contains(asmcode, "extern main") {
 			//log.Println("External main function, adding starting point that calls it.")
 			linenr := uint(strings.Count(asmcode+addstring, "\n") + 5)
@@ -1564,7 +1609,7 @@ func main() {
 	}
 
 	if btsfile == "" {
-		log.Fatalln("Abort: source filename is needed, either by -f or as first argument")
+		log.Fatalln("Abort: a source filename is needed. Provide one with -f or as the first argument.")
 	}
 
 	if asmfile == "" {
@@ -1613,6 +1658,11 @@ func main() {
 			asmdata += fmt.Sprintf("bits %d\n", platform_bits)
 		}
 
+		// Check if platform_bits is valid
+		if !hasi([]int{16, 32, 64}, platform_bits) {
+			log.Fatalln("Error: Unsupported bit size:", platform_bits)
+		}
+
 		// Used when calling interrupts (or syscall)
 		if platform_bits == 32 {
 			interrupt_parameter_registers = []string{"eax", "ebx", "ecx", "edx"}
@@ -1625,12 +1675,20 @@ func main() {
 		log.Println("--- Done tokenizing ---")
 		constants, asmcode := TokensToAssembly(tokens, true, false)
 		if constants != "" {
-			asmdata += fmt.Sprintln("section .data") + "\n"
-			// TODO: Is Sprintln needed here?
-			asmdata += fmt.Sprintln(constants) + "\n"
+			asmdata += "section .data\n"
+			asmdata += constants + "\n"
+		}
+		if platform_bits == 16 {
+			asmdata += "org 0x100\n"
 		}
 		if !bootable {
-			asmdata += fmt.Sprintln("section .text") + "\n"
+			asmdata += "section .text\n"
+		}
+		if platform_bits == 16 {
+			// If there is a main function, jump to it. If not, just start at the top.
+			if strings.Contains(asmcode, "\nmain:") {
+				asmdata += "jmp " + linker_start_function + "\n"
+			}
 		}
 		if asmcode != "" {
 			asmdata += fmt.Sprintln(add_starting_point_if_missing(asmcode) + "\n")

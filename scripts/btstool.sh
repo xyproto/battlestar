@@ -25,11 +25,11 @@ bits=`getconf LONG_BIT`
 osx=$([[ `uname -s` = Darwin ]] && echo true || echo false)
 asmcmd="yasm -f elf$bits"
 ldcmd='ld -s --fatal-warnings -nostdlib --relax'
-cccmd="gcc -Os -m64 -nostdlib"
+cccmd="gcc -Os -std=c99 -m64 -nostdlib"
 
 if [[ $bits = 32 ]]; then
   ldcmd='ld -s -melf_i386 --fatal-warnings -nostdlib --relax'
-  cccmd='gcc -Os -m32 -nostdlib'
+  cccmd='gcc -Os -std=c99 -nostdlib -nostdinc -Wno-impplicit -ffast-math -fno-inline -fomit-frame-pointer -m32 -nostdlib'
 fi
 
 if [[ $osx = true ]]; then
@@ -44,7 +44,7 @@ function run {
     echo "No such file: $1"
     exit 1
   fi
-  
+
   # Set up temporary filenames
   asmfn=`mktemp --suffix=.asm`
   o1fn=`mktemp --suffix=.o`
@@ -133,7 +133,10 @@ if [[ $1 == size ]]; then
   # For each log file, print the size of the resulting executable
   for log in *.log; do
     n=`echo ${log/.log} | sed 's/ //'`
-    if [[ -f $n ]]; then
+    if [[ -f $n.com ]]; then
+      # du -b does not work on OSX/BSD
+      [ `uname -s` = Linux ] && echo "$n.com is `du -b $n.com | cut -f1 ` bytes" || echo "$n.com is `ls -l $n.com | cut -d" " -f8` bytes"
+    elif [[ -f $n ]]; then
       # du -b does not work on OSX/BSD
       [ `uname -s` = Linux ] && echo "$n is `du -b $n | cut -f1 ` bytes" || echo "$n is `ls -l $n | cut -d" " -f8` bytes"
     fi

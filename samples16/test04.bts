@@ -1,0 +1,45 @@
+const hi = "Hello from mode 13h$"
+
+fun graphics_mode
+    // 320x200 256 colors
+    ah = 0    // function 0
+    al = 0x13 // mode 13h
+    int(10)
+end
+
+fun text_mode
+    ah = 0 
+    al = 3
+    int(10)
+end
+
+fun wait_for_keypress
+    // Wait for keypress
+    ah = 0x10
+    int(16)
+end
+
+fun move_cursor
+    ah = 2   // function 2
+    dh = 5   // row
+    dl = 5   // column
+    bh = 0   // page number
+    int(10)
+end
+
+fun say_hello
+    // Write the "hi" string (must end with "$")
+    ah = 9
+    dx = hi
+    int(21)
+end
+
+fun main
+    graphics_mode
+    move_cursor
+    say_hello
+    wait_for_keypress
+    text_mode
+end
+
+// vim: set syntax=c ts=4 sw=4 et:

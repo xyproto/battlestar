@@ -8,15 +8,17 @@ all: clean battlestarc
 full: clean battlestarc
 	make -C helloworld
 	make -C samples
-	make -C samples32
 	make -C samples64
+	make -C samples32
+	make -C samples16
 	make -C kernel
 
 full_clean:
 	make -C helloworld clean
 	make -C samples clean
-	make -C samples32 clean
 	make -C samples64 clean
+	make -C samples32 clean
+	make -C samples16 clean
 	make -C kernel clean
 	make -C . clean
 

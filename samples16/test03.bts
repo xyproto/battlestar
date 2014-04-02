@@ -1,0 +1,21 @@
+const hi = "Hello, world!", 13, 10, "$"
+
+fun hello
+    // Write the "hi" string
+    ah = 9
+    dx = hi
+    int(21)
+end
+
+fun wait_for_keypress
+    // Wait for keypress
+    ah = 0x10
+    int(16)
+end
+
+fun main
+    hello
+    wait_for_keypress
+end
+
+// vim: set syntax=c ts=4 sw=4 et:
