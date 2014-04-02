@@ -1,7 +1,10 @@
-// Wait for keypress
-ah = 0x10
-int(16)
+fun main
+    // Wait for keypress
+    ah = 0x10
+    int(16)
 
-exit 0
+    // Exit with errorlevel 2
+    exit 2
+end
 
 // vim: set syntax=c ts=4 sw=4 et:

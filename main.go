@@ -86,6 +86,9 @@ var (
 	// TODO: Add an option for not adding an exit function
 
 	interrupt_parameter_registers []string
+
+	// To keep track of function blocks that are ended with "exit"
+	surprise_ending_with_exit = false
 )
 
 // Check if a given map has a given key
@@ -826,6 +829,7 @@ func syscall_or_interrupt(st Statement, syscall bool) string {
 func (st Statement) String() string {
 	debug := true
 
+
 	reduced := reduce(st, debug)
 	if len(reduced) != len(st) {
 		return reduced.String()
@@ -1011,6 +1015,10 @@ func (st Statement) String() string {
 		if in_function != "" {
 			// Exiting from the function definition
 			in_function = ""
+			// If the function was ended with "exit", don't freak out if an "end" is encountered
+			if st[0].value == "exit" {
+				surprise_ending_with_exit = true
+			}
 		}
 		if inline_c {
 			// Exiting from inline C
@@ -1307,7 +1315,15 @@ section .text
 			newstatement := Statement{ret}
 			return newstatement.String()
 		} else {
-			log.Fatalln("Error: Not in a function or block of inline C, hard to tell what should be ended with \"end\". Statement nr:", st[0].line)
+			// If the function was already ended with "exit", don't freak out when encountering an "end"
+			if !surprise_ending_with_exit {
+				log.Fatalln("Error: Not in a function or block of inline C, hard to tell what should be ended with \"end\". Statement nr:", st[0].line)
+			} else {
+				// Prepare for more surprises
+				surprise_ending_with_exit = false
+				// Ignore this "end"
+				return ""
+			}
 		}
 	} else if (st[0].t == VALID_NAME) && (len(st) == 1) {
 		// Just a name, assume it's a function call
