@@ -3,6 +3,7 @@
 bits 16
 section .text
 org 0x100
+jmp start
 
 ;--- function wait_for_keypress ---
 wait_for_keypress:				; name of the function
@@ -45,12 +46,12 @@ text_mode:				; name of the function
 ;--- function main ---
 start:				; starting point of the program
 
-
 	;--- call the "graphics_mode" function ---
 	call graphics_mode
 
-	mov ax, 0xa000
-	mov ax, es
+	push 0xa000
+	pop es
+
 	xor di, di
 	mov ax, 0x2727
 	mov cx, 0x7d00
