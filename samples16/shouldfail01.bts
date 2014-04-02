@@ -1,0 +1,31 @@
+// gcc does not support 16-bit x86, so this program fails to build
+
+const hi = "Hello, world!", 13, 10, "$"
+
+fun hello
+    // Write the "hi" string
+    ah = 9
+    dx = hi
+    int(21)
+end
+
+fun wait_for_keypress
+    // Wait for keypress
+    ah = 0x10
+    int(16)
+end
+
+extern helu
+inline_c
+    extern void hello();
+    void helu() {
+        hello();
+    }
+end
+
+fun main
+    helu
+    wait_for_keypress
+end
+
+// vim: set syntax=c ts=4 sw=4 et:
