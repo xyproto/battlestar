@@ -1,15 +1,17 @@
 const commence = "Commence jump prep.", 10
 const nebula = "We're going to the ionian nebula.", 10
-const hi = "Hi", 10
 
 fun hello
     write(commence)
     write(nebula)
-    ret
+end
 
 fun main
     write(hi)
+
+    // "call hello" and "hello" does the same thing
     call hello
-    call hello
+    hello
+end
 
 // vim: set syntax=c ts=4 sw=4 et:
