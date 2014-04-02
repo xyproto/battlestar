@@ -10,9 +10,10 @@ end
 fun main
     write(hi)
 
-    // "call hello" and "hello" does the same thing
+    // "call hello", "hello" and "hello()" does the same thing
     call hello
     hello
+    hello()
 end
 
 // vim: set syntax=c ts=4 sw=4 et:
