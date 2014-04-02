@@ -1,5 +1,6 @@
 const commence = "Commence jump prep.", 10
 const nebula = "We're going to the ionian nebula.", 10
+const hi = "Hi!", 10
 
 fun hello
     write(commence)
