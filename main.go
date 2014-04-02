@@ -1164,7 +1164,10 @@ func (st Statement) String() string {
 		retval := "\tmov " + reserved_and_value(st[:2]) + ", " + st[3].value + "\t\t\t; "
 		retval += fmt.Sprintf("%s[%s] = %s\n", st[0].value, st[1].value, st[3].value)
 		return retval
-
+	} else if (len(st) == 4) && (st[0].t == RESERVED) && (st[1].t == VALUE) && (st[2].t == ASSIGNMENT) && (st[3].t == VALID_NAME) {
+		retval := "\tmov " + reserved_and_value(st[:2]) + ", " + st[3].value + "\t\t\t; "
+		retval += fmt.Sprintf("%s[%s] = &%s\n", st[0].value, st[1].value, st[3].value)
+		return retval
 	} else if (len(st) == 5) && (st[0].t == RESERVED) && (st[1].t == VALUE) && (st[2].t == ASSIGNMENT) && (st[3].t == RESERVED) && (st[4].t == VALUE) {
 		retval := "\tmov " + reserved_and_value(st[:2]) + ", " + reserved_and_value(st[3:]) + "\t\t\t; "
 		retval += fmt.Sprintf("%s[%s] = %s[%s]\n", st[0].value, st[1].value, st[3].value, st[4].value)
