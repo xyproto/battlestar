@@ -44,7 +44,7 @@ Project 3 - compile, run and clean
 
     ``bts build hello.bts``
 
-2. See that is is tiny:
+2. Observe that the resulting executable is tiny:
 
     ``bts size hello.bts``
 
@@ -71,5 +71,4 @@ Project 4 - run as a script
 3. Run it as a script:
 
     ``./hello.bts``
-
 
