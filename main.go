@@ -1588,7 +1588,7 @@ func add_exit_token_if_missing(tokens []Token) []Token {
 
 func main() {
 	name := "Battlestar"
-	version := "0.1"
+	version := "0.2"
 	log.Println(name + " compiler")
 	log.Println("Version " + version)
 	log.Println("Alexander Rødseth")

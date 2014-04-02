@@ -1,7 +1,7 @@
 Battlestar
 ==========
 
-* Version: 0.1
+* Version: 0.2
 * License: MIT
 * Author: Alexander Rødseth
 
