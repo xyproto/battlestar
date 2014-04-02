@@ -1,0 +1,51 @@
+const newline = 10
+
+// Function for writing a string and a newline, given a string and a length
+fun writeln // Takes a pointer to a string and a length
+    sysparam[3] = funparam[1] // Fourth parameter to the syscall is the second parameter to the function
+    sysparam[2] = funparam[0] // Third parameter to the syscall is the first parameter to the function
+    syscall(1, 1, _, _) // write to stdout
+    write(newline)
+end
+
+inline_c
+extern void writeln(char *msg, int len);
+
+int mystrlen(char *s) {
+    int i = 0;
+    while (s[i] != 0) {
+        i++;
+    }
+    return i;
+}
+
+void println(char *s) {
+    writeln(s, mystrlen(s));
+}
+end
+
+// Function hello, with a C function declared and called within
+fun hello
+    // The following lines should be possible to declare in a shorter way, for instance just "c" to "end"
+    extern _temp
+    inline_c
+        void _temp() {
+    end
+    inline_c
+
+    // The meat of the C function
+    println("hi");
+
+    // The following lines should be possible to declare in a shorter way
+    end
+    inline_c
+        }
+    end
+    call _temp
+end
+
+fun main
+    hello
+end
+
+// vim: set syntax=c ts=4 sw=4 et:
