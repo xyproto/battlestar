@@ -22,6 +22,8 @@ end
 fun main
     graphics_mode
 
+    // Paint the screen red
+
     // cx = 0x7d00
     loop 0x7d00
         // push 0xa000

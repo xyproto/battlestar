@@ -65,7 +65,7 @@ var (
 		"rax", "rbx", "rcx", "rdx", "rsi", "rdi", "rsp", "rbp", "rip", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15", "sil", "dil", "spl", "bpl", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15"} // 64-bit
 
 	operators = []string{"=", "+=", "-=", "*=", "/=", "&=", "|="}
-	keywords  = []string{"fun", "ret", "const", "call", "extern", "end", "bootable"}
+	keywords  = []string{"fun", "ret", "const", "call", "extern", "end", "bootable", "loop", "endloop", "start", "value"}
 	builtins  = []string{"len", "int", "exit", "halt", "str", "write", "read", "syscall"} // built-in functions
 	reserved  = []string{"funparam", "sysparam"}                                          // built-in lists that can be accessed with [index]
 
@@ -829,7 +829,6 @@ func syscall_or_interrupt(st Statement, syscall bool) string {
 func (st Statement) String() string {
 	debug := true
 
-
 	reduced := reduce(st, debug)
 	if len(reduced) != len(st) {
 		return reduced.String()
@@ -1255,6 +1254,63 @@ func (st Statement) String() string {
 		}
 		// TODO: Find a shorter format to describe matching tokens.
 		// Something along the lines of: if match(st, [KEYWORD:"extern"], 2)
+	} else if (st[0].t == KEYWORD) && (st[0].value == "loop") && (len(st) == 2) {
+		asmcode := ""
+		switch platform_bits {
+		case 16:
+			asmcode += "\tmov cx, " + st[1].value + "\t\t\t; Set cx, in preparation for rep\n"
+		default:
+			log.Fatalln("Error: Unimplemented: the loop keyword for", platform_bits, "bit platforms")
+		}
+		return asmcode
+	} else if (st[0].t == KEYWORD) && (st[0].value == "value") && (len(st) == 2) {
+		asmcode := ""
+		switch platform_bits {
+		case 16:
+			// TODO: Find out if the value is a byte or a word, then set a global variable somewhere
+			// TODO: If the value is a byte, use al instead, and stosb instead!
+			asmcode += "\tmov ax, " + st[1].value + "\t\t\t; Set ax, in preparation for stosb/stosw\n"
+		default:
+			log.Fatalln("Error: Unimplemented: the value keyword for", platform_bits, "bit platforms")
+		}
+		return asmcode
+	} else if (st[0].t == KEYWORD) && (st[0].value == "endloop") && (len(st) == 1) {
+		asmcode := ""
+		switch platform_bits {
+		case 16:
+			// TODO: Check the state set when value was used to find out if rep stosb or rep stosw should be used
+			asmcode += "\trep stosw\n"
+		default:
+			log.Fatalln("Error: Unimplemented: the value keyword for", platform_bits, "bit platforms")
+		}
+		return asmcode
+	} else if (st[0].t == KEYWORD) && (st[0].value == "start") && (len(st) == 2) {
+		asmcode := ""
+		switch platform_bits {
+		case 16:
+			segment_offset := st[1].value
+			if !strings.Contains(segment_offset, ":") {
+				log.Fatalln("Error: start takes a segment:offset value")
+			}
+			sl := strings.SplitN(segment_offset, ":", 2)
+			if len(sl) != 2 {
+				log.Fatalln("Error: Unrecognized segment:offset address:", segment_offset)
+			}
+			segment := sl[0]
+			offset := sl[1]
+			log.Println("Found segment", segment, "and offset", offset)
+			asmcode += "\tpush " + segment + "\n"
+			asmcode += "\tpop es\n"
+			// TODO: Introduce a function that checks of 0, 0x0, 0x00, 0x0000 and all other variations of zero
+			if offset == "0" {
+				asmcode += "\txor di, di\n"
+			} else {
+				asmcode += "\tmov di, " + offset + "\n"
+			}
+		default:
+			log.Fatalln("Error: Unimplemented: the start keyword for", platform_bits, "bit platforms")
+		}
+		return asmcode
 	} else if (st[0].t == KEYWORD) && (st[0].value == "bootable") && (len(st) == 1) {
 		bootable_kernel = true
 		// This program is supposed to be bootable
@@ -1290,7 +1346,7 @@ times 16384 db 0
 stack_top:
 
 section .text
-    `
+`
 	} else if (st[0].t == KEYWORD) && (st[0].value == "extern") && (len(st) == 2) {
 		if st[1].t == VALID_NAME {
 			extname := st[1].value
