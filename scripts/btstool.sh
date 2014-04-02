@@ -110,6 +110,15 @@ if [[ $1 == build ]]; then
   exit $?
 fi
 
+# The "compile" command (like -c for gcc)
+if [[ $1 == compile ]]; then
+  require btsbuild 1
+
+  shift
+  btsbuild -c $@
+  exit $?
+fi
+
 # The "clean" command
 if [[ $1 == clean ]]; then
   # For each log file

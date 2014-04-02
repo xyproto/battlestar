@@ -17,8 +17,19 @@ function abort {
 }
 
 function build {
+
+  # Check if the .o files are intended to be used together with another compiler.
+  # If so, clean up the generated source files and don't run the linker.
+  other_compiler=false
+  if [[ $1 = -c ]]; then
+    other_compiler=true
+    skipstrip=true
+    shift
+  fi
+
   f=$1
   shift
+
   params=$@
   echo "Building $f"
   n=`echo ${f/.bts} | sed 's/ //'`
@@ -59,6 +70,18 @@ function build {
     echo "WARNING: Can't compile inline C for 64-bit executables on a 32-bit system."
   fi
   [ -e $n.asm ] && ($asmcmd -o "$n.o" "$n.asm" || echo "$n failed to assemble")
+  if [[ $other_compiler = true ]]; then
+    # Clean up some of the files right away
+    if [[ $compiledc = true ]]; then
+      # Only remove the .c file if we are sure that we generated it
+      rm -f "$n.c"
+    fi
+    # Remove the generated .asm file
+    rm -f "$n.asm"
+    # Save the filenames for later cleaning
+    echo -e "\n$n.o ${n}_c.o $n.log" >> "$n.log"
+    [ -e $n.o ] && return 0 || return 1
+  fi
   if [[ $linkfail = false ]]; then
     if [[ $compiledc = true ]]; then
       $ldcmd "${n}_c.o" "$n.o" -o "$n" || echo "$n failed to link"
@@ -168,7 +191,11 @@ if [[ $osx = true ]]; then
 fi
 
 # Build one file or *.bts
-if [[ -f $1 ]]; then
+if [[ -f $2 ]]; then
+  # For when -c is given
+  build $@
+elif [[ -f $1 ]]; then
+  # For ordinary use
   build $@
 else
   retval=0
