@@ -1,6 +1,6 @@
 all:
 	@echo
-	bts build bootable boot.bts
+	bts build bootable boot.bts --bits=32
 	@mv boot boot.bin
 	@chmod -x boot.bin
 	@cat README

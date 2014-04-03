@@ -916,8 +916,8 @@ func (st Statement) String() string {
 			if st[3].t == STRING {
 				asmcode += "\t\t; constant string\n"
 				if platform_bits == 16 {
-					// Add an extra $, for safety, if on a 16-bit platform
-					asmcode += "\tdb \"$\"\t\t\t; for safety when using ah=09/int 21h\n"
+					// Add an extra $, for safety, if on a 16-bit platform. Needed for write().
+					asmcode += "\tdb \"$\"\t\t\t; end of string, for when using ah=09/int 21h\n"
 				}
 			} else {
 				asmcode += "\t\t; constant value\n"
