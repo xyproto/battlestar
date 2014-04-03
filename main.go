@@ -915,6 +915,10 @@ func (st Statement) String() string {
 			}
 			if st[3].t == STRING {
 				asmcode += "\t\t; constant string\n"
+				if platform_bits == 16 {
+					// Add an extra $, for safety, if on a 16-bit platform
+					asmcode += "\tdb \"$\"\t\t\t; for safety when using ah=09/int 21h\n"
+				}
 			} else {
 				asmcode += "\t\t; constant value\n"
 			}
@@ -957,6 +961,12 @@ func (st Statement) String() string {
 		asmcode += ".hang:\n"
 		asmcode += "\thlt\n"
 		asmcode += "\tjmp .hang\t; loop forever\n\n"
+		return asmcode
+	} else if (platform_bits == 16) && (st[0].t == BUILTIN) && (st[0].value == "write") && (st[1].t == VALID_NAME) {
+		asmcode := "\t; --- output string that ends with $ ---\n"
+		asmcode += "\tmov dx, " + st[1].value + "\n"
+		asmcode += "\tmov ah, 0x09\n"
+		asmcode += "\tint 0x21\n\n"
 		return asmcode
 	} else if (st[0].t == BUILTIN) && (st[0].value == "str") {
 		log.Fatalln("Error: This usage of str() is yet to be implemented")

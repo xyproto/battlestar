@@ -1,4 +1,4 @@
-const hi = "Hello from mode 13h$"
+const hi = "Hello from mode 13h"
 
 fun graphics_mode
     // 320x200 256 colors
@@ -28,7 +28,7 @@ fun move_cursor
 end
 
 fun say_hello
-    // Write the "hi" string (must end with "$")
+    // Write the "hi" string
     ah = 9
     dx = hi
     int(21)

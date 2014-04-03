@@ -1,5 +1,5 @@
-const yes = "yes$"
-const no = "no$"
+const yes = "yes"
+const no = "no"
 
 fun move_cursor
     ah = 2    // function 2
