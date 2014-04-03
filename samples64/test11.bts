@@ -7,10 +7,6 @@ fun hello
     rcx = rbx // Restore rcx
 end
 
-fun hi
-    write(hi_there)
-end
-
 fun main
     // This type of loop does not push and pop rcx
     counter 4
@@ -18,9 +14,9 @@ fun main
         hello
     end
 
-    // This type of loop pushes and pops rcx and is easier
+    // This type of loop pushes and pops rcx which makes it easier
     loop 3
-        hi
+        write(hi_there)
     end
 end
 

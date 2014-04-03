@@ -1364,10 +1364,13 @@ func (st Statement) String() string {
 		// Now in the loop, in_loop is global
 		in_loop = label
 
-		asmcode := "\t;--- loop " + st[1].value + " times ---\n"
+		asmcode := ""
 
 		// Initialize the loop, if it was given a number
-		if hascounter {
+		if !hascounter {
+			asmcode += "\t;--- loop ---\n"
+		} else {
+			asmcode += "\t;--- loop " + st[1].value + " times ---\n"
 			asmcode += "\tmov " + counter_register() + ", " + st[1].value
 			asmcode += "\t\t\t; initialize loop counter\n"
 		}
