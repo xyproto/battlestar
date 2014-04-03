@@ -1,5 +1,3 @@
-const hi = "Hello from mode 13h$"
-
 fun graphics_mode
     // 320x200 256 colors
     ah = 0    // function 0
@@ -22,18 +20,12 @@ end
 fun main
     graphics_mode
 
-    // Paint the screen red
+    // Paint the screen blue, byte for byte
 
-    // cx = 0x7d00
-    loop 0x7d00
-        // push 0xa000
-        // pop es
-        // di = 0
-        start 0xa000:0
-        // ax = 0x2727
-        value 0x2727
-    // if value was 16-bit: rep stosw, if value was 8-bit: rep stosb
-    endloop
+    counter 64000    // 64000 times
+    address 0xa000:0 // starting at 0xa000:0
+    value 0x38       // some sort of blue color
+    loopwrite        // paint!
 
     wait_for_keypress
     text_mode

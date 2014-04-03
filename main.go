@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -65,7 +66,7 @@ var (
 		"rax", "rbx", "rcx", "rdx", "rsi", "rdi", "rsp", "rbp", "rip", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15", "sil", "dil", "spl", "bpl", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15"} // 64-bit
 
 	operators = []string{"=", "+=", "-=", "*=", "/=", "&=", "|="}
-	keywords  = []string{"fun", "ret", "const", "call", "extern", "end", "bootable", "loop", "endloop", "start", "value"}
+	keywords  = []string{"fun", "ret", "const", "call", "extern", "end", "bootable", "counter", "address", "value", "loopwrite"}
 	builtins  = []string{"len", "int", "exit", "halt", "str", "write", "read", "syscall"} // built-in functions
 	reserved  = []string{"funparam", "sysparam"}                                          // built-in lists that can be accessed with [index]
 
@@ -89,6 +90,9 @@ var (
 
 	// To keep track of function blocks that are ended with "exit"
 	surprise_ending_with_exit = false
+
+	// To keep track of if rep should use stosb or stosw (and stepsize in loops in general)
+	loop_step = 0
 )
 
 // Check if a given map has a given key
@@ -645,6 +649,17 @@ func reserved_and_value(st Statement) string {
 	return ""
 }
 
+// Given a non-hex number as a string, like "123", return the number of bits of space it takes.
+// For the case of "123" the answer would be 7.
+// Return 0 if it's not a number
+func numbits(number string) int {
+	n, err := strconv.Atoi(number)
+	if err != nil {
+		return 0
+	}
+	return int(math.Ceil(math.Log2(float64(n))))
+}
+
 func syscall_or_interrupt(st Statement, syscall bool) string {
 	var i int
 
@@ -1006,7 +1021,7 @@ func (st Statement) String() string {
 				//asmcode += Statement{Token{BUILTIN, "halt", st[0].line, ""}}.String()
 			}
 		} else {
-			log.Println("IN FUNCTION", in_function)
+			log.Println("function ", in_function)
 			// Do not return eax=0/rax=0 if no return value is explicitly provided, by design
 			// This allows the return value from the previous call to be returned instead
 			asmcode += "\tret\t\t\t\t; Return\n"
@@ -1254,43 +1269,76 @@ func (st Statement) String() string {
 		}
 		// TODO: Find a shorter format to describe matching tokens.
 		// Something along the lines of: if match(st, [KEYWORD:"extern"], 2)
-	} else if (st[0].t == KEYWORD) && (st[0].value == "loop") && (len(st) == 2) {
+	} else if (st[0].t == KEYWORD) && (st[0].value == "counter") && (len(st) == 2) {
 		asmcode := ""
 		switch platform_bits {
 		case 16:
-			asmcode += "\tmov cx, " + st[1].value + "\t\t\t; Set cx, in preparation for rep\n"
+			asmcode += "\tmov cx, " + st[1].value + "\t\t\t; set counter, in preparation for rep\n"
 		default:
-			log.Fatalln("Error: Unimplemented: the loop keyword for", platform_bits, "bit platforms")
+			log.Fatalln("Error: Unimplemented: the", st[0].value, "keyword for", platform_bits, "bit platforms")
 		}
 		return asmcode
 	} else if (st[0].t == KEYWORD) && (st[0].value == "value") && (len(st) == 2) {
 		asmcode := ""
 		switch platform_bits {
+		case 64:
+			asmcode = "\tmov rax, " + st[1].value + "\t\t\t; set value, in preparation for looping\n"
+			loop_step = 8
+		case 32:
+			asmcode = "\tmov eax, " + st[1].value + "\t\t\t; set value, in preparation for looping\n"
+			loop_step = 4
 		case 16:
-			// TODO: Find out if the value is a byte or a word, then set a global variable somewhere
-			// TODO: If the value is a byte, use al instead, and stosb instead!
-			asmcode += "\tmov ax, " + st[1].value + "\t\t\t; Set ax, in preparation for stosb/stosw\n"
+			// Find out if the value is a byte or a word, then set a global variable to keep track of if the nest loop should be using stosb or stosw
+			if st[1].t == VALUE {
+				if (strings.HasPrefix(st[1].value, "0x") && (len(st[1].value) == 6)) || (numbits(st[1].value) > 8) {
+					asmcode += "\tmov ax, " + st[1].value + "\t\t\t; set value, in preparation for stosw\n"
+					loop_step = 2
+				} else if (strings.HasPrefix(st[1].value, "0x") && (len(st[1].value) == 4)) || (numbits(st[1].value) <= 8) {
+					asmcode += "\tmov al, " + st[1].value + "\t\t\t; set value, in preparation for stosb\n"
+					loop_step = 1
+				} else {
+					log.Fatalln("Error: Unable to tell if this is a word or a byte:", st[1].value)
+				}
+			} else if st[1].t == REGISTER {
+				switch st[1].value {
+				// TODO: Introduce a function for checking if a register is 8-bit, 16-bit, 32-bit or 64-bit
+				case "al", "ah", "bl", "bh", "cl", "ch", "dl", "dh":
+					asmcode += "\tmov al, " + st[1].value + "\t\t\t; set value from register, in preparation for stosb\n"
+					loop_step = 1
+				default:
+					asmcode += "\tmov ax, " + st[1].value + "\t\t\t; Set value from register, in preparation for stosw\n"
+					loop_step = 2
+				}
+			} else {
+				log.Fatalln("Error: Unable to tell if this is a word or a byte:", st[1].value)
+			}
 		default:
-			log.Fatalln("Error: Unimplemented: the value keyword for", platform_bits, "bit platforms")
+			log.Fatalln("Error: Unimplemented: the", st[0].value, "keyword for", platform_bits, "bit platforms")
 		}
 		return asmcode
-	} else if (st[0].t == KEYWORD) && (st[0].value == "endloop") && (len(st) == 1) {
+	} else if (st[0].t == KEYWORD) && (st[0].value == "loopwrite") && (len(st) == 1) {
 		asmcode := ""
 		switch platform_bits {
 		case 16:
 			// TODO: Check the state set when value was used to find out if rep stosb or rep stosw should be used
-			asmcode += "\trep stosw\n"
+			if loop_step == 2 {
+				asmcode += "\trep stosw\t\t\t; write the value in ax, cx times, starting at es:di\n"
+			} else if loop_step == 1 {
+				asmcode += "\trep stosb\t\t\t; write the value in al, cx times, starting at es:di\n"
+			} else {
+				log.Fatalln("Error: Unrecognized step size when looping. Expected 1 or 2, found:", loop_step)
+			}
 		default:
-			log.Fatalln("Error: Unimplemented: the value keyword for", platform_bits, "bit platforms")
+			log.Fatalln("Error: Unimplemented: the", st[0].value, "keyword for", platform_bits, "bit platforms")
 		}
 		return asmcode
-	} else if (st[0].t == KEYWORD) && (st[0].value == "start") && (len(st) == 2) {
+	} else if (st[0].t == KEYWORD) && (st[0].value == "address") && (len(st) == 2) {
 		asmcode := ""
 		switch platform_bits {
 		case 16:
 			segment_offset := st[1].value
 			if !strings.Contains(segment_offset, ":") {
-				log.Fatalln("Error: start takes a segment:offset value")
+				log.Fatalln("Error: address takes a segment:offset value")
 			}
 			sl := strings.SplitN(segment_offset, ":", 2)
 			if len(sl) != 2 {
@@ -1299,16 +1347,20 @@ func (st Statement) String() string {
 			segment := sl[0]
 			offset := sl[1]
 			log.Println("Found segment", segment, "and offset", offset)
-			asmcode += "\tpush " + segment + "\n"
-			asmcode += "\tpop es\n"
+			asmcode += "\tpush " + segment + "\t\t\t; can not mov directly into es\n"
+			asmcode += "\tpop es\t\t\t\t; segment = " + segment + "\n"
 			// TODO: Introduce a function that checks of 0, 0x0, 0x00, 0x0000 and all other variations of zero
 			if offset == "0" {
-				asmcode += "\txor di, di\n"
+				asmcode += "\txor di, di\t\t\t; offset = " + offset + "\n"
 			} else {
-				asmcode += "\tmov di, " + offset + "\n"
+				asmcode += "\tmov di, " + offset + "\t\t\t; di = " + offset + "\n"
 			}
+		case 32:
+			asmcode += "\tmov edi, " + st[1].value + "\t\t\t; set address/offset\n"
+		case 64:
+			asmcode += "\tmov rdi, " + st[1].value + "\t\t\t; set address/offset\n"
 		default:
-			log.Fatalln("Error: Unimplemented: the start keyword for", platform_bits, "bit platforms")
+			log.Fatalln("Error: Unimplemented: the", st[0].value, "keyword for", platform_bits, "bit platforms")
 		}
 		return asmcode
 	} else if (st[0].t == KEYWORD) && (st[0].value == "bootable") && (len(st) == 1) {

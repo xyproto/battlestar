@@ -46,9 +46,9 @@ function build {
 
   # Don't output the log if "fail" is in the filename
   if [[ $n != *fail* ]]; then
-    battlestarc $params -f "$f" -o "$n.asm" -oc "$n.c" 2> "$n.log" || (cat "$n.log"; rm -f "$n.asm"; echo "$n failed to build!"; return 1; )
+    battlestarc $params -f "$f" -o "$n.asm" -oc "$n.c" 2> "$n.log" || (cat "$n.log"; rm -f "$n.asm"; echo "$n.log" >> "$n.log"; echo "$n failed to build!"; return 1; )
   else
-    battlestarc $params -f "$f" -o "$n.asm" -oc "$n.c" 2> "$n.log" || (rm -f "$n.asm"; echo "$n failed to build (correct)"; return 2; )
+    battlestarc $params -f "$f" -o "$n.asm" -oc "$n.c" 2> "$n.log" || (rm -f "$n.asm"; echo "$n.log" >> "$n.log"; echo "$n failed to build (correct)"; return 2; )
   fi
 
   # Only return with an error code of the build failed and was not meant to fail
