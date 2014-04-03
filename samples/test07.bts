@@ -1,0 +1,9 @@
+const hi = "Hello there", 10
+
+fun main
+    loop 7
+        write(hi)
+    end
+end
+
+// vim: set syntax=c ts=4 sw=4 et:

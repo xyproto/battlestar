@@ -1,0 +1,34 @@
+fun graphics_mode
+    // 320x200 256 colors
+    ah = 0    // function 0
+    al = 0x13 // mode 13h
+    int(10)
+end
+
+fun text_mode
+    ah = 0 
+    al = 3
+    int(10)
+end
+
+fun wait_for_keypress
+    // Wait for keypress
+    ah = 0x10
+    int(16)
+end
+
+fun main
+    graphics_mode
+
+    // Paint the screen red, 2 bytes at a time
+
+    counter 32000    // 32000 times (64000 bytes)
+    address 0xa000:0 // starting at 0xa000:0
+    value 0x7070     // a dark red color (0x70), twice
+    loopwrite        // paint!
+
+    wait_for_keypress
+    text_mode
+end
+
+// vim: set syntax=c ts=4 sw=4 et:

@@ -1,0 +1,60 @@
+const yes = "yes$"
+const no = "no$"
+
+fun move_cursor
+    ah = 2    // function 2
+    bh = 0    // page number 0
+    int(10)   // move cursor to (dl, dh)
+end
+
+fun say_yes
+    dx = yes
+    ah = 9    // function 9
+    int(21)   // write string in dx to screen
+end
+
+fun say_no
+    dx = no
+    ah = 9    // function 9
+    int(21)   // write string in dx to screen
+end
+
+fun wait_for_keypress
+    // Wait for keypress
+    ah = 0x10
+    int(16)
+end
+
+fun main
+    dl = 5    // column 5
+    dh = 5    // row 5
+    move_cursor
+
+    // Say "yes" three times
+    counter 3
+    loop
+        bx = dx    // Save the cursor position in bx
+        say_yes    // Write "yes". Changes dx too.
+        dx = bx    // Restore the cursor position from bx
+
+        dh++       // Move cursor one down
+        dl += 2    // Move cursor two to the right
+        move_cursor
+    end
+
+    // Say "no" one time
+    counter 999
+    loop
+        say_no
+        break      // Break out of the loop after first run
+    end
+
+    // Move cursor to column 0, row 10
+    dl = 0
+    dh = 10
+    move_cursor
+
+    wait_for_keypress
+end
+
+// vim: set syntax=c ts=4 sw=4 et:

@@ -1,0 +1,21 @@
+const twice = "Twice", 10
+const thrice = "Thrice", 10
+const once = "Once", 10
+const nooo = "Nooo!", 10
+
+fun main
+    loop 2 
+        write(twice)
+    end
+    loop 3
+        write(thrice)
+        continue    // Continue loop from top
+        write(nooo) // This never happens
+    end
+    loop 17
+        write(once)
+        break       // Break out of loop
+    end
+end
+
+// vim: set syntax=c ts=4 sw=4 et:

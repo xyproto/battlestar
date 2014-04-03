@@ -358,14 +358,14 @@ func tokenize(program string, debug bool, sep string) []Token {
 				}
 			} else if strings.HasSuffix(word, "++") {
 				firstpart := word[:len(word)-2]
-				newtokens := retokenize(firstpart + " += 1", " ", debug)
+				newtokens := retokenize(firstpart+" += 1", " ", debug)
 				for _, newtoken := range newtokens {
 					tokens = append(tokens, newtoken)
 				}
 				log.Println("NEWTOKENS", newtokens)
 			} else if strings.HasSuffix(word, "--") {
 				firstpart := word[:len(word)-2]
-				newtokens := retokenize(firstpart + " -= 1", " ", debug)
+				newtokens := retokenize(firstpart+" -= 1", " ", debug)
 				for _, newtoken := range newtokens {
 					tokens = append(tokens, newtoken)
 				}
@@ -652,6 +652,20 @@ func reserved_and_value(st Statement) string {
 	}
 	log.Fatalln("Error: Unable to handle reserved word and value:", st[0].value, st[1].value)
 	return ""
+}
+
+func counter_register() string {
+	switch platform_bits {
+	case 16:
+		return "cx"
+	case 32:
+		return "ecx"
+	case 64:
+		return "rcx"
+	default:
+		log.Fatalln("Error: Unhandled bit size:", platform_bits)
+		return "c"
+	}
 }
 
 // Given a non-hex number as a string, like "123", return the number of bits of space it takes.
@@ -1276,16 +1290,7 @@ func (st Statement) String() string {
 		// TODO: Find a shorter format to describe matching tokens.
 		// Something along the lines of: if match(st, [KEYWORD:"extern"], 2)
 	} else if (st[0].t == KEYWORD) && (st[0].value == "counter") && (len(st) == 2) {
-		asmcode := ""
-		switch platform_bits {
-		case 16:
-			asmcode += "\tmov cx, " + st[1].value + "\t\t\t; set counter, in preparation for looping\n"
-		case 32:
-			asmcode += "\tmov ecx, " + st[1].value + "\t\t\t; set counter, in preparation for looping\n"
-		case 64:
-			asmcode += "\tmov rcx, " + st[1].value + "\t\t\t; set counter, in preparation for looping\n"
-		}
-		return asmcode
+		return "\tmov " + counter_register() + ", " + st[1].value + "\t\t\t; set (loop) counter\n"
 	} else if (st[0].t == KEYWORD) && (st[0].value == "value") && (len(st) == 2) {
 		asmcode := ""
 		switch platform_bits {
@@ -1363,28 +1368,13 @@ func (st Statement) String() string {
 
 		// Initialize the loop, if it was given a number
 		if hascounter {
-			switch platform_bits {
-			case 64:
-				asmcode += "\tmov rcx, " + st[1].value
-			case 32:
-				asmcode += "\tmov ecx, " + st[1].value
-			case 16:
-				asmcode += "\tmov cx, " + st[1].value
-			}
+			asmcode += "\tmov " + counter_register() + ", " + st[1].value
 			asmcode += "\t\t\t; initialize loop counter\n"
 		}
 		asmcode += label + ":\t\t\t\t\t; start of loop " + label + "\n"
 
 		// If it's not a raw loop, take care of the counter
-		switch platform_bits {
-		case 64:
-			asmcode += "\tpush rcx\t\t\t; save the counter\n"
-		case 32:
-			asmcode += "\tpush ecx\t\t\t; save the counter\n"
-		case 16:
-			asmcode += "\tpush cx\t\t\t; save the counter\n"
-		}
-
+		asmcode += "\tpush " + counter_register() + "\t\t\t; save the counter\n"
 		return asmcode
 	} else if (st[0].t == KEYWORD) && (st[0].value == "address") && (len(st) == 2) {
 		asmcode := ""
@@ -1453,7 +1443,7 @@ stack_top:
 
 section .text
 `
-// `'
+		// `'
 	} else if (st[0].t == KEYWORD) && (st[0].value == "extern") && (len(st) == 2) {
 		if st[1].t == VALID_NAME {
 			extname := st[1].value
@@ -1470,16 +1460,9 @@ section .text
 		}
 	} else if (st[0].t == KEYWORD) && (st[0].value == "break") && (len(st) == 1) {
 		if in_loop != "" {
-		    asmcode := ""
+			asmcode := ""
 			if !strings.HasPrefix(in_loop, rawloop_prefix) { // is it not a rawloop?
-				switch platform_bits {
-				case 64:
-					asmcode += "\tpop rcx\t\t\t\t; restore counter\n"
-				case 32:
-					asmcode += "\tpop ecx\t\t\t\t; restore counter\n"
-				case 16:
-					asmcode += "\tpop cx\t\t\t\t; restore counter\n"
-				}
+				asmcode += "\tpop " + counter_register() + "\t\t\t\t; restore counter\n"
 			}
 			asmcode += "\tjmp " + in_loop + "_end\t\t\t; break\n"
 			return asmcode
@@ -1488,20 +1471,13 @@ section .text
 		}
 	} else if (st[0].t == KEYWORD) && (st[0].value == "continue") && (len(st) == 1) {
 		if in_loop != "" {
-		    asmcode := ""
+			asmcode := ""
 			if !strings.HasPrefix(in_loop, rawloop_prefix) { // is it not a rawloop?
-				switch platform_bits {
-				case 64:
-					asmcode += "\tpop rcx\t\t\t\t; restore counter\n"
-				case 32:
-					asmcode += "\tpop ecx\t\t\t\t; restore counter\n"
-				case 16:
-					asmcode += "\tpop cx\t\t\t\t; restore counter\n"
-				}
+				asmcode += "\tpop " + counter_register() + "\t\t\t\t; restore counter\n"
 			}
 			// Contineu looping if the counter is greater than zero
 			asmcode += "\tloop " + in_loop + "\t\t\t; continue\n"
-		    // If the counter is zero after restoring the counter, jump out of the loop
+			// If the counter is zero after restoring the counter, jump out of the loop
 			asmcode += "\tjmp " + in_loop + "_end\t\t\t; jump out if the loop is done\n"
 			return asmcode
 		} else {
@@ -1516,25 +1492,9 @@ section .text
 			asmcode := ""
 			// TODO: There are three occurances of the following lines that are equal. Make a function.
 			if !strings.HasPrefix(in_loop, rawloop_prefix) { // is it not a rawloop?
-				switch platform_bits {
-				case 64:
-					asmcode += "\tpop rcx\t\t\t\t; restore counter\n"
-				case 32:
-					asmcode += "\tpop ecx\t\t\t\t; restore counter\n"
-				case 16:
-					asmcode += "\tpop cx\t\t\t\t; restore counter\n"
-				}
+				asmcode += "\tpop " + counter_register() + "\t\t\t\t; restore counter\n"
 			}
-			asmcode += "\tloop " + in_loop + "\t\t\t\t; loop until "
-			switch platform_bits {
-			case 64:
-				asmcode += "rcx"
-			case 32:
-				asmcode += "ecx"
-			case 16:
-				asmcode += "cx"
-			}
-			asmcode += " is zero\n"
+			asmcode += "\tloop " + in_loop + "\t\t\t\t; loop until " + counter_register() + " is zero\n"
 			asmcode += in_loop + "_end:\t\t\t\t\t; end of loop " + in_loop + "\n"
 			asmcode += "\t;--- end of loop " + in_loop + " ---\n"
 			in_loop = ""
@@ -1570,7 +1530,7 @@ section .text
 		negative_offset := strconv.Itoa(paramoffset*4 + 8)
 		reg := ""
 		asmcode := ""
-		switch platform_bits{
+		switch platform_bits {
 		case 32:
 			reg = "ebp"
 			asmcode = "\tmov DWORD [" + reg + "-" + negative_offset + "], " + st[2:].String()

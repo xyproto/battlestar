@@ -1,0 +1,27 @@
+const hello_there = "Hello there", 10
+const hi_there = "Hi there", 10
+
+fun hello
+    rbx = rcx // Save rcx (rbx is not changed by the write function)
+    write(hello_there)
+    rcx = rbx // Restore rcx
+end
+
+fun hi
+    write(hi_there)
+end
+
+fun main
+    // This type of loop does not push and pop rcx
+    counter 4
+    rawloop
+        hello
+    end
+
+    // This type of loop pushes and pops rcx and is easier
+    loop 3
+        hi
+    end
+end
+
+// vim: set syntax=c ts=4 sw=4 et:
