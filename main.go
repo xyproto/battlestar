@@ -53,6 +53,7 @@ const (
 // Global variables
 var (
 	in_function          string              // name of the function we are currently in
+	in_loop              string              // name of the loop we are currently in
 	inline_c             bool                // are we in a block of inline C? (inline_c ... end)
 	c_block              bool                // are we in a block of inline C? (void ... })
 	defined_names        []string            // all defined variables/constants/functions
@@ -66,7 +67,7 @@ var (
 		"rax", "rbx", "rcx", "rdx", "rsi", "rdi", "rsp", "rbp", "rip", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15", "sil", "dil", "spl", "bpl", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15"} // 64-bit
 
 	operators = []string{"=", "+=", "-=", "*=", "/=", "&=", "|="}
-	keywords  = []string{"fun", "ret", "const", "call", "extern", "end", "bootable", "counter", "address", "value", "loopwrite"}
+	keywords  = []string{"fun", "ret", "const", "call", "extern", "end", "bootable", "counter", "address", "value", "loopwrite", "rawloop", "loop", "break", "continue"}
 	builtins  = []string{"len", "int", "exit", "halt", "str", "write", "read", "syscall"} // built-in functions
 	reserved  = []string{"funparam", "sysparam"}                                          // built-in lists that can be accessed with [index]
 
@@ -93,6 +94,12 @@ var (
 
 	// To keep track of if rep should use stosb or stosw (and stepsize in loops in general)
 	loop_step = 0
+
+	// To keep track of which generated label names have already been used
+	loop_name_counter = 0
+
+	// Separate "rawloops" that does not save the counter value from the other loops
+	rawloop_prefix = "r_"
 )
 
 // Check if a given map has a given key
@@ -349,6 +356,20 @@ func tokenize(program string, debug bool, sep string) []Token {
 				if debug {
 					log.Println("TOKEN", t)
 				}
+			} else if strings.HasSuffix(word, "++") {
+				firstpart := word[:len(word)-2]
+				newtokens := retokenize(firstpart + " += 1", " ", debug)
+				for _, newtoken := range newtokens {
+					tokens = append(tokens, newtoken)
+				}
+				log.Println("NEWTOKENS", newtokens)
+			} else if strings.HasSuffix(word, "--") {
+				firstpart := word[:len(word)-2]
+				newtokens := retokenize(firstpart + " -= 1", " ", debug)
+				for _, newtoken := range newtokens {
+					tokens = append(tokens, newtoken)
+				}
+				log.Println("NEWTOKENS", newtokens)
 			} else if is_valid_name(word) {
 				t = Token{VALID_NAME, word, statementnr, ""}
 				tokens = append(tokens, t)
@@ -356,45 +377,30 @@ func tokenize(program string, debug bool, sep string) []Token {
 					log.Println("TOKEN", t)
 				}
 			} else if strings.Contains(word, "(") {
-				if debug {
-					log.Println("RETOKENIZE BECAUSE OF \"(\"")
-				}
 				newtokens := retokenize(word, "(", debug)
 				for _, newtoken := range newtokens {
 					tokens = append(tokens, newtoken)
 				}
 				log.Println("NEWTOKENS", newtokens)
 			} else if strings.Contains(word, ")") {
-				if debug {
-					log.Println("RETOKENIZE BECAUSE OF \")\"")
-				}
 				newtokens := retokenize(word, ")", debug)
 				for _, newtoken := range newtokens {
 					tokens = append(tokens, newtoken)
 				}
 				log.Println("NEWTOKENS", newtokens)
 			} else if strings.Contains(word, "[") {
-				if debug {
-					log.Println("RETOKENIZE BECAUSE OF \"[\"")
-				}
 				newtokens := retokenize(word, "[", debug)
 				for _, newtoken := range newtokens {
 					tokens = append(tokens, newtoken)
 				}
 				log.Println("NEWTOKENS", newtokens)
 			} else if strings.Contains(word, "]") {
-				if debug {
-					log.Println("RETOKENIZE BECAUSE OF \"]\"")
-				}
 				newtokens := retokenize(word, "]", debug)
 				for _, newtoken := range newtokens {
 					tokens = append(tokens, newtoken)
 				}
 				log.Println("NEWTOKENS", newtokens)
 			} else if (!constexpr) && strings.Contains(word, ",") {
-				if debug {
-					log.Println("RETOKENIZE BECAUSE OF \",\"")
-				}
 				newtokens := retokenize(word, ",", debug)
 				for _, newtoken := range newtokens {
 					tokens = append(tokens, newtoken)
@@ -423,7 +429,6 @@ func tokenize(program string, debug bool, sep string) []Token {
 				if debug {
 					log.Println("TOKEN", t)
 				}
-
 			} else {
 				if debug {
 					log.Println("TOKEN", word, "unknown")
@@ -453,8 +458,8 @@ func tokenize(program string, debug bool, sep string) []Token {
 // Note that only replacements that can be done within one statement will work!
 func reduce(st Statement, debug bool) Statement {
 	for i := 0; i < (len(st) - 1); i++ {
-		// The built-in len() function
 		if (st[i].t == BUILTIN) && (st[i].value == "len") {
+			// The built-in len() function
 
 			var name string
 			var token_type TokenType
@@ -682,10 +687,6 @@ func syscall_or_interrupt(st Statement, syscall bool) string {
 	for _, token := range st {
 		log.Println(token)
 	}
-	// Debugging
-	//if st[3].value != "o" {
-	//	log.Fatalln("break at " + st[3].value)
-	//}
 
 	// Store each of the parameters to the appropriate registers
 	var reg, n, comment, asmcode, precode, postcode string
@@ -839,6 +840,11 @@ func syscall_or_interrupt(st Statement, syscall bool) string {
 		log.Fatalln("Error: Need a (hexadecimal) interrupt number to call:\n", st[1].value)
 	}
 	return ""
+}
+
+func new_loop_label() string {
+	loop_name_counter += 1
+	return "l" + strconv.Itoa(loop_name_counter)
 }
 
 func (st Statement) String() string {
@@ -1273,9 +1279,11 @@ func (st Statement) String() string {
 		asmcode := ""
 		switch platform_bits {
 		case 16:
-			asmcode += "\tmov cx, " + st[1].value + "\t\t\t; set counter, in preparation for rep\n"
-		default:
-			log.Fatalln("Error: Unimplemented: the", st[0].value, "keyword for", platform_bits, "bit platforms")
+			asmcode += "\tmov cx, " + st[1].value + "\t\t\t; set counter, in preparation for looping\n"
+		case 32:
+			asmcode += "\tmov ecx, " + st[1].value + "\t\t\t; set counter, in preparation for looping\n"
+		case 64:
+			asmcode += "\tmov rcx, " + st[1].value + "\t\t\t; set counter, in preparation for looping\n"
 		}
 		return asmcode
 	} else if (st[0].t == KEYWORD) && (st[0].value == "value") && (len(st) == 2) {
@@ -1331,6 +1339,52 @@ func (st Statement) String() string {
 		default:
 			log.Fatalln("Error: Unimplemented: the", st[0].value, "keyword for", platform_bits, "bit platforms")
 		}
+		return asmcode
+	} else if (st[0].t == KEYWORD) && ((st[0].value == "rawloop") || (st[0].value == "loop")) && ((len(st) == 1) || (len(st) == 2)) {
+		// TODO: Make every instruction and call declare which registers they will change. This allows for better use of the registers.
+
+		// The start of a rawloop or loop, that have an optional counter value and ends with "end"
+		rawloop := (st[0].value == "rawloop")
+		hascounter := (len(st) == 2)
+
+		// Find a suitable label
+		label := ""
+		// TODO: Use a prefix for the rawloop instead
+		if rawloop {
+			label = rawloop_prefix + new_loop_label()
+		} else {
+			label = new_loop_label()
+		}
+
+		// Now in the loop, in_loop is global
+		in_loop = label
+
+		asmcode := "\t;--- loop " + st[1].value + " times ---\n"
+
+		// Initialize the loop, if it was given a number
+		if hascounter {
+			switch platform_bits {
+			case 64:
+				asmcode += "\tmov rcx, " + st[1].value
+			case 32:
+				asmcode += "\tmov ecx, " + st[1].value
+			case 16:
+				asmcode += "\tmov cx, " + st[1].value
+			}
+			asmcode += "\t\t\t; initialize loop counter\n"
+		}
+		asmcode += label + ":\t\t\t\t\t; start of loop " + label + "\n"
+
+		// If it's not a raw loop, take care of the counter
+		switch platform_bits {
+		case 64:
+			asmcode += "\tpush rcx\t\t\t; save the counter\n"
+		case 32:
+			asmcode += "\tpush ecx\t\t\t; save the counter\n"
+		case 16:
+			asmcode += "\tpush cx\t\t\t; save the counter\n"
+		}
+
 		return asmcode
 	} else if (st[0].t == KEYWORD) && (st[0].value == "address") && (len(st) == 2) {
 		asmcode := ""
@@ -1399,6 +1453,7 @@ stack_top:
 
 section .text
 `
+// `'
 	} else if (st[0].t == KEYWORD) && (st[0].value == "extern") && (len(st) == 2) {
 		if st[1].t == VALID_NAME {
 			extname := st[1].value
@@ -1413,10 +1468,77 @@ section .text
 		} else {
 			log.Fatalln("Error: extern with invalid name:", st[1].value)
 		}
+	} else if (st[0].t == KEYWORD) && (st[0].value == "break") && (len(st) == 1) {
+		if in_loop != "" {
+		    asmcode := ""
+			if !strings.HasPrefix(in_loop, rawloop_prefix) { // is it not a rawloop?
+				switch platform_bits {
+				case 64:
+					asmcode += "\tpop rcx\t\t\t\t; restore counter\n"
+				case 32:
+					asmcode += "\tpop ecx\t\t\t\t; restore counter\n"
+				case 16:
+					asmcode += "\tpop cx\t\t\t\t; restore counter\n"
+				}
+			}
+			asmcode += "\tjmp " + in_loop + "_end\t\t\t; break\n"
+			return asmcode
+		} else {
+			log.Fatalln("Error: Unclear which loop one should break out of.")
+		}
+	} else if (st[0].t == KEYWORD) && (st[0].value == "continue") && (len(st) == 1) {
+		if in_loop != "" {
+		    asmcode := ""
+			if !strings.HasPrefix(in_loop, rawloop_prefix) { // is it not a rawloop?
+				switch platform_bits {
+				case 64:
+					asmcode += "\tpop rcx\t\t\t\t; restore counter\n"
+				case 32:
+					asmcode += "\tpop ecx\t\t\t\t; restore counter\n"
+				case 16:
+					asmcode += "\tpop cx\t\t\t\t; restore counter\n"
+				}
+			}
+			// Contineu looping if the counter is greater than zero
+			asmcode += "\tloop " + in_loop + "\t\t\t; continue\n"
+		    // If the counter is zero after restoring the counter, jump out of the loop
+			asmcode += "\tjmp " + in_loop + "_end\t\t\t; jump out if the loop is done\n"
+			return asmcode
+		} else {
+			log.Fatalln("Error: Unclear which loop one should continue to the top of.")
+		}
+
 	} else if (st[0].t == KEYWORD) && (st[0].value == "end") && (len(st) == 1) {
 		if inline_c {
 			inline_c = false
 			return "; end of inline C block\n"
+		} else if in_loop != "" {
+			asmcode := ""
+			// TODO: There are three occurances of the following lines that are equal. Make a function.
+			if !strings.HasPrefix(in_loop, rawloop_prefix) { // is it not a rawloop?
+				switch platform_bits {
+				case 64:
+					asmcode += "\tpop rcx\t\t\t\t; restore counter\n"
+				case 32:
+					asmcode += "\tpop ecx\t\t\t\t; restore counter\n"
+				case 16:
+					asmcode += "\tpop cx\t\t\t\t; restore counter\n"
+				}
+			}
+			asmcode += "\tloop " + in_loop + "\t\t\t\t; loop until "
+			switch platform_bits {
+			case 64:
+				asmcode += "rcx"
+			case 32:
+				asmcode += "ecx"
+			case 16:
+				asmcode += "cx"
+			}
+			asmcode += " is zero\n"
+			asmcode += in_loop + "_end:\t\t\t\t\t; end of loop " + in_loop + "\n"
+			asmcode += "\t;--- end of loop " + in_loop + " ---\n"
+			in_loop = ""
+			return asmcode
 		} else if in_function != "" {
 			// Return from the function if "end" is encountered
 			ret := Token{KEYWORD, "ret", st[0].line, ""}
@@ -1448,10 +1570,11 @@ section .text
 		negative_offset := strconv.Itoa(paramoffset*4 + 8)
 		reg := ""
 		asmcode := ""
-		if platform_bits == 32 {
+		switch platform_bits{
+		case 32:
 			reg = "ebp"
 			asmcode = "\tmov DWORD [" + reg + "-" + negative_offset + "], " + st[2:].String()
-		} else {
+		case 64:
 			negative_offset = strconv.Itoa(paramoffset*8 + 8)
 			reg = "rbp"
 			asmcode = "\tmov QWORD [" + reg + "-" + negative_offset + "], " + st[2:].String()
@@ -1806,6 +1929,7 @@ func main() {
 			asmdata += "org 0x100\n"
 		}
 		if !bootable {
+			asmdata += "\n"
 			asmdata += "section .text\n"
 		}
 		if platform_bits == 16 {
