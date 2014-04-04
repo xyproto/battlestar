@@ -1,20 +1,15 @@
 const hello_there = "Hello there", 10
 const hi_there = "Hi there", 10
 
-fun hello
-    rbx = rcx // Save rcx (rbx is not changed by the write function)
-    write(hello_there)
-    rcx = rbx // Restore rcx
-end
-
 fun main
     // This type of loop does not push and pop rcx
-    counter 4
-    rawloop
-        hello
+    rawloop 4
+        rbx = rcx           // Save rcx
+        write(hello_there)  // The write syscall changes rcx as a side-effect
+        rcx = rbx           // Restore rcx
     end
 
-    // This type of loop pushes and pops rcx which makes it easier
+    // This type of loop saves and restores rcx automatically, which makes it easier to use
     loop 3
         write(hi_there)
     end
