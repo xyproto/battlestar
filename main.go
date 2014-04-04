@@ -18,7 +18,7 @@ type (
 	Program   string
 	TokenType int
 
-	Token     struct {
+	Token struct {
 		t     TokenType
 		value string
 		line  uint
@@ -29,9 +29,9 @@ type (
 	Statement         []Token
 
 	ProgramState struct {
-		surprise_ending_with_exit bool	// To keep track of function blocks that are ended with "exit"
-		loop_step int					// To keep track of if rep should use stosb or stosw (and stepsize in loops in general)
-		loop_name_counter int			// To keep track of which generated label names have already been used
+		surprise_ending_with_exit bool // To keep track of function blocks that are ended with "exit"
+		loop_step                 int  // To keep track of if rep should use stosb or stosw (and stepsize in loops in general)
+		loop_name_counter         int  // To keep track of which generated label names have already been used
 	}
 )
 
@@ -222,13 +222,13 @@ func removecomments(s string) string {
 
 // Replace \n, \t and \r with the appropriate values
 func string_replacements(s string) string {
-	rtable := map[string]int{"\\t":9, "\\n":10, "\\r":13}
+	rtable := map[string]int{"\\t": 9, "\\n": 10, "\\r": 13}
 	for key, value := range rtable {
 		if strings.Contains(s, key) {
-			if strings.Contains(s, key + "\"") {
-				s = strings.Replace(s, key + "\"", "\", " + strconv.Itoa(value), -1)
+			if strings.Contains(s, key+"\"") {
+				s = strings.Replace(s, key+"\"", "\", "+strconv.Itoa(value), -1)
 			} else {
-				s = strings.Replace(s, key, "\", " + strconv.Itoa(value) + ", \"", -1)
+				s = strings.Replace(s, key, "\", "+strconv.Itoa(value)+", \"", -1)
 			}
 		}
 	}
