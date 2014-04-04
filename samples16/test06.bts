@@ -20,11 +20,11 @@ end
 fun main
     graphics_mode
 
-    // Paint the screen red, 2 bytes at a time
+    // Paint the screen blue, byte for byte
 
-    counter 32000    // 32000 times (64000 bytes)
+    counter 64000    // 64000 times
     address 0xa000:0 // starting at 0xa000:0
-    value 0x7070     // a dark red color (0x70), twice
+    value 0x38       // some sort of blue color
     loopwrite        // paint!
 
     wait_for_keypress

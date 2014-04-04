@@ -1,4 +1,4 @@
-all: clean
+all:
 	bts build
 	bts size
 

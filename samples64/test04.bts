@@ -1,4 +1,4 @@
-const hi = "hi", 10
+const hi = "hi\n"
 
 fun main
     syscall(1, 1, hi, len(hi))

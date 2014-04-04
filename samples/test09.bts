@@ -1,0 +1,17 @@
+const m = "Testing 123\n"
+
+# TODO: Find a way to implement writeln in a platform independent way
+fun writeln
+    #r8 = funparam[0]
+    r8 = 65
+    write(str(r8))
+    r8 = 10
+    write(str(r8))
+end
+
+fun main
+    funparam[0] = m
+    writeln
+end
+
+// vim: set syntax=c ts=4 sw=4 et:

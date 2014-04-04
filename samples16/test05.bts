@@ -1,3 +1,5 @@
+const hi = "Hello from mode 13h"
+
 fun graphics_mode
     // 320x200 256 colors
     ah = 0    // function 0
@@ -17,16 +19,25 @@ fun wait_for_keypress
     int(16)
 end
 
+fun move_cursor
+    ah = 2   // function 2
+    dh = 5   // row
+    dl = 5   // column
+    bh = 0   // page number
+    int(10)
+end
+
+fun say_hello
+    // Write the "hi" string
+    ah = 9
+    dx = hi
+    int(21)
+end
+
 fun main
     graphics_mode
-
-    // Paint the screen blue, byte for byte
-
-    counter 64000    // 64000 times
-    address 0xa000:0 // starting at 0xa000:0
-    value 0x38       // some sort of blue color
-    loopwrite        // paint!
-
+    move_cursor
+    say_hello
     wait_for_keypress
     text_mode
 end

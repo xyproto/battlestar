@@ -17,14 +17,22 @@ import (
 type (
 	Program   string
 	TokenType int
+
 	Token     struct {
 		t     TokenType
 		value string
 		line  uint
 		extra string // Used when coverting from register to string
 	}
+
 	TokenDescriptions map[TokenType]string
 	Statement         []Token
+
+	ProgramState struct {
+		surprise_ending_with_exit bool	// To keep track of function blocks that are ended with "exit"
+		loop_step int					// To keep track of if rep should use stosb or stosw (and stepsize in loops in general)
+		loop_name_counter int			// To keep track of which generated label names have already been used
+	}
 )
 
 const (
@@ -86,19 +94,14 @@ var (
 	linker_start_function = "_start"
 
 	// TODO: Add an option for not adding an exit function
-
 	interrupt_parameter_registers []string
 
-	// To keep track of function blocks that are ended with "exit"
-	surprise_ending_with_exit = false
+	// Global program state
+	ps ProgramState
+)
 
-	// To keep track of if rep should use stosb or stosw (and stepsize in loops in general)
-	loop_step = 0
-
-	// To keep track of which generated label names have already been used
-	loop_name_counter = 0
-
-	// Separate "rawloops" that does not save the counter value from the other loops
+const (
+	// For the types of loops that does not save and restore the counter before and after the loop body
 	rawloop_prefix = "r_"
 )
 
@@ -213,6 +216,21 @@ func removecomments(s string) string {
 	} else if pos := strings.Index(s, "#"); pos != -1 {
 		// Strip away everything after the first # on the line
 		return s[:pos]
+	}
+	return s
+}
+
+// Replace \n, \t and \r with the appropriate values
+func string_replacements(s string) string {
+	rtable := map[string]int{"\\t":9, "\\n":10, "\\r":13}
+	for key, value := range rtable {
+		if strings.Contains(s, key) {
+			if strings.Contains(s, key + "\"") {
+				s = strings.Replace(s, key + "\"", "\", " + strconv.Itoa(value), -1)
+			} else {
+				s = strings.Replace(s, key, "\", " + strconv.Itoa(value) + ", \"", -1)
+			}
+		}
 	}
 	return s
 }
@@ -442,7 +460,7 @@ func tokenize(program string, debug bool, sep string) []Token {
 				log.Println("EXITING STRING AT END OF STATEMENT")
 				log.Println("STRING:", collected)
 			}
-			t = Token{STRING, collected, statementnr, ""}
+			t = Token{STRING, string_replacements(collected), statementnr, ""}
 			tokens = append(tokens, t)
 			instring = false
 			collected = ""
@@ -856,9 +874,9 @@ func syscall_or_interrupt(st Statement, syscall bool) string {
 	return ""
 }
 
-func new_loop_label() string {
-	loop_name_counter += 1
-	return "l" + strconv.Itoa(loop_name_counter)
+func (p *ProgramState) new_loop_label() string {
+	p.loop_name_counter += 1
+	return "l" + strconv.Itoa(p.loop_name_counter)
 }
 
 func (st Statement) String() string {
@@ -1061,7 +1079,7 @@ func (st Statement) String() string {
 			in_function = ""
 			// If the function was ended with "exit", don't freak out if an "end" is encountered
 			if st[0].value == "exit" {
-				surprise_ending_with_exit = true
+				ps.surprise_ending_with_exit = true
 			}
 		}
 		if inline_c {
@@ -1093,7 +1111,7 @@ func (st Statement) String() string {
 		} else if (st[0].t == RESERVED) && (st[1].t == VALUE) {
 			return reserved_and_value(st[:2])
 		} else if (st[0].t == REGISTER) && (st[1].t == ASSIGNMENT) && (st[2].t == RESERVED) && (st[3].t == VALUE) {
-			if st[2].value == "param" {
+			if st[2].value == "funparam" {
 				paramoffset, err := strconv.Atoi(st[3].value)
 				if err != nil {
 					log.Fatalln("Error: Invalid list offset for", st[2].value+":", st[3].value)
@@ -1105,7 +1123,7 @@ func (st Statement) String() string {
 				return "\tmov " + st[0].value + ", " + param_expression + "\t\t; fetch function param #" + st[3].value + "\n"
 			} else {
 				// TODO: Implement support for other lists
-				log.Fatalln("Error: Can only handle \"param\" lists.")
+				log.Fatalln("Error: Can only handle \"funparam\" lists when assigning to a register, so far.")
 			}
 		}
 		if (st[1].t == ADDITION) && (st[2].t == VALUE) {
@@ -1306,19 +1324,19 @@ func (st Statement) String() string {
 		switch platform_bits {
 		case 64:
 			asmcode = "\tmov rax, " + st[1].value + "\t\t\t; set value, in preparation for looping\n"
-			loop_step = 8
+			ps.loop_step = 8
 		case 32:
 			asmcode = "\tmov eax, " + st[1].value + "\t\t\t; set value, in preparation for looping\n"
-			loop_step = 4
+			ps.loop_step = 4
 		case 16:
 			// Find out if the value is a byte or a word, then set a global variable to keep track of if the nest loop should be using stosb or stosw
 			if st[1].t == VALUE {
 				if (strings.HasPrefix(st[1].value, "0x") && (len(st[1].value) == 6)) || (numbits(st[1].value) > 8) {
 					asmcode += "\tmov ax, " + st[1].value + "\t\t\t; set value, in preparation for stosw\n"
-					loop_step = 2
+					ps.loop_step = 2
 				} else if (strings.HasPrefix(st[1].value, "0x") && (len(st[1].value) == 4)) || (numbits(st[1].value) <= 8) {
 					asmcode += "\tmov al, " + st[1].value + "\t\t\t; set value, in preparation for stosb\n"
-					loop_step = 1
+					ps.loop_step = 1
 				} else {
 					log.Fatalln("Error: Unable to tell if this is a word or a byte:", st[1].value)
 				}
@@ -1327,10 +1345,10 @@ func (st Statement) String() string {
 				// TODO: Introduce a function for checking if a register is 8-bit, 16-bit, 32-bit or 64-bit
 				case "al", "ah", "bl", "bh", "cl", "ch", "dl", "dh":
 					asmcode += "\tmov al, " + st[1].value + "\t\t\t; set value from register, in preparation for stosb\n"
-					loop_step = 1
+					ps.loop_step = 1
 				default:
 					asmcode += "\tmov ax, " + st[1].value + "\t\t\t; Set value from register, in preparation for stosw\n"
-					loop_step = 2
+					ps.loop_step = 2
 				}
 			} else {
 				log.Fatalln("Error: Unable to tell if this is a word or a byte:", st[1].value)
@@ -1344,12 +1362,12 @@ func (st Statement) String() string {
 		switch platform_bits {
 		case 16:
 			// TODO: Check the state set when value was used to find out if rep stosb or rep stosw should be used
-			if loop_step == 2 {
+			if ps.loop_step == 2 {
 				asmcode += "\trep stosw\t\t\t; write the value in ax, cx times, starting at es:di\n"
-			} else if loop_step == 1 {
+			} else if ps.loop_step == 1 {
 				asmcode += "\trep stosb\t\t\t; write the value in al, cx times, starting at es:di\n"
 			} else {
-				log.Fatalln("Error: Unrecognized step size when looping. Expected 1 or 2, found:", loop_step)
+				log.Fatalln("Error: Unrecognized step size when looping. Expected 1 or 2, found:", ps.loop_step)
 			}
 		default:
 			log.Fatalln("Error: Unimplemented: the", st[0].value, "keyword for", platform_bits, "bit platforms")
@@ -1366,9 +1384,9 @@ func (st Statement) String() string {
 		label := ""
 		// TODO: Use a prefix for the rawloop instead
 		if rawloop {
-			label = rawloop_prefix + new_loop_label()
+			label = rawloop_prefix + ps.new_loop_label()
 		} else {
-			label = new_loop_label()
+			label = ps.new_loop_label()
 		}
 
 		// Now in the loop, in_loop is global
@@ -1519,11 +1537,11 @@ section .text
 			return newstatement.String()
 		} else {
 			// If the function was already ended with "exit", don't freak out when encountering an "end"
-			if !surprise_ending_with_exit {
+			if !ps.surprise_ending_with_exit {
 				log.Fatalln("Error: Not in a function or block of inline C, hard to tell what should be ended with \"end\". Statement nr:", st[0].line)
 			} else {
 				// Prepare for more surprises
-				surprise_ending_with_exit = false
+				ps.surprise_ending_with_exit = false
 				// Ignore this "end"
 				return ""
 			}

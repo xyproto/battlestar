@@ -1,11 +1,4 @@
-const hi = "Hello, world!", 13, 10
-
-fun hello
-    // Write the "hi" string
-    ah = 9
-    dx = hi
-    int(21)
-end
+const hi = "Hello, world!\r\n"
 
 fun wait_for_keypress
     // Wait for keypress
@@ -14,7 +7,7 @@ fun wait_for_keypress
 end
 
 fun main
-    hello
+    write(hi)
     wait_for_keypress
 end
 

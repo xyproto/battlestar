@@ -1,6 +1,6 @@
 // gcc does not support 16-bit x86, so this program fails to build
 
-const hi = "Hello, world!", 13, 10
+const hi = "Hello, world!\r\n"
 
 fun hello
     // Write the "hi" string

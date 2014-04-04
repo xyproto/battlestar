@@ -1,22 +1,14 @@
-const yes = "yes"
-const no = "no"
-
-fun move_cursor
-    ah = 2    // function 2
-    bh = 0    // page number 0
-    int(10)   // move cursor to (dl, dh)
+fun graphics_mode
+    // 320x200 256 colors
+    ah = 0    // function 0
+    al = 0x13 // mode 13h
+    int(10)
 end
 
-fun say_yes
-    dx = yes
-    ah = 9    // function 9
-    int(21)   // write string in dx to screen
-end
-
-fun say_no
-    dx = no
-    ah = 9    // function 9
-    int(21)   // write string in dx to screen
+fun text_mode
+    ah = 0 
+    al = 3
+    int(10)
 end
 
 fun wait_for_keypress
@@ -26,35 +18,17 @@ fun wait_for_keypress
 end
 
 fun main
-    dl = 5    // column 5
-    dh = 5    // row 5
-    move_cursor
+    graphics_mode
 
-    // Say "yes" three times
-    counter 3
-    loop
-        bx = dx    // Save the cursor position in bx
-        say_yes    // Write "yes". Changes dx too.
-        dx = bx    // Restore the cursor position from bx
+    // Paint the screen red, 2 bytes at a time
 
-        dh++       // Move cursor one down
-        dl += 2    // Move cursor two to the right
-        move_cursor
-    end
-
-    // Say "no" one time
-    counter 999
-    loop
-        say_no
-        break      // Break out of the loop after first run
-    end
-
-    // Move cursor to column 0, row 10
-    dl = 0
-    dh = 10
-    move_cursor
+    counter 32000    // 32000 times (64000 bytes)
+    address 0xa000:0 // starting at 0xa000:0
+    value 0x7070     // a dark red color (0x70), twice
+    loopwrite        // paint!
 
     wait_for_keypress
+    text_mode
 end
 
 // vim: set syntax=c ts=4 sw=4 et:
