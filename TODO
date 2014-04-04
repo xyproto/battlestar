@@ -27,6 +27,8 @@
 
 * Add a -debug=true flag that includes the C std library and makes it possible to use printf. Drop the assembly version of printf, not needed.
 
+* Incorporate more ideas (and gcc flags) from this stackoverflow answer: http://stackoverflow.com/a/10552160/131264
+
 
 --- done ---
 * Make syscall() work correctly, ref hi64.bts [done]
