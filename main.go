@@ -75,7 +75,7 @@ var (
 		"rax", "rbx", "rcx", "rdx", "rsi", "rdi", "rsp", "rbp", "rip", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15", "sil", "dil", "spl", "bpl", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15"} // 64-bit
 
 	operators = []string{"=", "+=", "-=", "*=", "/=", "&=", "|="}
-	keywords  = []string{"fun", "ret", "const", "call", "extern", "end", "bootable", "counter", "address", "value", "loopwrite", "rawloop", "loop", "break", "continue"}
+	keywords  = []string{"fun", "ret", "const", "call", "extern", "end", "bootable", "counter", "address", "value", "loopwrite", "rawloop", "loop", "break", "continue", "use", "asm"}
 	builtins  = []string{"len", "int", "exit", "halt", "str", "write", "read", "syscall"} // built-in functions
 	reserved  = []string{"funparam", "sysparam"}                                          // built-in lists that can be accessed with [index]
 
@@ -220,9 +220,9 @@ func removecomments(s string) string {
 	return s
 }
 
-// Replace \n, \t and \r with the appropriate values
+// Replace \n, \t, \r and \0 with the appropriate values
 func string_replacements(s string) string {
-	rtable := map[string]int{"\\t": 9, "\\n": 10, "\\r": 13}
+	rtable := map[string]int{"\\t": 9, "\\n": 10, "\\r": 13, "\\0": 0}
 	for key, value := range rtable {
 		if strings.Contains(s, key) {
 			if strings.Contains(s, key+"\"") {
@@ -293,11 +293,10 @@ func tokenize(program string, debug bool, sep string) []Token {
 			// Skip the start of this type of inline C, don't include "inline_c" as a token
 			continue
 		} else if inline_c || c_block {
-			// In a block of inline C code, skip and don't include as tokens
+			// In a block of inline code, skip and don't include as tokens
 			// log.Println("Skipping when tokenizing:", words)
 			continue
 		}
-
 		// If we are defining a constant, ease up on tokenizing the rest of the line recursively
 		if words[0] == "const" {
 			constexpr = true
@@ -524,10 +523,19 @@ func reduce(st Statement, debug bool) Statement {
 			if debug {
 				log.Println("SUCCESSFULL REPLACEMENT WITH", st[i])
 			}
+		} else if (st[i].t == BUILTIN) && (st[i].value == "write") && (st[i+1].t == STRING) {
+			log.Fatalln("Error: write can only write const strings, not immediate strings")
 		} else if (st[i].t == BUILTIN) && (st[i].value == "write") && ((st[i+1].t == VALID_NAME) || (st[i+1].t == REGISTER)) {
 			// replace write(msg) with
 			// int(0x80, 4, 1, msg, len(msg)) on 32-bit
 			// syscall(1, msg, len(msg)) on 64-bit
+
+			// TODO: Find a way to output additional statements when a statement can be broken into several statements
+			//       (Like printing all the arguments to write, one by one)
+			//for _, token := range st[1:] {
+			//    Use token instead of st[i+1]
+			//}
+
 			cmd := ""
 			var tokens []Token
 			var tokenpos int
@@ -547,12 +555,10 @@ func reduce(st Statement, debug bool) Statement {
 				// No simple reduction for 16-bit assembly, it needs several lines of assembly code
 				return st
 			}
+
 			tokens[tokenpos].extra = extra
 			// Replace the current statement with the newly generated tokens
 			st = tokens
-			//log.Fatalln(st[tokenpos], st[tokenpos].extra)
-			//} else if (st[i].t == BUILTIN) && (st[i].value == "write") {
-			//	log.Fatalln("Error: Using write on", st[i+1], "is unimplemented.")
 		} else if (st[i].t == BUILTIN) && (st[i].value == "str") && (st[i+1].t == VALID_NAME) {
 			log.Fatalln("Error: str of a name is to be implemented")
 		} else if (st[i].t == BUILTIN) && (st[i].value == "str") && (st[i+1].t == REGISTER) {
@@ -575,11 +581,6 @@ func reduce(st Statement, debug bool) Statement {
 				// No simple reduction for 16-bit assembly
 				return st
 			}
-
-			//if debug {
-			//	log.Println("SUCCESSFULL REPLACEMENT WITH", st[i], "/", register)
-			//}
-
 		}
 	}
 	return st
@@ -1279,6 +1280,23 @@ func (st Statement) String() string {
 		retval := "\tmov " + reserved_and_value(st[:2]) + ", " + reserved_and_value(st[3:]) + "\t\t\t; "
 		retval += fmt.Sprintf("%s[%s] = %s[%s]\n", st[0].value, st[1].value, st[3].value, st[4].value)
 		return retval
+	} else if (len(st) >= 2) && (st[0].t == KEYWORD) && (st[0].value == "asm") && (st[1].t == VALUE) {
+		target_bits, err := strconv.Atoi(st[1].value)
+		if err != nil {
+			log.Fatalln("Error: " + st[1].value + " is not a valid platform bit size (like 32 or 64)")
+		}
+		if platform_bits == target_bits {
+			// Add the rest of the line as a regular assembly expression
+			if len(st) == 5 {
+				return "\t" + st[2].value + " " + st[3].value + ", " + st[4].value + "\t\t\t; platform specific assembly\n"
+			} else if len(st) == 4 {
+				return "\t" + st[2].value + " " + st[3].value + "\t\t\t; platform specific assembly\n"
+			} else {
+				log.Fatalln("Error: Unrecognized length of assembly epxression:", len(st)-2)
+			}
+		}
+		// Not the target bits, skip
+		return ""
 	} else if (len(st) >= 2) && (st[0].t == KEYWORD) && (st[1].t == VALID_NAME) && (st[0].value == "fun") {
 		if in_function != "" {
 			log.Fatalf("Error: Missing \"ret\" or \"end\"? Already in a function named %s when declaring function %s.\n", in_function, st[1].value)
@@ -1405,7 +1423,9 @@ func (st Statement) String() string {
 		asmcode += label + ":\t\t\t\t\t; start of loop " + label + "\n"
 
 		// If it's not a raw loop, take care of the counter
-		asmcode += "\tpush " + counter_register() + "\t\t\t; save the counter\n"
+		if !rawloop {
+			asmcode += "\tpush " + counter_register() + "\t\t\t; save the counter\n"
+		}
 		return asmcode
 	} else if (st[0].t == KEYWORD) && (st[0].value == "address") && (len(st) == 2) {
 		asmcode := ""
@@ -1474,7 +1494,7 @@ stack_top:
 
 section .text
 `
-		// `'
+		// `'' /* */
 	} else if (st[0].t == KEYWORD) && (st[0].value == "extern") && (len(st) == 2) {
 		if st[1].t == VALID_NAME {
 			extname := st[1].value

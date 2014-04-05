@@ -2,15 +2,15 @@ all:
 	bts build
 	bts size
 
-m64: clean
+m64:
 	bts build --bits=64
 	bts size
 
-m32: clean
+m32:
 	bts build --bits=32
 	bts size
 
-m16: clean
+m16:
 	bts build --bits=16
 	bts size
 

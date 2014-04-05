@@ -4,8 +4,6 @@ fun main
     // Write an 'A'
     rax = 65
     write(str(rax))
-
-    // Output a newline
     write(nl)
 end
 

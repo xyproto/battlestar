@@ -1,17 +1,22 @@
-const m = "Testing 123\n"
-
-# TODO: Find a way to implement writeln in a platform independent way
-fun writeln
-    #r8 = funparam[0]
-    r8 = 65
-    write(str(r8))
-    r8 = 10
-    write(str(r8))
-end
+const hello = "Hello.\n"
 
 fun main
-    funparam[0] = m
-    writeln
+    // This type of loop does not not push and pop cx/ecx/rcx but just uses it as a counter
+    rawloop 2
+        
+        // Save the counter register, independent of bit size (not needed for 16-bit assembly)
+        (asm 32) mov edi, ecx // edi is not changed by write() on 32-bit
+        (asm 64) mov rbx, rcx // rbx is not changed by write() on 64-bit
+
+        // The write syscall changes rcx on 64-bit, ecx on 32-bit, but not cx on 16-bit
+        write(hello)
+        
+        // Restore the counter register, independent of bit size (not needed for 16-bit assembly)
+        (asm 32) mov ecx, edi // edi is not changed by write() on 32-bit
+        (asm 64) mov rcx, rbx // rbx is not change by write() on 64-bit
+
+    end
+
 end
 
 // vim: set syntax=c ts=4 sw=4 et:
