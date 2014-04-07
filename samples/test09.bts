@@ -1,19 +1,20 @@
 const hello = "Hello.\n"
 
 fun main
-    // This type of loop does not not push and pop cx/ecx/rcx but just uses it as a counter
+    // This type of loop does not not push and pop cx/ecx/rcx,
+    // but depends on it to remain unchanged by the loop body
     rawloop 2
         
         // Save the counter register, independent of bit size (not needed for 16-bit assembly)
-        (asm 32) mov edi, ecx // edi is not changed by write() on 32-bit
-        (asm 64) mov rbx, rcx // rbx is not changed by write() on 64-bit
+        (asm 32) mov edi, ecx // ecx is changed by write(), but edi is not, on 32-bit
+        (asm 64) mov rbx, rcx // rcx is changed by write(), but rbx is not, on 64-bit
 
         // The write syscall changes rcx on 64-bit, ecx on 32-bit, but not cx on 16-bit
         write(hello)
         
         // Restore the counter register, independent of bit size (not needed for 16-bit assembly)
-        (asm 32) mov ecx, edi // edi is not changed by write() on 32-bit
-        (asm 64) mov rcx, rbx // rbx is not change by write() on 64-bit
+        (asm 32) mov ecx, edi // restore ecx from edi, on 32-bit
+        (asm 64) mov rcx, rbx // restore rcx from rbx, on 64-bit
 
     end
 
