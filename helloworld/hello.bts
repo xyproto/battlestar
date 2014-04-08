@@ -1,6 +1,6 @@
 #!/usr/bin/bts
 
-const hello = "Hello, world!", 10
+const hello = "Hello, world!\n"
 
 fun main
     write(hello)
