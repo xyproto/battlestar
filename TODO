@@ -4,6 +4,8 @@
 * Add nested loops
 * Remove the "value" and "counter" keywords and introduce them as register aliases instead
 
+* Solve rosetta code tasks + programming language benchmark game tasks.
+
 * Add a way to call functions that does not change registers. Perhaps "call" and "safecall"? When no keyword is given, assume "safecall"?
 
 * Implement a more expressive sub-language and/or inline Go/Julia/Lua/IO
