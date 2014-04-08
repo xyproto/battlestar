@@ -1,5 +1,8 @@
 #!/bin/sh
 
+asm=yasm
+#asm=nasm
+
 function require {
   if [ $2 == 0 ]; then
     hash $1 2>/dev/null || { echo >&2 "Could not find $1 (optional)"; }
@@ -97,7 +100,7 @@ function build {
     # Remove the generated .asm file
     rm -f "$n.asm"
     # Save the filenames for later cleaning
-    echo -e "\n$n.o ${n}_c.o $n.log" >> "$n.log"
+    echo -e "\n$n.o ${n}_c.o $n $n.log" >> "$n.log"
     [ -e $n.o ] && return 0 || return 1
   fi
   if [[ $linkfail = false ]]; then
@@ -112,7 +115,7 @@ function build {
 	echo "dosbox -c \"mount c .\" -c \"c:\" -c cls -c $n.com -c pause -c exit > /dev/null" >> "$n.sh"
 	chmod +x "$n.sh"
 	# Save the filenames for later cleaning
-	echo -e "\n$n.asm $n.c $n.com ${n}_c.o $n.log $n.sh" >> "$n.log"
+	echo -e "\n$n.asm $n.c $n.com ${n}_c.o $n.log $n $n.sh" >> "$n.log"
 	# Check if a .com file has been created and return a value accordingly
 	[ -e $n.com ] && return 0 || return 1
       else
@@ -127,7 +130,7 @@ function build {
     require sstrip 2 && (sstrip "$n" 2>/dev/null)
   fi
   # Save the filenames for later cleaning
-  echo -e "\n$n $n.asm $n.c $n.o ${n}_c.o $n.log" >> "$n.log"
+  echo -e "\n$n $n.asm $n.c $n.o ${n}_c.o $n $n.log" >> "$n.log"
 
   # Check if an executable has been generated and return a value accordingly
   [ -e $n ] && return 0 || return 1
@@ -139,7 +142,7 @@ skipstrip=false
 
 # Check for needed utilities
 require battlestarc 1
-require yasm 1
+require $asm 1
 require ld 1
 require gcc 0
 require sstrip 0
@@ -163,19 +166,19 @@ elif [[ $@ = *'bits=16'* ]]; then
 fi
 
 osx=$([[ `uname -s` = Darwin ]] && echo true || echo false)
-asmcmd="yasm -f elf64"
+asmcmd="$asm -f elf64"
 ldcmd='ld -s --fatal-warnings -nostdlib --relax'
 stdgcc='gcc -Os -nostdlib -nostdinc -std=c99 -Wno-implicit -ffast-math -fno-inline -fomit-frame-pointer'
 cccmd="$stdgcc -m64"
 
 if [ $bits = 32 ]; then
-  asmcmd="yasm -f elf32"
+  asmcmd="$asm -f elf32"
   ldcmd='ld -s -melf_i386 --fatal-warnings -nostdlib --relax'
   cccmd="$stdgcc -m32"
 fi
 
 if [ $bits = 16 ]; then
-  asmcmd="yasm -f bin"
+  asmcmd="$asm -f bin"
   ldcmd='ld -s --fatal-warnings -nostdlib --relax'
   cccmd="$stdgcc"
 fi
@@ -186,7 +189,7 @@ if [[ $1 == bootable ]]; then
   echo 'Building a bootable kernel.'
   echo
 
-  asmcmd="yasm -f elf32"
+  asmcmd="$asm -f elf32"
   echo $asmcmd
 
   cccmd="$stdgcc -m32 -ffreestanding -Wall -Wextra -fno-exceptions -Wno-implicit"
@@ -203,7 +206,7 @@ if [[ $1 == bootable ]]; then
 fi
 
 if [[ $osx = true ]]; then
-  asmcmd='yasm -f macho'
+  asmcmd="$asm -f macho"
   ldcmd='ld -macosx_version_min 10.8 -lSystem'
   bits=32
 fi

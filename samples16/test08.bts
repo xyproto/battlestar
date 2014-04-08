@@ -31,8 +31,7 @@ fun main
     move_cursor
 
     // Say "yes" three times
-    counter 3
-    loop
+    loop 3
         bx = dx    // Save the cursor position in bx
         say_yes    // Write "yes". Changes dx too.
         dx = bx    // Restore the cursor position from bx
@@ -43,8 +42,7 @@ fun main
     end
 
     // Say "no" one time
-    counter 999
-    loop
+    loop 999
         say_no
         break      // Break out of the loop after first run
     end

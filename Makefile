@@ -3,9 +3,9 @@ PREFIX ?= /usr
 BINDIR = $(PREFIX)/bin
 PWD = $(shell pwd)
 
-all: clean battlestarc
+all: battlestarc
 
-full: clean battlestarc
+samples:
 	make -C helloworld
 	make -C samples
 	make -C samples64
@@ -13,39 +13,31 @@ full: clean battlestarc
 	make -C samples16
 	make -C kernel
 
-full_clean:
+clean:
+	make -C src clean
 	make -C helloworld clean
 	make -C samples clean
 	make -C samples64 clean
 	make -C samples32 clean
 	make -C samples16 clean
 	make -C kernel clean
-	make -C . clean
-
-hello: battlestarc
-	make -C helloworld
 
 battlestarc:
-	@# Make sure only "battlestarc" is present, not "battlestar"
-	@rm -f battlestar
-	go build -o battlestarc
-
-clean:
-	rm -f battlestarc
+	make -C src
 
 install-bin: battlestarc
 	install -Dm755 "$(PWD)/scripts/btstool.sh" "$(DESTDIR)$(BINDIR)/bts"
 	install -Dm755 "$(PWD)/scripts/build.sh" "$(DESTDIR)$(BINDIR)/btsbuild"
-	install -Dm755 "$(PWD)/battlestarc" "$(DESTDIR)$(BINDIR)/battlestarc"
+	install -Dm755 "$(PWD)/src/battlestarc" "$(DESTDIR)$(BINDIR)/battlestarc"
 
 install: install-bin
 
 devinstall: battlestarc
-	ln -sf $(PWD)/battlestarc /usr/bin/battlestarc
+	ln -sf $(PWD)/src/battlestarc /usr/bin/battlestarc
 	ln -sf $(PWD)/scripts/btstool.sh /usr/bin/bts
 	ln -sf $(PWD)/scripts/build.sh /usr/bin/btsbuild
 
 uninstall:
 	rm -f "$(DESTDIR)$(BINDIR)/bts"
-	rm -f "$(DESTDIR)$(BINDIR)/disasm"
+	rm -f "$(DESTDIR)$(BINDIR)/btsbuild"
 	rm -f "$(DESTDIR)$(BINDIR)/battlestarc"
