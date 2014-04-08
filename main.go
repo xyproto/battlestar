@@ -53,7 +53,7 @@ const (
 	AND            = 14
 	OR             = 15
 	XOR            = 16
-	MAGICAL_VALUE  = 17 // Changes depending on the platform
+	COMPARISON     = 17
 	SEP            = 127
 	UNKNOWN        = 255
 )
@@ -74,12 +74,13 @@ var (
 		"eax", "ebx", "ecx", "edx", "esi", "edi", "esp", "ebp", "eip", // 32-bit
 		"rax", "rbx", "rcx", "rdx", "rsi", "rdi", "rsp", "rbp", "rip", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15", "sil", "dil", "spl", "bpl", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15"} // 64-bit
 
-	operators = []string{"=", "+=", "-=", "*=", "/=", "&=", "|="}
-	keywords  = []string{"fun", "ret", "const", "call", "extern", "end", "bootable", "counter", "address", "value", "loopwrite", "rawloop", "loop", "break", "continue", "use", "asm"}
-	builtins  = []string{"len", "int", "exit", "halt", "str", "write", "read", "syscall"} // built-in functions
-	reserved  = []string{"funparam", "sysparam"}                                          // built-in lists that can be accessed with [index]
+	operators   = []string{"=", "+=", "-=", "*=", "/=", "&=", "|="}
+	comparisons = []string{"==", "!=", "<", ">", "<=", ">="}
+	keywords    = []string{"fun", "ret", "const", "call", "extern", "end", "bootable", "counter", "address", "value", "loopwrite", "rawloop", "loop", "break", "continue", "use", "asm"}
+	builtins    = []string{"len", "int", "exit", "halt", "str", "write", "read", "syscall"} // built-in functions
+	reserved    = []string{"funparam", "sysparam"}                                          // built-in lists that can be accessed with [index]
 
-	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard", RESERVED: "reserved", VARIABLE: "variable", ADDITION: "addition", SUBTRACTION: "subtraction", MULTIPLICATION: "multiplication", DIVISION: "division"}
+	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard", RESERVED: "reserved", VARIABLE: "variable", ADDITION: "addition", SUBTRACTION: "subtraction", MULTIPLICATION: "multiplication", DIVISION: "division", COMPARISON: "comparison"}
 
 	// 32-bit (i686), 64-bit (x86_64) or 16-bit (i386)
 	platform_bits = 32
@@ -103,6 +104,8 @@ var (
 const (
 	// For the types of loops that does not save and restore the counter before and after the loop body
 	rawloop_prefix = "r_"
+	// For the types of loops that loop forever
+	endlessloop_prefix = "e_"
 )
 
 // Check if a given map has a given key
@@ -118,9 +121,7 @@ func (tok Token) String() string {
 	} else if haskey(token_to_string, tok.t) {
 		return token_to_string[tok.t] + ":" + tok.value
 	}
-	//log.Fatalln("Error when serializing: Unfamiliar token type when representing token as string: " + tok.value)
-	//log.Fatalln("Error: What is this? " + tok.value)
-	log.Fatalln("Error: Unfamiliar token: " + tok.value)
+	log.Fatalln("Error: Unfamiliar token when representing as string: " + tok.value)
 	return "!?"
 }
 
@@ -312,6 +313,12 @@ func tokenize(program string, debug bool, sep string) []Token {
 				collected += word + sep
 			} else if has(registers, word) {
 				t = Token{REGISTER, word, statementnr, "?"}
+				tokens = append(tokens, t)
+				if debug {
+					log.Println("TOKEN", t)
+				}
+			} else if has(comparisons, word) {
+				t = Token{COMPARISON, word, statementnr, ""}
 				tokens = append(tokens, t)
 				if debug {
 					log.Println("TOKEN", t)
@@ -836,6 +843,7 @@ func syscall_or_interrupt(st Statement, syscall bool) string {
 		}
 	}
 	if syscall {
+		// TODO: comment which system call it is, ie "write"
 		precode = "\t;--- system call ---\n" + precode
 	} else {
 		comment := "\t;--- call interrupt "
@@ -1131,12 +1139,12 @@ func (st Statement) String() string {
 			if st[2].value == "1" {
 				return "\tinc " + st[0].value + "\t\t\t; " + st[0].value + "++"
 			}
-			return "\tadd " + st[0].value + ", " + st[2].value + "\t\t; " + st[0].value + " += " + st[2].value
+			return "\tadd " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " += " + st[2].value
 		} else if (st[1].t == SUBTRACTION) && (st[2].t == VALUE) {
 			if st[2].value == "1" {
 				return "\tdec " + st[0].value + "\t\t\t; " + st[0].value + "--"
 			}
-			return "\tsub " + st[0].value + ", " + st[2].value + "\t\t; " + st[0].value + " -= " + st[2].value
+			return "\tsub " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " -= " + st[2].value
 		} else if (st[1].t == MULTIPLICATION) && (st[2].t == VALUE) {
 			// TODO: Don't use a list, write a function that covers the lot
 			shifts := []string{"2", "4", "8", "16", "32", "64", "128"}
@@ -1149,9 +1157,9 @@ func (st Statement) String() string {
 						break
 					}
 				}
-				return "\tshl " + st[0].value + ", " + strconv.Itoa(pos) + "\t\t; " + st[0].value + " *= " + st[2].value
+				return "\tshl " + st[0].value + ", " + strconv.Itoa(pos) + "\t\t\t; " + st[0].value + " *= " + st[2].value
 			} else {
-				return "\timul " + st[0].value + ", " + st[2].value + "\t\t; " + st[0].value + " *= " + st[2].value
+				return "\timul " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " *= " + st[2].value
 			}
 		} else if (st[1].t == DIVISION) && (st[2].t == VALUE) {
 			// TODO: Don't use a list, write a function that covers the lot
@@ -1397,14 +1405,18 @@ func (st Statement) String() string {
 		// The start of a rawloop or loop, that have an optional counter value and ends with "end"
 		rawloop := (st[0].value == "rawloop")
 		hascounter := (len(st) == 2)
+		endlessloop := !rawloop && !hascounter
 
 		// Find a suitable label
 		label := ""
-		// TODO: Use a prefix for the rawloop instead
 		if rawloop {
 			label = rawloop_prefix + ps.new_loop_label()
 		} else {
-			label = ps.new_loop_label()
+			if endlessloop {
+				label = endlessloop_prefix + ps.new_loop_label()
+			} else {
+				label = ps.new_loop_label()
+			}
 		}
 
 		// Now in the loop, in_loop is global
@@ -1416,14 +1428,18 @@ func (st Statement) String() string {
 		if !hascounter {
 			asmcode += "\t;--- loop ---\n"
 		} else {
-			asmcode += "\t;--- loop " + st[1].value + " times ---\n"
-			asmcode += "\tmov " + counter_register() + ", " + st[1].value
-			asmcode += "\t\t\t; initialize loop counter\n"
+			if endlessloop {
+				asmcode += "\t;--- endless loop ---\n"
+			} else {
+				asmcode += "\t;--- loop " + st[1].value + " times ---\n"
+				asmcode += "\tmov " + counter_register() + ", " + st[1].value
+				asmcode += "\t\t\t; initialize loop counter\n"
+			}
 		}
 		asmcode += label + ":\t\t\t\t\t; start of loop " + label + "\n"
 
-		// If it's not a raw loop, take care of the counter
-		if !rawloop {
+		// If it's not a raw loop (or endless loop), take care of the counter
+		if (!rawloop) && (!endlessloop) {
 			asmcode += "\tpush " + counter_register() + "\t\t\t; save the counter\n"
 		}
 		return asmcode
@@ -1494,7 +1510,7 @@ stack_top:
 
 section .text
 `
-		// `'' /* */
+		//'
 	} else if (st[0].t == KEYWORD) && (st[0].value == "extern") && (len(st) == 2) {
 		if st[1].t == VALID_NAME {
 			extname := st[1].value
@@ -1509,10 +1525,48 @@ section .text
 		} else {
 			log.Fatalln("Error: extern with invalid name:", st[1].value)
 		}
+	} else if (st[0].t == KEYWORD) && (st[0].value == "break") && (len(st) == 4) && (st[2].t == COMPARISON) {
+		// breakif
+		if in_loop != "" {
+			asmcode := ""
+			rawloop := strings.HasPrefix(in_loop, rawloop_prefix)     // Is it a rawloop?
+			endless := strings.HasPrefix(in_loop, endlessloop_prefix) // Is it endless?
+			if !rawloop && !endless {
+				asmcode += "\tpop " + counter_register() + "\t\t\t\t; restore counter\n"
+			}
+
+			// Break if something comparison something
+			asmcode += "\tcmp " + st[1].value + ", " + st[3].value + "\t\t\t; compare\n"
+
+			// Conditional jump
+			asmcode += "\t"
+			switch st[2].value {
+			case "==":
+				asmcode += "je"
+			case "!=":
+				asmcode += "jne"
+			case ">":
+				asmcode += "jg"
+			case "<":
+				asmcode += "jl"
+			case "<=":
+				asmcode += "jle"
+			case ">=":
+				asmcode += "jge"
+			}
+
+			// Which label to jump to (out of the loop)
+			asmcode += " " + in_loop + "_end\t\t\t; break\n"
+			return asmcode
+		} else {
+			log.Fatalln("Error: Unclear which loop one should break out of.")
+		}
 	} else if (st[0].t == KEYWORD) && (st[0].value == "break") && (len(st) == 1) {
 		if in_loop != "" {
 			asmcode := ""
-			if !strings.HasPrefix(in_loop, rawloop_prefix) { // is it not a rawloop?
+			rawloop := strings.HasPrefix(in_loop, rawloop_prefix)     // Is it a rawloop?
+			endless := strings.HasPrefix(in_loop, endlessloop_prefix) // Is it endless?
+			if !rawloop && !endless {
 				asmcode += "\tpop " + counter_register() + "\t\t\t\t; restore counter\n"
 			}
 			asmcode += "\tjmp " + in_loop + "_end\t\t\t; break\n"
@@ -1520,16 +1574,71 @@ section .text
 		} else {
 			log.Fatalln("Error: Unclear which loop one should break out of.")
 		}
+	} else if (st[0].t == KEYWORD) && (st[0].value == "continue") && (len(st) == 4) && (st[2].t == COMPARISON) {
+		// continueif
+		if in_loop != "" {
+			asmcode := ""
+			rawloop := strings.HasPrefix(in_loop, rawloop_prefix)     // Is it a rawloop?
+			endless := strings.HasPrefix(in_loop, endlessloop_prefix) // Is it endless?
+			if !rawloop && !endless {
+				asmcode += "\tpop " + counter_register() + "\t\t\t\t; restore counter\n"
+			}
+
+			// Continue looping if the counter is greater than zero
+			//asmcode += "\tloop " + in_loop + "\t\t\t; continue\n"
+			// loop can only jump <= 127 bytes away. Use dec and jnz instead
+			if !endless {
+				asmcode += "\tdec " + counter_register() + "\t\t\t\t; decrease counter\n"
+				asmcode += "\tjz " + in_loop + "_end\t\t\t; jump out if the loop is done\n"
+			}
+
+			// Continue if something comparison something
+			asmcode += "\tcmp " + st[1].value + ", " + st[3].value + "\t\t\t; compare\n"
+
+			// Conditional jump
+			asmcode += "\t"
+			switch st[2].value {
+			case "==":
+				asmcode += "je"
+			case "!=":
+				asmcode += "jne"
+			case ">":
+				asmcode += "jg"
+			case "<":
+				asmcode += "jl"
+			case "<=":
+				asmcode += "jle"
+			case ">=":
+				asmcode += "jge"
+			}
+
+			// Jump to the top if the condition is true
+			asmcode += " " + in_loop + "\t\t\t; continue\n"
+
+			return asmcode
+		} else {
+			log.Fatalln("Error: Unclear which loop one should continue to the top of.")
+		}
+
 	} else if (st[0].t == KEYWORD) && (st[0].value == "continue") && (len(st) == 1) {
 		if in_loop != "" {
 			asmcode := ""
-			if !strings.HasPrefix(in_loop, rawloop_prefix) { // is it not a rawloop?
+			rawloop := strings.HasPrefix(in_loop, rawloop_prefix)     // Is it a rawloop?
+			endless := strings.HasPrefix(in_loop, endlessloop_prefix) // Is it endless?
+			if !rawloop && !endless {
 				asmcode += "\tpop " + counter_register() + "\t\t\t\t; restore counter\n"
 			}
-			// Contineu looping if the counter is greater than zero
-			asmcode += "\tloop " + in_loop + "\t\t\t; continue\n"
-			// If the counter is zero after restoring the counter, jump out of the loop
-			asmcode += "\tjmp " + in_loop + "_end\t\t\t; jump out if the loop is done\n"
+			// Continue looping if the counter is greater than zero
+			//asmcode += "\tloop " + in_loop + "\t\t\t; continue\n"
+			// loop can only jump <= 127 bytes away. Using dec and jnz instead
+			if !endless {
+				asmcode += "\tdec " + counter_register() + "\t\t\t\t; decrease counter\n"
+				asmcode += "\tjnz " + in_loop + "\t\t\t; continue if not zero\n"
+				// If the counter is zero after restoring the counter, jump out of the loop
+				asmcode += "\tjz " + in_loop + "_end\t\t\t; jump out if the loop is done\n"
+			} else {
+				asmcode += "\tjmp " + in_loop + "\t\t\t; continue\n"
+			}
 			return asmcode
 		} else {
 			log.Fatalln("Error: Unclear which loop one should continue to the top of.")
@@ -1541,12 +1650,19 @@ section .text
 			return "; end of inline C block\n"
 		} else if in_loop != "" {
 			asmcode := ""
-			// TODO: There are three occurances of the following lines that are equal. Make a function.
-			if !strings.HasPrefix(in_loop, rawloop_prefix) { // is it not a rawloop?
+			rawloop := strings.HasPrefix(in_loop, rawloop_prefix)     // Is it a rawloop?
+			endless := strings.HasPrefix(in_loop, endlessloop_prefix) // Is it endless?
+			if !rawloop && !endless {
 				asmcode += "\tpop " + counter_register() + "\t\t\t\t; restore counter\n"
 			}
-			asmcode += "\tloop " + in_loop + "\t\t\t\t; loop until " + counter_register() + " is zero\n"
-			asmcode += in_loop + "_end:\t\t\t\t\t; end of loop " + in_loop + "\n"
+			if endless {
+				asmcode += "\tjmp " + in_loop + "\t\t\t\t; loop forever\n"
+			} else {
+				//asmcode += "\tloop " + in_loop + "\t\t\t\t; loop until " + counter_register() + " is zero\n"
+				asmcode += "\tdec " + counter_register() + "\t\t\t\t; decrease counter\n"
+				asmcode += "\tjnz " + in_loop + "\t\t\t\t; loop until " + counter_register() + " is zero\n"
+			}
+			asmcode += in_loop + "_end:\t\t\t\t; end of loop " + in_loop + "\n"
 			asmcode += "\t;--- end of loop " + in_loop + " ---\n"
 			in_loop = ""
 			return asmcode

@@ -1,0 +1,16 @@
+const dot = "."
+const nl = "\n"
+
+fun main
+    r8 = 2
+    counter 4
+    rawloop
+        r8 *= 2
+    end
+    loop r8
+        write(dot)
+    end
+    write(nl)
+end
+
+// vim: set syntax=c ts=4 sw=4 et:

@@ -1,0 +1,55 @@
+const three = "Three "
+const five = "Five "
+const one = "One "
+const nl = "\n"
+
+fun fivetimes
+    rax = 1
+
+    loop
+        rax *= 3
+
+        (asm 64) push rax
+        write(five)
+        (asm 64) pop rax
+
+        break (rax == 243)
+    end
+end
+
+fun threetimes
+    rax = 1
+
+    counter 999
+    rawloop
+
+        rax *= 3
+
+        continue (rax < 27)
+
+        (asm 64) push rax
+        (asm 64) push rcx
+        write(three)
+        (asm 64) pop rcx
+        (asm 64) pop rax
+
+        break (rax == 243)
+    end
+end
+
+fun onetime
+    rawloop 1
+        write(one)
+        counter 1
+    end
+end
+
+fun main
+    fivetimes
+    threetimes
+    onetime
+    write(nl)
+end
+
+
+// vim: set syntax=c ts=4 sw=4 et:

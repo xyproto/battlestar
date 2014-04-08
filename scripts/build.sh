@@ -68,7 +68,7 @@ function build {
     if [[ -f $n.c ]]; then
       echo "Skipping $f (inline C is not available for 16-bit x86)"
       # Save the filenames for later cleaning
-      echo -e "\n$n.asm $n.c $n_c.o $n.o $n.log" >> "$n.log"
+      echo -e "\n$n.asm $n.c $n_c.o $n.o $n $n.log" >> "$n.log"
       # Quit
       if [[ $n == *fail* ]]; then
         # Meant to fail, ok
