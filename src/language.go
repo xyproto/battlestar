@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	operators   = []string{"=", "+=", "-=", "*=", "/=", "&=", "|="}
+	operators   = []string{"=", "+=", "-=", "*=", "/=", "&=", "|=", "->"}
 	comparisons = []string{"==", "!=", "<", ">", "<=", ">="}
 	keywords    = []string{"fun", "ret", "const", "call", "extern", "end", "bootable", "counter", "address", "value", "loopwrite", "rawloop", "loop", "break", "continue", "use", "asm"}
 	builtins    = []string{"len", "int", "exit", "halt", "str", "write", "read", "syscall"} // built-in functions

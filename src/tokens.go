@@ -24,12 +24,13 @@ const (
 	OR             = 15
 	XOR            = 16
 	COMPARISON     = 17
+	PUSHPOP        = 18
 	SEP            = 127
 	UNKNOWN        = 255
 )
 
 var (
-	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard", RESERVED: "reserved", VARIABLE: "variable", ADDITION: "addition", SUBTRACTION: "subtraction", MULTIPLICATION: "multiplication", DIVISION: "division", COMPARISON: "comparison"}
+	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard", RESERVED: "reserved", VARIABLE: "variable", ADDITION: "addition", SUBTRACTION: "subtraction", MULTIPLICATION: "multiplication", DIVISION: "division", COMPARISON: "comparison", PUSHPOP: "stack operation"}
 )
 
 type (
@@ -196,6 +197,8 @@ func tokenize(program string, debug bool, sep string) []Token {
 					tokentype = OR
 				case "^=":
 					tokentype = XOR
+				case "->":
+					tokentype = PUSHPOP
 				default:
 					log.Fatalln("Error: Unhandled operator:", word)
 				}
@@ -414,7 +417,7 @@ func reduce(st Statement, debug bool, ps *ProgramState) Statement {
 				tokenpos = 4
 			case 16:
 				// No simple reduction for 16-bit assembly, it needs several lines of assembly code
-				return st
+				log.Fatalln("Error: str() is not implemented for 16-bit platforms")
 			}
 
 			tokens[tokenpos].extra = extra
@@ -439,8 +442,7 @@ func reduce(st Statement, debug bool, ps *ProgramState) Statement {
 				// replace with the register that contains the address of the string
 				st[i] = Token{REGISTER, "esp", st[0].line, register}
 			case 16:
-				// No simple reduction for 16-bit assembly
-				return st
+				log.Fatalln("Error: str() is not implemented for 16-bit platforms")
 			}
 		}
 	}

@@ -1,18 +1,25 @@
-* Consider removing "rawloop"
-* Make "use" work with C libraries.
-* Add a way to conditionally call functions.
+* Create syntax for combining strings
+* Create a keyword "protected". If a register is protected, it will be pushed and popped
+  at every function call.
+* Consider making cx/ecx/rcx protected by default in every loop.
+* Add a way to conditionally call functions. if (condition) function(bla, bla)
+* Maybe add if .. end blocks
+
+* Consider removing "rawloop".
+* Make "use" work with C libraries. For including a library+include files.
+  Automatic inclusion of the right .h files with #include.
+  - or -
+  Automatic linking of libraries and inclusion of header files in a block of inline C when functions are not found. Like printf, sin, cos and SDL_CreateRenderer.
+
 * Add nested loops
-* Remove the "value" and "counter" keywords and introduce them as register aliases instead
 
 * Solve rosetta code tasks + programming language benchmark game tasks.
-
-* Add a way to call functions that does not change registers. Perhaps "call" and "safecall"? When no keyword is given, assume "safecall"?
-
 * Implement a more expressive sub-language and/or inline Go/Julia/Lua/IO
 
-* The "use" keyword for including a library+include files. Automatic inclusion of the right .h files with #include.
+* Align comments. Drop all the "\t" use in the code.
 
-1. Automatic linking of libraries and inclusion of header files in a block of inline C when functions are not found. Like printf, sin, cos and SDL_CreateRenderer.
+* Add functions for checking which token combinations qualifies for which treatment.
+
 2. Use the token module that comes with Go
 3. Write code for matching { and }, so that void main() { is not confused by a premature }
 
@@ -44,6 +51,8 @@
 * Create a standard library that contains platform-dependent battlestar-functions
 
 --- done ---
+* Created "99 bottles of beer" [done]
+* Added the "stack -> register" and "register -> stack" opreator [done]
 * Make syscall() work correctly, ref hi64.bts [done]
 * Create a write() function [done]
 * Inline assembly with ie. "(asm 32) mov eax, 42"

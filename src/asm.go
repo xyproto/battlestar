@@ -19,6 +19,50 @@ var (
 	interrupt_parameter_registers []string
 )
 
+func is_64_bit_register(reg string) bool {
+	// pos 26 and upwards
+	return pos(registers, reg) >= 26
+}
+
+func is_32_bit_register(reg string) bool {
+	// pos 17 up to 26
+	p := pos(registers, reg)
+	return (17 <= p) && (p < 26)
+}
+
+func is_16_bit_register(reg string) bool {
+	// pos 8 up to and including 16
+	p := pos(registers, reg)
+	return (8 <= p) && (p <= 16)
+}
+
+// Try to find the 32-bit version of a 64-bit register, or a 16-bit version of a 32-bit register
+func downgrade(reg string) string {
+	if reg[0] == 'r' {
+		return "e" + reg[1:]
+	}
+	if reg[0] == 'e' {
+		return reg[1:]
+	}
+	return reg
+}
+
+// Try to find the 64-bit version of a 32-bit register, or a 32-bit version of a 16-bit register
+func upgrade(reg string) string {
+	if (reg[0] == 'e') && is_64_bit_register("r" + reg[1:]) {
+		return "r" + reg[1:]
+	}
+	if is_32_bit_register("e" + reg) {
+		return "e" + reg
+	}
+	return reg
+}
+
+// Checks if the register is one of the a registers
+func register_a(reg string) bool {
+	return (reg == "ax") || (reg == "eax") || (reg == "rax") || (reg == "al") || (reg == "ah")
+}
+
 func init_interrupt_parameter_registers(bits int) {
 	// Used when calling interrupts (or syscall)
 	if bits == 32 {
@@ -178,23 +222,50 @@ func syscall_or_interrupt(st Statement, syscall bool) string {
 						// Already recognized not to be a register
 						switch platform_bits {
 						case 64:
-							if st[i].value == "rsp" {
-								// Put the value of the register associated with this token at rbp
-								// TODO: Figure out why this doesn't work
-								precode += "\tsub rsp, 8\t\t\t; make some space for storing " + st[i].extra + " on the stack\n"
-								precode += "\tmov QWORD [rsp], " + st[i].extra + "\t\t; move " + st[i].extra + " to a memory location on the stack\n"
-								postcode += "\tadd rsp, 8\t\t\t; move the stack pointer back\n"
+							if (st[i].value == "rsp") {
+								if is_64_bit_register(st[i].extra) {
+									// Put the value of the register associated with this token at rbp
+									precode += "\tsub rsp, 8\t\t\t; make some space for storing " + st[i].extra + " on the stack\n"
+									precode += "\tmov QWORD [rsp], " + st[i].extra + "\t\t; move " + st[i].extra + " to a memory location on the stack\n"
+									postcode += "\tadd rsp, 8\t\t\t; move the stack pointer back\n"
+									break
+								} else if is_32_bit_register(st[i].extra) {
+									// Put the value of the register associated with this token at rbp
+									precode += "\tsub rsp, 8\t\t\t; make some space for storing " + st[i].extra + " on the stack\n"
+									precode += "\tmov QWORD [rsp], " + upgrade(st[i].extra) + "\t\t; move " + st[i].extra + " to a memory location on the stack\n"
+									postcode += "\tadd rsp, 8\t\t\t; move the stack pointer back\n"
+									break
+								} else if is_16_bit_register(st[i].extra) {
+									// Put the value of the register associated with this token at rbp
+									precode += "\tsub rsp, 8\t\t\t; make some space for storing " + st[i].extra + " on the stack\n"
+									precode += "\tmov QWORD [rsp], " + upgrade(upgrade(st[i].extra)) + "\t\t; move " + st[i].extra + " to a memory location on the stack\n"
+									postcode += "\tadd rsp, 8\t\t\t; move the stack pointer back\n"
+									break
+								}
+								log.Fatalln("Error: Unhandled register:", st[i].extra)
 							}
 						case 32:
-							if st[i].value == "esp" {
-								// Put the value of the register associated with this token at rbp
-								// TODO: Figure out why this doesn't work
-								precode += "\tsub esp, 4\t\t\t; make some space for storing " + st[i].extra + " on the stack\n"
-								precode += "\tmov DWORD [esp], " + st[i].extra + "\t\t; move " + st[i].extra + " to a memory location on the stack\n"
-								postcode += "\tadd esp, 4\t\t\t; move the stack pointer back\n"
+							if (st[i].value == "esp") {
+								if is_32_bit_register(st[i].extra) {
+									precode += "\tsub esp, 4\t\t\t; make some space for storing " + st[i].extra + " on the stack\n"
+									precode += "\tmov DWORD [esp], " + st[i].extra + "\t\t; move " + st[i].extra + " to a memory location on the stack\n"
+									postcode += "\tadd esp, 4\t\t\t; move the stack pointer back\n"
+									break
+								} else if is_16_bit_register(st[i].extra) {
+									precode += "\tsub esp, 4\t\t\t; make some space for storing " + st[i].extra + " on the stack\n"
+									precode += "\tmov DWORD [esp], " + upgrade(st[i].extra) + "\t\t; move " + st[i].extra + " to a memory location on the stack\n"
+									postcode += "\tadd esp, 4\t\t\t; move the stack pointer back\n"
+									break
+								}
+								log.Fatalln("Error: Unhandled register:", st[i].extra)
 							}
 						case 16:
-							log.Fatalln("Error: PARAMETERS are not implemented for 16-bit, yet")
+							// TODO: Add check for 8-bit values too: "mov BYTE [esp]"
+							//log.Fatalln("Error: PARAMETERS are not implemented for 16-bit, yet")
+							precode += "\tsub sp, 2\t\t\t; make some space for storing " + st[i].extra + " on the stack\n"
+							precode += "\tmov WORD [sp], " + st[i].extra + "\t\t; move " + st[i].extra + " to a memory location on the stack\n"
+							postcode += "\tadd sp, 2\t\t\t; move the stack pointer back\n"
+
 						}
 					}
 				}
@@ -492,14 +563,27 @@ func (st Statement) String(ps *ProgramState) string {
 			return "; End of inline C block"
 		}
 		return asmcode
-	} else if (st[0].t == REGISTER) || (st[0].t == DISREGARD) && (len(st) == 3) {
+	} else if ((st[0].t == REGISTER) || (st[0].t == DISREGARD) || (st[0].value == "stack")) && (len(st) == 3) {
 		// Statements like "eax = 3" are handled here
 		// TODO: Handle all sorts of equivivalents to assembly statements
 		if (st[0].t == REGISTER) && (st[1].t == ASSIGNMENT) && (st[2].t == VALUE || st[2].t == VALID_NAME) {
 			if st[2].value == "0" {
 				return "\txor " + st[0].value + ", " + st[0].value + "\t\t; " + st[0].value + " " + st[1].value + " " + st[2].value
 			} else {
-				return "\tmov " + st[0].value + ", " + st[2].value + "\t\t; " + st[0].value + " " + st[1].value + " " + st[2].value
+				a := st[0].value
+				b := st[2].value
+				if is_32_bit_register(a) && is_64_bit_register(b) {
+					log.Println("Warning: Using", b, "as a 32-bit register when assigning.")
+					return "\tmov " + a + ", " + downgrade(b) + "\t\t; " + a + " " + st[1].value + " " + b
+				} else if is_64_bit_register(a) && is_32_bit_register(b) {
+					log.Println("Warning: Using", a, "as a 32-bit register when assigning.")
+					asmcode := "\txor rax, rax\t\t; clear rax\n"
+					asmcode += "\tmov " + downgrade(a) + ", " + b + "\t\t; " + a + " " + st[1].value + " " + b
+					return asmcode
+				} else {
+					return "\tmov " + st[0].value + ", " + st[2].value + "\t\t; " + st[0].value + " " + st[1].value + " " + st[2].value
+				}
+
 			}
 		} else if (st[0].t == VALID_NAME) && (st[1].t == ASSIGNMENT) {
 			if has(ps.defined_names, st[0].value) {
@@ -514,6 +598,16 @@ func (st Statement) String(ps *ProgramState) string {
 			return "\tmov " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " " + st[1].value + " " + st[2].value
 		} else if (st[0].t == RESERVED) && (st[1].t == VALUE) {
 			return reserved_and_value(st[:2])
+		} else if (len(st) == 3) && ((st[0].t == REGISTER) || st[0].value == "stack") && (st[1].t == PUSHPOP) && ((st[2].t == REGISTER) || (st[2].value == "stack")) {
+			// push and pop
+			if st[2].value == "stack" {
+				// something -> stack (push)
+				return "\tpush " + st[0].value + "\t\t\t; " + st[0].value + " -> stack\n"
+			} else {
+				// stack -> something (pop)
+				return "\tpop " + st[2].value + "\t\t\t\t; stack -> " + st[2].value + "\n"
+			}
+			log.Fatalln("WOHOO")
 		} else if (st[0].t == REGISTER) && (st[1].t == ASSIGNMENT) && (st[2].t == RESERVED) && (st[3].t == VALUE) {
 			if st[2].value == "funparam" {
 				paramoffset, err := strconv.Atoi(st[3].value)
@@ -552,6 +646,7 @@ func (st Statement) String(ps *ProgramState) string {
 						break
 					}
 				}
+				// TODO: Check that it works with signed numbers and/or introduce signed/unsigned operations
 				return "\tshl " + st[0].value + ", " + strconv.Itoa(pos) + "\t\t\t; " + st[0].value + " *= " + st[2].value
 			} else {
 				return "\timul " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " *= " + st[2].value
@@ -568,6 +663,7 @@ func (st Statement) String(ps *ProgramState) string {
 						break
 					}
 				}
+				// TODO: Check that it works with signed numbers and/or introduce signed/unsigned operations
 				return "\tshr " + st[0].value + ", " + strconv.Itoa(pos) + "\t\t; " + st[0].value + " /= " + st[2].value
 			} else {
 				asmcode := "\n\t;--- signed division: " + st[0].value + " /= " + st[2].value + " ---\n"
@@ -603,7 +699,15 @@ func (st Statement) String(ps *ProgramState) string {
 							asmcode += "\tpush edx\t\t; save edx\n"
 						}
 						// copy number to be divided to eax
-						asmcode += "\tmov eax, " + st[0].value + "\t\t; dividend, number to be divided\n"
+						if is_64_bit_register(st[0].value) {
+							if downgrade(st[0].value) != "eax" {
+								asmcode += "\tmov eax, " + downgrade(st[0].value) + "\t\t; dividend, number to be divided\n"
+							}
+						} else {
+							if st[0].value != "eax" {
+								asmcode += "\tmov eax, " + st[0].value + "\t\t; dividend, number to be divided\n"
+							}
+						}
 						// clear edx
 						asmcode += "\txor edx, edx\t\t; edx = 0 (32-bit 0:eax instead of 64-bit edx:eax)\n"
 						// ecx = st[2].value
@@ -630,7 +734,7 @@ func (st Statement) String(ps *ProgramState) string {
 					// If the register to be divided is rax, do a quicker division than if it's another register
 					if st[0].value == "rax" {
 						// save rdx
-						asmcode += "\tmov r9, rdx\t\t; save rdx\n"
+						//asmcode += "\tmov r9, rdx\t\t; save rdx\n"
 						// clear rdx
 						asmcode += "\txor rdx, rdx\t\t; rdx = 0 (64-bit 0:rax instead of 128-bit rdx:rax)\n"
 						// mov r8, st[2].value
@@ -638,33 +742,53 @@ func (st Statement) String(ps *ProgramState) string {
 						// idiv rax
 						asmcode += "\tidiv r8\t\t\t; rax = rdx:rax / r8\n"
 						// restore rdx
-						asmcode += "\tmov rdx, r9\t\t; restore rdx\n"
+						//asmcode += "\tmov rdx, r9\t\t; restore rdx\n"
 					} else {
 						log.Println("Note: r8, r9 and r10 will be changed when dividing: " + st[0].value + " /= " + st[2].value)
 						// TODO: if the given register is a different one than rax, rcx and rdx,
 						//       just divide directly with that register, like for rax above
 						// save rax, we know this is not where we assign the result
-						asmcode += "\tmov r9, rax\t\t; save rax\n"
-						if st[0].value != "rdx" {
-							// save rdx
-							asmcode += "\tmov r10, rdx\t\t; save rdx\n"
+						if !register_a(st[0].value) {
+							asmcode += "\tmov r9, rax\t\t; save rax\n"
 						}
+						//if st[0].value != "rdx" {
+						//	// save rdx
+						//	asmcode += "\tmov r10, rdx\t\t; save rdx\n"
+						//}
 						// copy number to be divided to rax
-						asmcode += "\tmov rax, " + st[0].value + "\t\t; dividend, number to be divided\n"
+						if is_32_bit_register(st[0].value) {
+							if st[0].value != "eax" {
+								asmcode += "\txor rax, rax\t\t; clear rax\n"
+								asmcode += "\tmov eax, " + st[0].value + "\t\t; dividend, number to be divided\n"
+							}
+						} else if is_16_bit_register(st[0].value) {
+							if st[0].value != "ax" {
+								asmcode += "\txor rax, rax\t\t; clear rax\n"
+								asmcode += "\tmov ax, " + st[0].value + "\t\t; dividend, number to be divided\n"
+							}
+						} else {
+							if st[0].value != "rax" {
+								asmcode += "\tmov rax, " + st[0].value + "\t\t; dividend, number to be divided\n"
+							}
+						}
 						// xor rdx, rdx
 						asmcode += "\txor rdx, rdx\t\t; rdx = 0 (64-bit 0:rax instead of 128-bit rdx:rax)\n"
 						// mov rcx, st[2].value
 						asmcode += "\tmov r8, " + st[2].value + "\t\t; divisor, r8 = " + st[2].value + "\n"
 						// idiv rax
 						asmcode += "\tidiv r8\t\t\t; rax = rdx:rax / r8\n"
-						if st[0].value != "rdx" {
-							// restore rdx
-							asmcode += "\tmov rdx, r10\t\t; restore rdx\n"
-						}
+						//if st[0].value != "rdx" {
+						//	// restore rdx
+						//	asmcode += "\tmov rdx, r10\t\t; restore rdx\n"
+						//}
 						// mov st[0].value, rax
-						asmcode += "\tmov " + st[0].value + ", rax\t\t; " + st[0].value + " = rax\n"
+						if !register_a(st[0].value) {
+							asmcode += "\tmov " + st[0].value + ", rax\t\t; " + st[0].value + " = rax\n"
+						}
 						// restore rax
-						asmcode += "\tmov rax, r9\t\t; restore rax\n"
+						if !register_a(st[0].value) {
+							asmcode += "\tmov rax, r9\t\t; restore rax\n"
+						}
 					}
 					return asmcode
 				}

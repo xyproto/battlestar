@@ -9,9 +9,9 @@ fun fivetimes
     loop
         rax *= 3
 
-        (asm 64) push rax
+        rax -> stack
         write(five)
-        (asm 64) pop rax
+        stack -> rax
 
         break (rax == 243)
     end
@@ -27,11 +27,11 @@ fun threetimes
 
         continue (rax < 27)
 
-        (asm 64) push rax
-        (asm 64) push rcx
+        rax -> stack
+        rcx -> stack
         write(three)
-        (asm 64) pop rcx
-        (asm 64) pop rax
+        stack -> rcx
+        stack -> rax
 
         break (rax == 243)
     end

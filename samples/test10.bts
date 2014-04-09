@@ -1,0 +1,145 @@
+const bottle = " bottle"
+const plural = "s"
+const ofbeer = " of beer"
+const wall = " on the wall"
+const sep = ", "
+const takedown = "Take one down and pass it around, "
+const u_no = "No"
+const l_no = "no"
+const more = " more bottles of beer"
+const store = "Go to the store and buy some more, "
+const dotnl = ".\n"
+const nl = "\n"
+
+// Write two digits, uses the value in ax
+fun writenum
+    bx = ax
+    loop
+        break (ax < 10)
+        ax /= 10
+        // modulo in dx after idiv
+        bx = dx
+        ax += 48 // ASCII value for '0'
+        write(str(ax))
+        break
+    end
+    ax = bx
+    ax += 48 // ASCII value for '0'
+    write(str(ax))
+end
+
+// Write an "s" if ax is 1
+fun pluralifneeded
+    loop
+        break (ax == 1)
+        write(plural)
+        break
+    end
+end
+
+fun main
+    loop 99
+        // Save loop counter for later, twice
+        cx -> stack
+        cx -> stack
+
+        // Print the loop counter (passed by ax)
+        ax = cx
+        writenum()
+
+        // N, "bottles of beer on the wall, "
+        write(bottle)
+        write(plural)
+        write(ofbeer)
+        write(wall)
+        write(sep)
+
+        // Retrieve and print the number
+        stack -> ax
+        writenum()
+
+        // N, "bottles of beer."
+        write(bottle)
+        write(plural)
+        write(ofbeer)
+        write(dotnl)
+
+        // "Take one down and pass it around,"
+        write(takedown)
+
+        // N-1, "bottles of beer on the wall."
+        stack -> ax
+        ax--
+        // Store N-1, used just a few lines down
+        ax -> stack
+        writenum()
+        write(bottle)
+        // Retrieve N-1
+        stack -> ax
+        pluralifneeded()
+        write(ofbeer)
+        write(wall)
+        write(dotnl)
+
+        // Blank line
+        write(nl)
+
+        // Skip to the top of the loop while the counter is >= 2
+        continue (cx >= 2)
+
+        // At the last two
+
+        // "1 bottle of beer on the wall,"
+        ax = 1
+        writenum()
+        write(bottle)
+        write(ofbeer)
+        write(wall)
+        write(sep)
+
+        // "1 bottle of beer."
+        ax = 1
+        writenum()
+        write(bottle)
+        write(ofbeer)
+        write(dotnl)
+
+        // "Take one down and pass it around,"
+        write(takedown)
+
+        // "no more bottles of beer on the wall."
+        write(l_no)
+        write(more)
+        write(wall)
+        write(dotnl)
+
+        // Blank line
+        write(nl)
+
+        // "No more bottles of beer on the wall,"
+        write(u_no)
+        write(more)
+        write(wall)
+        write(sep)
+
+        // "no more bottles of beer."
+        write(l_no)
+        write(more)
+        write(dotnl)
+
+        // "Go to the store and buy some more,"
+        write(store)
+
+        // "99 bottles of beer on the wall."
+        ax = 99
+        writenum()
+        write(bottle)
+        write(plural)
+        write(ofbeer)
+        write(wall)
+        write(dotnl)
+    end
+end
+
+
+// vim: set syntax=c ts=4 sw=4 et:

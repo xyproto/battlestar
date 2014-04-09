@@ -5,6 +5,18 @@ import (
 	"strconv"
 )
 
+// Find the position of a string in a list of strings, -1 if not found
+func pos(sl []string, s string) int {
+	for i, e := range sl {
+		if e == s {
+			return i
+		}
+	}
+	return -1
+}
+
+
+
 // Maps the function f over a slice of strings
 func maps(sl []string, f func(string) string) []string {
 	newl := make([]string, len(sl), len(sl))

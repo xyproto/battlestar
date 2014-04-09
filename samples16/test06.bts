@@ -22,10 +22,10 @@ fun main
 
     // Paint the screen blue, byte for byte
 
-    counter 64000    // 64000 times
-    address 0xa000:0 // starting at 0xa000:0
-    value 0x38       // some sort of blue color
-    loopwrite        // paint!
+    counter 64000      // 64000 times
+    address 0xa000:0   // starting at 0xa000:0
+    value 0x38         // some sort of blue color
+    loopwrite          // paint!
 
     wait_for_keypress
     text_mode
