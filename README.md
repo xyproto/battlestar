@@ -26,6 +26,7 @@ Features
 * Programs can be run like scripts by including this line at the top: ```#!/usr/bin/bts```
 * Interrupts can be called with the same syntax for both 32-bit and 64-bit x86 on Linux.
 * Also supports 16-bit x86 with DosBox.
+* The intermediate assembly is fully commented.
 
 In progress
 -----------
