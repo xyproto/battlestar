@@ -15,8 +15,6 @@ func pos(sl []string, s string) int {
 	return -1
 }
 
-
-
 // Maps the function f over a slice of strings
 func maps(sl []string, f func(string) string) []string {
 	newl := make([]string, len(sl), len(sl))

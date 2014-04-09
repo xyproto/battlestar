@@ -99,10 +99,10 @@ function build {
     fi
     # Remove the generated .asm file
     rm -f "$n.asm"
-    # Save the filenames for later cleaning
-    echo -e "\n$n.o ${n}_c.o $n $n.log" >> "$n.log"
-    [ -e $n.o ] && return 0 || return 1
   fi
+  # Save the filenames for later cleaning
+  echo -e "\n$n.o ${n}_c.o $n $n.log" >> "$n.log"
+  [ -e $n.o ] && return 0 || return 1
   if [[ $linkfail = false ]]; then
     if [[ $compiledc = true ]]; then
       $ldcmd "${n}_c.o" "$n.o" -o "$n" || echo "$n failed to link"

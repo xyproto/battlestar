@@ -11,7 +11,7 @@ var (
 	comparisons = []string{"==", "!=", "<", ">", "<=", ">="}
 	keywords    = []string{"fun", "ret", "const", "call", "extern", "end", "bootable", "counter", "address", "value", "loopwrite", "rawloop", "loop", "break", "continue", "use", "asm"}
 	builtins    = []string{"len", "int", "exit", "halt", "str", "write", "read", "syscall"} // built-in functions
-	reserved    = []string{"funparam", "sysparam"}                                          // built-in lists that can be accessed with [index]
+	reserved    = []string{"funparam", "sysparam", "a", "b", "c", "d"}                      // built-in lists that can be accessed with [index], or register aliases
 )
 
 func is_valid_name(s string) bool {

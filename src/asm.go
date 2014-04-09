@@ -49,7 +49,7 @@ func downgrade(reg string) string {
 
 // Try to find the 64-bit version of a 32-bit register, or a 32-bit version of a 16-bit register
 func upgrade(reg string) string {
-	if (reg[0] == 'e') && is_64_bit_register("r" + reg[1:]) {
+	if (reg[0] == 'e') && is_64_bit_register("r"+reg[1:]) {
 		return "r" + reg[1:]
 	}
 	if is_32_bit_register("e" + reg) {
@@ -222,7 +222,7 @@ func syscall_or_interrupt(st Statement, syscall bool) string {
 						// Already recognized not to be a register
 						switch platform_bits {
 						case 64:
-							if (st[i].value == "rsp") {
+							if st[i].value == "rsp" {
 								if is_64_bit_register(st[i].extra) {
 									// Put the value of the register associated with this token at rbp
 									precode += "\tsub rsp, 8\t\t\t; make some space for storing " + st[i].extra + " on the stack\n"
@@ -245,7 +245,7 @@ func syscall_or_interrupt(st Statement, syscall bool) string {
 								log.Fatalln("Error: Unhandled register:", st[i].extra)
 							}
 						case 32:
-							if (st[i].value == "esp") {
+							if st[i].value == "esp" {
 								if is_32_bit_register(st[i].extra) {
 									precode += "\tsub esp, 4\t\t\t; make some space for storing " + st[i].extra + " on the stack\n"
 									precode += "\tmov DWORD [esp], " + st[i].extra + "\t\t; move " + st[i].extra + " to a memory location on the stack\n"
