@@ -461,8 +461,6 @@ func (st Statement) String(ps *ProgramState) string {
 		asmcode += "\tmov ah, 0x09\n"
 		asmcode += "\tint 0x21\n\n"
 		return asmcode
-	} else if (st[0].t == BUILTIN) && (st[0].value == "str") {
-		log.Fatalln("Error: This usage of str() is yet to be implemented")
 	} else if ((st[0].t == KEYWORD) && (st[0].value == "ret")) || ((st[0].t == BUILTIN) && (st[0].value == "exit")) {
 		asmcode := ""
 		if st[0].value == "ret" {

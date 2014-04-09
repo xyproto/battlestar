@@ -10,7 +10,7 @@ var (
 	operators   = []string{"=", "+=", "-=", "*=", "/=", "&=", "|=", "->"}
 	comparisons = []string{"==", "!=", "<", ">", "<=", ">="}
 	keywords    = []string{"fun", "ret", "const", "call", "extern", "end", "bootable", "counter", "address", "value", "loopwrite", "rawloop", "loop", "break", "continue", "use", "asm"}
-	builtins    = []string{"len", "int", "exit", "halt", "str", "write", "read", "syscall"} // built-in functions
+	builtins    = []string{"len", "int", "exit", "halt", "chr", "write", "read", "syscall"} // built-in functions
 	reserved    = []string{"funparam", "sysparam", "a", "b", "c", "d"}                      // built-in lists that can be accessed with [index], or register aliases
 )
 

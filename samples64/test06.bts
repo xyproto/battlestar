@@ -7,7 +7,7 @@ fun main
 
     // Output an 'K'
     rax = 75
-    syscall(1, 1, str(rax), 4)
+    syscall(1, 1, chr(rax), 4)
 
     // Output a newline
     write(nl)

@@ -3,7 +3,7 @@ const nl = 10
 fun main
     // Write an 'A'
     rax = 65
-    write(str(rax))
+    write(chr(rax))
     write(nl)
 end
 

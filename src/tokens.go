@@ -429,15 +429,15 @@ func reduce(st Statement, debug bool, ps *ProgramState) Statement {
 				tokenpos = 4
 			case 16:
 				// No simple reduction for 16-bit assembly, it needs several lines of assembly code
-				log.Fatalln("Error: str() is not implemented for 16-bit platforms")
+				return st
 			}
 
 			tokens[tokenpos].extra = extra
 			// Replace the current statement with the newly generated tokens
 			st = tokens
-		} else if (st[i].t == BUILTIN) && (st[i].value == "str") && (st[i+1].t == VALID_NAME) {
-			log.Fatalln("Error: str of a name is to be implemented")
-		} else if (st[i].t == BUILTIN) && (st[i].value == "str") && (st[i+1].t == REGISTER) {
+		} else if (st[i].t == BUILTIN) && (st[i].value == "chr") && (st[i+1].t == VALID_NAME) {
+			log.Fatalln("Error: str of a defined name is to be implemented")
+		} else if (st[i].t == BUILTIN) && (st[i].value == "chr") && (st[i+1].t == REGISTER) {
 			register := st[i+1].value
 
 			// Replace str(register) with a token VALID_NAME with esp/rsp + register name as the value.
@@ -454,7 +454,7 @@ func reduce(st Statement, debug bool, ps *ProgramState) Statement {
 				// replace with the register that contains the address of the string
 				st[i] = Token{REGISTER, "esp", st[0].line, register}
 			case 16:
-				log.Fatalln("Error: str() is not implemented for 16-bit platforms")
+				log.Fatalln("Error: chr() is not implemented for 16-bit platforms")
 			}
 		}
 	}

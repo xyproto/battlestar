@@ -1,3 +1,7 @@
+* String blocks can consists of: constants, immediate strings, registers (interpreted as ASCII numbers) and numbers (interpreted as strings)
+
+* Add internal state that keeps track of what the values in the various registers are.
+
 * Create syntax for combining strings
 * Create a keyword "protected". If a register is protected, it will be pushed and popped
   at every function call.

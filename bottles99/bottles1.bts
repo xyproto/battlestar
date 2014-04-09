@@ -20,12 +20,12 @@ fun writenum
         // modulo in dx after idiv
         bx = dx
         ax += 48 // ASCII value for '0'
-        write(str(ax))
+        write(chr(ax))
         break
     end
     ax = bx
     ax += 48 // ASCII value for '0'
-    write(str(ax))
+    write(chr(ax))
 end
 
 // Write an "s" if ax is 1

@@ -6,9 +6,8 @@ const sep = ", "
 const takedown = "Take one down and pass it around, "
 const u_no = "No"
 const l_no = "no"
-const more = " more bottles of beer"
+const more = " more bottles"
 const store = "Go to the store and buy some more, "
-const dotnl = ".\n"
 const nl = "\n"
 
 // Write two digits, uses the value in a
@@ -39,24 +38,30 @@ fun main
         writenum()
 
         // N, "bottles of beer on the wall, "
-        write(bottle)
-        write(plural)
-        write(ofbeer)
-        write(wall)
-        write(sep)
+        string FOO
+            bottle
+            plural
+            ofbeer
+            wall
+            sep
+        end
+        write(FOO)
 
         // Retrieve and print the number
         stack -> a
         writenum()
 
         // N, "bottles of beer."
-        write(bottle)
-        write(plural)
-        write(ofbeer)
-        write(dotnl)
-
         // "Take one down and pass it around,"
-        write(takedown)
+        string BOB
+            bottle
+            plural
+            ofbeer
+            dot
+            nl
+            takedown
+        end
+        write(BOB)
 
         // N-1, "bottles of beer on the wall."
         stack -> a
@@ -71,13 +76,8 @@ fun main
         a != 1
             write(plural)
         end
-        // Write the rest
-        write(ofbeer)
-        write(wall)
-        write(dotnl)
-
-        // Blank line
-        write(nl)
+        // Write the rest + blank line
+        write(ofbeer + wall + dot + nl + nl)
 
         // Skip to the top of the loop while the counter is >= 2
         continue (c >= 2)
@@ -87,52 +87,25 @@ fun main
         // "1 bottle of beer on the wall,"
         a = 1
         writenum()
-        write(bottle)
-        write(ofbeer)
-        write(wall)
-        write(sep)
+        write(bottle + ofbeer + wall + sep)
 
         // "1 bottle of beer."
+        // "Take one down and pass it around,"
+        // "no more bottles of beer on the wall." + blank line
+        // "No more bottles of beer on the wall,"
+        // "no more bottles of beer."
+        // "Go to the store and buy some more,"
         a = 1
         writenum()
-        write(bottle)
-        write(ofbeer)
-        write(dotnl)
 
-        // "Take one down and pass it around,"
-        write(takedown)
-
-        // "no more bottles of beer on the wall."
-        write(l_no)
-        write(more)
-        write(wall)
-        write(dotnl)
-
-        // Blank line
-        write(nl)
-
-        // "No more bottles of beer on the wall,"
-        write(u_no)
-        write(more)
-        write(wall)
-        write(sep)
-
-        // "no more bottles of beer."
-        write(l_no)
-        write(more)
-        write(dotnl)
-
-        // "Go to the store and buy some more,"
-        write(store)
-
-        // "99 bottles of beer on the wall."
-        a = 99
-        writenum()
-        write(bottle)
-        write(plural)
-        write(ofbeer)
-        write(wall)
-        write(dotnl)
+        string ROGER
+            bottle, ofbeer, dot, "\n"
+            takedown, l_no, more, ofbeer, wall, dot, "\n"
+            "\n"
+            u_no, more, ofbeer, wall, sep, l_no, more, ofbeer, dot, "\n"
+            store, 99, bottle, plural, ofbeer, wall, dot, "\n"
+        end
+        write(ROGER)
     end
 end
 
