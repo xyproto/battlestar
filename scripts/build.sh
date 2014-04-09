@@ -101,8 +101,8 @@ function build {
     rm -f "$n.asm"
   fi
   # Save the filenames for later cleaning
-  echo -e "\n$n.o ${n}_c.o $n $n.log" >> "$n.log"
-  [ -e $n.o ] && return 0 || return 1
+  echo -e "\n$n.o ${n}_c.o $n.asm $n $n.log" >> "$n.log"
+  [ -e $n.o ] || return 1
   if [[ $linkfail = false ]]; then
     if [[ $compiledc = true ]]; then
       $ldcmd "${n}_c.o" "$n.o" -o "$n" || echo "$n failed to link"

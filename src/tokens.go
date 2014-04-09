@@ -220,7 +220,19 @@ func tokenize(program string, debug bool, sep string) []Token {
 					log.Println("TOKEN", t)
 				}
 			} else if has(reserved, word) {
-				t = Token{RESERVED, word, statementnr, ""}
+				if has([]string{"a", "b", "c", "d"}, word) {
+					reg := ""
+					switch platform_bits {
+					case 64:
+						reg = "r" + word
+					case 32:
+						reg = "e" + word
+					}
+					reg += "x"
+					t = Token{REGISTER, reg, statementnr, ""}
+				} else {
+					t = Token{RESERVED, word, statementnr, ""}
+				}
 				tokens = append(tokens, t)
 				if debug {
 					log.Println("TOKEN", t)

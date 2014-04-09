@@ -2,8 +2,6 @@
 * Create a keyword "protected". If a register is protected, it will be pushed and popped
   at every function call.
 * Consider making cx/ecx/rcx protected by default in every loop.
-* Add a way to conditionally call functions. if (condition) function(bla, bla)
-* Maybe add if .. end blocks
 
 * Consider removing "rawloop".
 * Make "use" work with C libraries. For including a library+include files.
@@ -51,6 +49,7 @@
 * Create a standard library that contains platform-dependent battlestar-functions
 
 --- done ---
+* if blocks (condition ... end) [done]
 * Created "99 bottles of beer" [done]
 * Added the "stack -> register" and "register -> stack" opreator [done]
 * Make syscall() work correctly, ref hi64.bts [done]

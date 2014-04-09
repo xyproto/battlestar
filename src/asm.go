@@ -566,7 +566,40 @@ func (st Statement) String(ps *ProgramState) string {
 	} else if ((st[0].t == REGISTER) || (st[0].t == DISREGARD) || (st[0].value == "stack")) && (len(st) == 3) {
 		// Statements like "eax = 3" are handled here
 		// TODO: Handle all sorts of equivivalents to assembly statements
-		if (st[0].t == REGISTER) && (st[1].t == ASSIGNMENT) && (st[2].t == VALUE || st[2].t == VALID_NAME) {
+		if st[1].t == COMPARISON {
+			if ps.in_if_block != "" {
+				log.Fatalln("Error: Already in an if-block (nested block are to be implemented)")
+			}
+			ps.in_if_block = ps.new_if_label()
+
+			asmcode := "\t;--- " + ps.in_if_block + " ---\n"
+
+			// Start an if block that is run if the comparison is true
+			// Break if something comparison something
+			asmcode += "\tcmp " + st[0].value + ", " + st[2].value + "\t\t\t; compare\n"
+
+			// Conditional jump if NOT true
+			asmcode += "\t"
+			switch st[1].value {
+			case "==":
+				asmcode += "jne"
+			case "!=":
+				asmcode += "je"
+			case ">":
+				asmcode += "jle"
+			case "<":
+				asmcode += "jge"
+			case "<=":
+				asmcode += "jg"
+			case ">=":
+				asmcode += "jl"
+			}
+
+			// Which label to jump to (out of the if block)
+			// TODO: Nested if blocks
+			asmcode += " " + ps.in_if_block + "_end\t\t\t; break\n"
+			return asmcode
+		} else if (st[0].t == REGISTER) && (st[1].t == ASSIGNMENT) && (st[2].t == VALUE || st[2].t == VALID_NAME) {
 			if st[2].value == "0" {
 				return "\txor " + st[0].value + ", " + st[0].value + "\t\t; " + st[0].value + " " + st[1].value + " " + st[2].value
 			} else {
@@ -1167,6 +1200,12 @@ section .text
 		if inline_c {
 			inline_c = false
 			return "; end of inline C block\n"
+		} else if ps.in_if_block != "" {
+			// End the if block
+			asmcode := ""
+			asmcode += ps.in_if_block + "_end:\t\t\t\t; end of if block " + ps.in_if_block + "\n"
+			ps.in_if_block = ""
+			return asmcode
 		} else if ps.in_loop != "" {
 			asmcode := ""
 			rawloop := strings.HasPrefix(ps.in_loop, rawloop_prefix)     // Is it a rawloop?

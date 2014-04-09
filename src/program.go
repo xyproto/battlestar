@@ -11,10 +11,12 @@ type (
 		surprise_ending_with_exit bool                // To keep track of function blocks that are ended with "exit"
 		loop_step                 int                 // To keep track of if rep should use stosb or stosw (and stepsize in loops in general)
 		loop_name_counter         int                 // To keep track of which generated label names have already been used
+		if_name_counter           int                 // To keep track of which generated label names have already been used
 		defined_names             []string            // all defined variables/constants/functions
 		variables                 map[string][]string // list of variable names per function name
 		in_function               string              // name of the function we are currently in
 		in_loop                   string              // name of the loop we are currently in
+		in_if_block               string              // name of the if block we are currently in
 	}
 )
 
@@ -42,4 +44,9 @@ func NewProgramState() *ProgramState {
 func (p *ProgramState) new_loop_label() string {
 	p.loop_name_counter += 1
 	return "l" + strconv.Itoa(p.loop_name_counter)
+}
+
+func (p *ProgramState) new_if_label() string {
+	p.if_name_counter += 1
+	return "if" + strconv.Itoa(p.if_name_counter)
 }
