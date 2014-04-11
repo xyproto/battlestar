@@ -10,7 +10,7 @@ fun main
 
     // Output an 'K'
     eax = 75
-    int(80, 4, 1, str(eax), 4)
+    int(80, 4, 1, chr(eax), 4)
 
     // Output a newline
     int(80, 4, 1, nl, len(nl))

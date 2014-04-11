@@ -38,30 +38,14 @@ fun main
         writenum()
 
         // N, "bottles of beer on the wall, "
-        string FOO
-            bottle
-            plural
-            ofbeer
-            wall
-            sep
-        end
-        write(FOO)
+        write(combine(bottle, plural, ofbeer, wall, sep))
 
         // Retrieve and print the number
         stack -> a
         writenum()
 
-        // N, "bottles of beer."
-        // "Take one down and pass it around,"
-        string BOB
-            bottle
-            plural
-            ofbeer
-            dot
-            nl
-            takedown
-        end
-        write(BOB)
+        // N, "bottles of beer.\nTake one down and pass it around,"
+        write(combine(bottle, plural, ofbeer, dot, nl, takedown))
 
         // N-1, "bottles of beer on the wall."
         stack -> a
@@ -77,7 +61,7 @@ fun main
             write(plural)
         end
         // Write the rest + blank line
-        write(ofbeer + wall + dot + nl + nl)
+        write(combine(ofbeer, wall, dot, nl, nl))
 
         // Skip to the top of the loop while the counter is >= 2
         continue (c >= 2)
@@ -87,7 +71,7 @@ fun main
         // "1 bottle of beer on the wall,"
         a = 1
         writenum()
-        write(bottle + ofbeer + wall + sep)
+        write(combine(bottle, ofbeer, wall, sep))
 
         // "1 bottle of beer."
         // "Take one down and pass it around,"
@@ -97,15 +81,7 @@ fun main
         // "Go to the store and buy some more,"
         a = 1
         writenum()
-
-        string ROGER
-            bottle, ofbeer, dot, "\n"
-            takedown, l_no, more, ofbeer, wall, dot, "\n"
-            "\n"
-            u_no, more, ofbeer, wall, sep, l_no, more, ofbeer, dot, "\n"
-            store, 99, bottle, plural, ofbeer, wall, dot, "\n"
-        end
-        write(ROGER)
+        write(combine(bottle, ofbeer, dot, nl, takedown, l_no, more, ofbeer, wall, "\n", nl, u_no, more, ofbeer, wall, sep, l_no, more, ofbeer, dot, nl, store, 99, bottle, plural, ofbeer, wall, dot, nl)
     end
 end
 
