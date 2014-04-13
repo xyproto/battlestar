@@ -168,7 +168,7 @@ fi
 osx=$([[ `uname -s` = Darwin ]] && echo true || echo false)
 asmcmd="$asm -f elf64"
 ldcmd='ld -s --fatal-warnings -nostdlib --relax'
-stdgcc='gcc -Os -nostdlib -nostdinc -std=c99 -Wno-implicit -ffast-math -fno-inline -fomit-frame-pointer'
+stdgcc='gcc -Os -nostdlib -nostdinc -std=c11 -Wno-implicit -ffast-math -fno-inline -fomit-frame-pointer'
 cccmd="$stdgcc -m64"
 
 if [ $bits = 32 ]; then
@@ -180,7 +180,7 @@ fi
 if [ $bits = 16 ]; then
   asmcmd="$asm -f bin"
   ldcmd='ld -s --fatal-warnings -nostdlib --relax'
-  cccmd="$stdgcc"
+  cccmd="$stdgcc -m16"
 fi
 
 if [[ $1 == bootable ]]; then

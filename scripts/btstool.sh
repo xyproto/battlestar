@@ -25,11 +25,11 @@ bits=`getconf LONG_BIT`
 osx=$([[ `uname -s` = Darwin ]] && echo true || echo false)
 asmcmd="yasm -f elf$bits"
 ldcmd='ld -s --fatal-warnings -nostdlib --relax'
-cccmd="gcc -Os -std=c99 -m64 -nostdlib"
+cccmd="gcc -Os -std=c11 -m64 -nostdlib"
 
 if [[ $bits = 32 ]]; then
   ldcmd='ld -s -melf_i386 --fatal-warnings -nostdlib --relax'
-  cccmd='gcc -Os -std=c99 -nostdlib -nostdinc -Wno-impplicit -ffast-math -fno-inline -fomit-frame-pointer -m32 -nostdlib'
+  cccmd='gcc -Os -std=c11 -nostdlib -nostdinc -Wno-impplicit -ffast-math -fno-inline -fomit-frame-pointer -m32 -nostdlib'
 fi
 
 if [[ $osx = true ]]; then
