@@ -10,7 +10,7 @@ import (
 
 var (
 	registers = []string{"ah", "al", "bh", "bl", "ch", "cl", "dh", "dl", // 8-bit
-		"si", "di", "sp", "bp", "ip", "ax", "bx", "cx", "dx", // 16-bit
+		"si", "di", "sp", "bp", "ip", "ax", "bx", "cx", "dx", "cs", "es", // 16-bit
 		"eax", "ebx", "ecx", "edx", "esi", "edi", "esp", "ebp", "eip", // 32-bit
 		"rax", "rbx", "rcx", "rdx", "rsi", "rdi", "rsp", "rbp", "rip", "r8", "r9",
 		"r10", "r11", "r12", "r13", "r14", "r15", "sil", "dil", "spl", "bpl",
@@ -638,7 +638,6 @@ func (st Statement) String(ps *ProgramState) string {
 				// stack -> something (pop)
 				return "\tpop " + st[2].value + "\t\t\t\t; stack -> " + st[2].value + "\n"
 			}
-			log.Fatalln("WOHOO")
 		} else if (st[0].t == REGISTER) && (st[1].t == ASSIGNMENT) && (st[2].t == RESERVED) && (st[3].t == VALUE) {
 			if st[2].value == "funparam" {
 				paramoffset, err := strconv.Atoi(st[3].value)
@@ -845,10 +844,24 @@ func (st Statement) String(ps *ProgramState) string {
 		}
 		if platform_bits == target_bits {
 			// Add the rest of the line as a regular assembly expression
-			if len(st) == 5 {
-				return "\t" + st[2].value + " " + st[3].value + ", " + st[4].value + "\t\t\t; platform specific assembly\n"
+			if len(st) == 6 {
+				// with address calculations
+				if strings.Contains(st[5].value, "+") {
+					return "\t" + st[2].value + " " + st[3].value + " " + st[4].value + " [" + st[5].value + "]\t\t\t; asm with address calculation\n"
+				} else {
+					return "\t" + st[2].value + " " + st[3].value + " " + st[4].value + ", " + st[5].value + "\t\t\t; asm with floating point instructions\n"
+				}
+			} else if len(st) == 5 {
+				if st[3].value == "st" {
+					return "\t" + st[2].value + " " + st[3].value + " (" + st[4].value + ")\t\t\t; asm\n"
+				} else {
+					return "\t" + st[2].value + " " + st[3].value + ", " + st[4].value + "\t\t\t; asm\n"
+				}
 			} else if len(st) == 4 {
-				return "\t" + st[2].value + " " + st[3].value + "\t\t\t; platform specific assembly\n"
+				return "\t" + st[2].value + " " + st[3].value + "\t\t\t; asm\n"
+			} else if len(st) == 3 {
+				// a label
+				return "\t" + st[2].value + "\t\t\t; asm label\n"
 			} else {
 				log.Fatalln("Error: Unrecognized length of assembly epxression:", len(st)-2)
 			}

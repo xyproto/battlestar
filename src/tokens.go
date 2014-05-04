@@ -25,12 +25,14 @@ const (
 	XOR            = 16
 	COMPARISON     = 17
 	PUSHPOP        = 18
+	COMBINATION    = 19
+	ASMLABEL       = 20
 	SEP            = 127
 	UNKNOWN        = 255
 )
 
 var (
-	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard", RESERVED: "reserved", VARIABLE: "variable", ADDITION: "addition", SUBTRACTION: "subtraction", MULTIPLICATION: "multiplication", DIVISION: "division", COMPARISON: "comparison", PUSHPOP: "stack operation"}
+	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard", RESERVED: "reserved", VARIABLE: "variable", ADDITION: "addition", SUBTRACTION: "subtraction", MULTIPLICATION: "multiplication", DIVISION: "division", COMPARISON: "comparison", PUSHPOP: "stack operation", COMBINATION: "address expression", ASMLABEL: "assembly label"}
 )
 
 type (
@@ -318,6 +320,19 @@ func tokenize(program string, debug bool, sep string) []Token {
 			} else if strings.Contains("0123456789$", string(word[0])) {
 				// Assume it's a value
 				t = Token{VALUE, word, statementnr, ""}
+				tokens = append(tokens, t)
+				if debug {
+					log.Println("TOKEN", t)
+				}
+			} else if strings.Contains(word, "+") {
+				// Assume it's an adress, like bp+5
+				t = Token{COMBINATION, word, statementnr, ""}
+				tokens = append(tokens, t)
+				if debug {
+					log.Println("TOKEN", t)
+				}
+			} else if strings.HasSuffix(word, ":") {
+				t = Token{ASMLABEL, word, statementnr, ""}
 				tokens = append(tokens, t)
 				if debug {
 					log.Println("TOKEN", t)
