@@ -11,7 +11,7 @@ What is Battlestar?
 * A work in progress.
 * Created for fun and for the educational process.
 * A programming language specifically for 64-bit and 32-bit x86 and Linux.
-* Subset of assembly with different syntax and support for inline C.
+* Subset of assembly with an alternative syntax and with support for inline C.
 * The indended purpose is for writing 4k and 64k demoscene demos.
 
 Features
@@ -34,7 +34,7 @@ In progress
 
 Build dependencies
 ------------------
-* go
+* go 1.2
 
 Runtime dependencies
 --------------------
@@ -45,4 +45,5 @@ Optional runtime dependencies
 * gcc (for inline C support)
 * elftools/sstrip (for even smaller binaries)
 * binutils (for disassembling with objdump)
-* dosbox (for running 16-bit executables)
+* dosbox (for running 16-bit executables) (only GCC 4.9 and up supports compiling to 16-bit with -m16)
+* SDL 2
