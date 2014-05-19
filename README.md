@@ -46,4 +46,4 @@ Optional runtime dependencies
 * elftools/sstrip (for even smaller binaries)
 * binutils (for disassembling with objdump)
 * dosbox (for running 16-bit executables) (only GCC 4.9 and up supports compiling to 16-bit with -m16)
-* SDL 2
+* SDL 2 (must be compiled and installed manually if on Red Hat 6)
