@@ -3,7 +3,7 @@ PREFIX ?= /usr
 BINDIR = $(PREFIX)/bin
 PWD = $(shell pwd)
 
-all: battlestarc
+all: src/battlestarc
 
 samples:
 	make -C helloworld
@@ -24,17 +24,17 @@ clean:
 	make -C kernel clean
 	make -C bottles99 clean
 
-battlestarc:
+src/battlestarc:
 	make -C src
 
-install-bin: battlestarc
+install-bin: src/battlestarc
 	install -Dm755 "$(PWD)/scripts/btstool.sh" "$(DESTDIR)$(BINDIR)/bts"
 	install -Dm755 "$(PWD)/scripts/build.sh" "$(DESTDIR)$(BINDIR)/btsbuild"
 	install -Dm755 "$(PWD)/src/battlestarc" "$(DESTDIR)$(BINDIR)/battlestarc"
 
 install: install-bin
 
-devinstall: battlestarc
+devinstall: src/battlestarc
 	ln -sf $(PWD)/src/battlestarc /usr/bin/battlestarc
 	ln -sf $(PWD)/scripts/btstool.sh /usr/bin/bts
 	ln -sf $(PWD)/scripts/build.sh /usr/bin/btsbuild
