@@ -1,6 +1,9 @@
 Battlestar
 ==========
 
+[![Build Status](https://travis-ci.org/xyproto/battlestar.svg?branch=master)](https://travis-ci.org/xyproto/battlestar)
+[![Build Status](https://drone.io/github.com/xyproto/battlestar/status.png)](https://drone.io/github.com/xyproto/battlestar/latest)
+
 * Version: 0.3
 * License: MIT
 * Author: Alexander Rødseth
