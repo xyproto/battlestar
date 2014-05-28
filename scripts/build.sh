@@ -90,7 +90,13 @@ function build {
   else
     echo "WARNING: Can't compile inline C for 64-bit executables on a 32-bit system."
   fi
-  [ -e $n.asm ] && ($asmcmd -o "$n.o" "$n.asm" || echo "$n failed to assemble")
+  asmok=true
+  [ -e $n.asm ] && ($asmcmd -o "$n.o" "$n.asm" || asmok=false)
+  if [[ $asmok = false ]]; then
+    [ -e $n.asm ] && echo "Failed to assemble: $n."
+  else
+    [ -e $n.asm ] && echo "Assembled successfully: $n"
+  fi
   if [[ $other_compiler = true ]]; then
     # Clean up some of the files right away
     if [[ $compiledc = true ]]; then
@@ -119,7 +125,18 @@ function build {
 	# Check if a .com file has been created and return a value accordingly
 	[ -e $n.com ] && return 0 || return 1
       else
-        $ldcmd "$n.o" -o "$n" || echo "$n failed to link"
+        if [[ $EXTERNLIB = 1 ]]; then
+	  #echo "External libraries, skipping linking."
+	  if [[ $asmok = false ]]; then
+	    # Return 1 if the assembly stage failed
+	    return 1
+	  else
+	    # Return 0 if the assembly stage went ok
+	    return 0
+	  fi
+	else
+          $ldcmd "$n.o" -o "$n" || echo "$n failed to link"
+	fi
       fi
     fi
   else
