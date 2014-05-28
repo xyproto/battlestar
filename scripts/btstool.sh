@@ -24,17 +24,17 @@ require uname 1
 bits=`getconf LONG_BIT`
 osx=$([[ `uname -s` = Darwin ]] && echo true || echo false)
 asmcmd="yasm -f elf$bits"
-ldcmd='ld -s --fatal-warnings -nostdlib --relax'
-cccmd="gcc -Os -std=c11 -m64 -nostdlib"
+ldcmd="ld -s --fatal-warnings -nostdlib --relax"
+cccmd="gcc -Os -std=c11 -m64 -nostdlib $CFLAGS"
 
 if [[ $bits = 32 ]]; then
-  ldcmd='ld -s -melf_i386 --fatal-warnings -nostdlib --relax'
-  cccmd='gcc -Os -std=c11 -nostdlib -nostdinc -Wno-impplicit -ffast-math -fno-inline -fomit-frame-pointer -m32 -nostdlib'
+  ldcmd="ld -s -melf_i386 --fatal-warnings -nostdlib --relax"
+  cccmd="gcc -Os -std=c11 -nostdlib -Wno-impplicit -ffast-math -fno-inline -fomit-frame-pointer -m32 $CFLAGS"
 fi
 
 if [[ $osx = true ]]; then
   asmcmd='yasm -f macho'
-  ldcmd='ld -macosx_version_min 10.8 -lSystem'
+  ldcmd="ld -macosx_version_min 10.8 -lSystem $LDFLAGS"
   bits=32
 fi
 
@@ -110,7 +110,7 @@ if [[ $1 == build ]]; then
   exit $?
 fi
 
-# The "compile" command (like -c for gcc)
+# The "compile" command
 if [[ $1 == compile ]]; then
   require btsbuild 1
 
