@@ -24,3 +24,5 @@ _testmain.go
 *.exe
 
 a.out
+
+src/battlestarc
