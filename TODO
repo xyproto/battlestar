@@ -1,3 +1,6 @@
+* "bts --help" and "man bts"
+
+
 * String blocks can consists of: constants, immediate strings, registers (interpreted as ASCII numbers) and numbers (interpreted as strings)
 
 * Add internal state that keeps track of what the values in the various registers are.
@@ -13,6 +16,8 @@
   - or -
   Automatic linking of libraries and inclusion of header files in a block of inline C when functions are not found. Like printf, sin, cos and SDL_CreateRenderer.
 
+* "use sdl2" (for example) at the top will add the right compilation and linking flags, using pkg-config
+
 * Add nested loops
 
 * Solve rosetta code tasks + programming language benchmark game tasks.
@@ -25,7 +30,7 @@
 2. Use the token module that comes with Go
 3. Write code for matching { and }, so that void main() { is not confused by a premature }
 
-* Built in Quaternions, Matrices, Lists, Vectors and doubles. No floats.
+* Built in Quaternions, Matrices, Lists, Vectors and doubles. No 16-bit float?
 
 (* Possibly syntax for linking with libraries, that connects with pkg-config? "use sdl" should use the right link and inclusions.)
 
