@@ -165,21 +165,33 @@ elif [[ $@ = *'bits=16'* ]]; then
   bits=16
 fi
 
+# OS X detection
 osx=$([[ `uname -s` = Darwin ]] && echo true || echo false)
+
+ldcmd="ld -s --fatal-warnings --relax"
+stdgcc="gcc -Os -std=c11 -Wno-implicit -ffast-math -fno-inline -fomit-frame-pointer"
+
+# Set the right flags if the environment variable EXTERNLIB=1
+if [[ $EXTERNLIB = 1 ]]; then
+  ldcmd="$ldcmd $LDFLAGS"
+  stdgcc="$stdgcc $CFLAGS"
+else
+  # Add nostdlib if external libraries are not used
+  ldcmd="$ldcmd -nostdlib"
+  stdgcc="$stdgcc -nostdlib"
+fi
+
 asmcmd="$asm -f elf64"
-ldcmd='ld -s --fatal-warnings -nostdlib --relax'
-stdgcc='gcc -Os -nostdlib -nostdinc -std=c11 -Wno-implicit -ffast-math -fno-inline -fomit-frame-pointer'
 cccmd="$stdgcc -m64"
 
 if [ $bits = 32 ]; then
   asmcmd="$asm -f elf32"
-  ldcmd='ld -s -melf_i386 --fatal-warnings -nostdlib --relax'
+  ldcmd="$ldcmd -melf_i386"
   cccmd="$stdgcc -m32"
 fi
 
 if [ $bits = 16 ]; then
   asmcmd="$asm -f bin"
-  ldcmd='ld -s --fatal-warnings -nostdlib --relax'
   cccmd="$stdgcc -m16"
 fi
 
