@@ -1,5 +1,8 @@
-* "bts --help" and "man bts"
+* Need a way to differentiate between 8-bit, 16-bit, 32-bit and 64-bit numbers and parameters.
+  Something like: x:8 ? x.8 ? x8 ? For every variable name ending with 8, 16, 32 or 64, the number
+  becomes the bits?
 
+* "bts --help" and "man bts"
 
 * String blocks can consists of: constants, immediate strings, registers (interpreted as ASCII numbers) and numbers (interpreted as strings)
 

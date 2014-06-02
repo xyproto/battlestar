@@ -49,3 +49,4 @@ Optional runtime dependencies
 * elftools/sstrip (for even smaller binaries)
 * binutils (for disassembling with objdump)
 * dosbox (for running 16-bit executables)
+* tcc (for even smaller binaries, in many cases)
