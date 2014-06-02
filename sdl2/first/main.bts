@@ -8,15 +8,13 @@ extern SDL_Delay
 fun main
     // Initialize the SDL2 Video subsystem
     write(initsdl)
-    a = 0x20
-    funparam[0] = a
+    funparam[0] = 0x20
     call SDL_Init
     write(done)
 
-    // Wait 200 milliseconds
+    // Sleep 200 milliseconds
     write(sleep2)
-    a = 200
-    funparam[0] = a
+    funparam[0] = 200
     call SDL_Delay
     write(done)
 end
