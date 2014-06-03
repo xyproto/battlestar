@@ -827,14 +827,23 @@ func (st Statement) String(ps *ProgramState) string {
 		log.Println("Unfamiliar 3-token expression!")
 	} else if (len(st) == 4) && (st[0].t == RESERVED) && (st[1].t == VALUE) && (st[2].t == ASSIGNMENT) && ((st[3].t == VALID_NAME) || (st[3].t == VALUE) || (st[3].t == REGISTER)) {
 		retval := "\tmov " + reserved_and_value(st[:2]) + ", " + st[3].value + "\t\t\t; "
-		pointercomment := "&"
-		if st[3].t != VALID_NAME {
-			pointercomment = ""
+		if (platform_bits == 32) && (st[3].t != REGISTER) {
+			retval = strings.Replace(retval, "mov", "mov DWORD", 1)
+		}
+		pointercomment := ""
+		if st[3].t == VALID_NAME {
+			pointercomment = "&"
 		}
 		retval += fmt.Sprintf("%s[%s] = %s%s\n", st[0].value, st[1].value, pointercomment, st[3].value)
 		return retval
 	} else if (len(st) == 5) && (st[0].t == RESERVED) && (st[1].t == VALUE) && (st[2].t == ASSIGNMENT) && (st[3].t == RESERVED) && (st[4].t == VALUE) {
-		retval := "\tmov " + reserved_and_value(st[:2]) + ", " + reserved_and_value(st[3:]) + "\t\t\t; "
+		retval := ""
+		if platform_bits != 32 {
+			retval = "\tmov " + reserved_and_value(st[:2]) + ", " + reserved_and_value(st[3:]) + "\t\t\t; "
+		} else {
+			retval = "\tmov eax, " + reserved_and_value(st[3:]) + "\t\t\t; Uses eax as a temporary variable\n"
+			retval += "\tmov " + reserved_and_value(st[:2]) + ", ebx\t\t\t; ";
+		}
 		retval += fmt.Sprintf("%s[%s] = %s[%s]\n", st[0].value, st[1].value, st[3].value, st[4].value)
 		return retval
 	} else if (len(st) >= 2) && (st[0].t == KEYWORD) && (st[0].value == "asm") && (st[1].t == VALUE) {

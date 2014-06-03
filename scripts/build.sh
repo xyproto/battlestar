@@ -91,6 +91,7 @@ function build {
     echo "WARNING: Can't compile inline C for 64-bit executables on a 32-bit system."
   fi
   asmok=true
+  echo $asmcmd -o "$n.o" "$n.asm"
   [ -e $n.asm ] && ($asmcmd -o "$n.o" "$n.asm" || asmok=false)
   if [[ $asmok = false ]]; then
     [ -e $n.asm ] && echo "Failed to assemble: $n."
