@@ -3,10 +3,8 @@ LDFLAGS=$(shell pkg-config sdl2 --libs)
 
 all:
 	EXTERNLIB=1 bts build
-	echo hi
-	tcc -Os -nostdlib main.o ${CFLAGS} -o main || gcc -Os -nostdlib main.o ${CFLAGS} -o main
-	@#gcc -Os main.o -o main ${CFLAGS}
-	@#ld main.o -o main ${LDFLAGS}
+	gcc -Os -nostdlib main.o ${CFLAGS} -o main
+	@#tcc -Os -nostdlib main.o ${CFLAGS} -o main || gcc -Os -nostdlib main.o ${CFLAGS} -o main
 	strip main
 	sstrip main
 	bts size

@@ -60,7 +60,7 @@ fun main
     a -> stack
 
     funparam[0] = a             // the pointer to the SDL_Window
-    funparam[1] = -1
+    funparam[1] = 0-1           // not sure if this Nasm-workaround is neede for Yasm
     funparam[2] = 6             // SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC
     call SDL_CreateRenderer
 
@@ -70,8 +70,6 @@ fun main
         write(err)
         exit
     end
-
-    write(hepp)
 
     // STACK: *SDL_Window, *SDL_Renderer
     
@@ -84,6 +82,8 @@ fun main
     funparam[0] = a             // First parameter to SDL_LoadBMP_RW is the file pointer.
     funparam[1] = 1             // The second parameter to SDL_LoadBMP_RW is 1 (ref SDL_surface.h)
     call SDL_LoadBMP_RW
+
+    write(hepp)
 
     // Pointer to the SDL_Surface is now in a. Save it and check if it is 0.
     a -> stack
