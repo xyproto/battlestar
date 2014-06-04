@@ -13,6 +13,7 @@ samples:
 	make -C samples16
 	make -C kernel
 	make -C bottles99
+	make -C sdl2
 
 clean:
 	make -C src clean
@@ -23,6 +24,7 @@ clean:
 	make -C samples16 clean
 	make -C kernel clean
 	make -C bottles99 clean
+	make -C sdl2 clean
 
 src/battlestarc:
 	make -C src
