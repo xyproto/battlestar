@@ -1,9 +1,9 @@
 all:
-	make -C first
-	make -C second
-	make -C third
+	make -C simple
+	make -C segfault
+	make -C display_image
 
 clean:
-	make -C first clean
-	make -C second clean
-	make -C third clean
+	make -C simple clean
+	make -C segfault clean
+	make -C display_image clean

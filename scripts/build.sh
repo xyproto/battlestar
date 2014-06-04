@@ -114,6 +114,8 @@ function build {
     if [[ $compiledc = true ]]; then
       if [[ $EXTERNLIB = 1 ]]; then
 	echo 'Skipping linking, external lib'
+	# Save the filenames for later cleaning
+	echo -e "\n$n $n.asm $n.c $n.o ${n}_c.o $n $n.log" >> "$n.log"
 	return 0
       else
         $ldcmd "${n}_c.o" "$n.o" -o "$n" || echo "$n failed to link"
@@ -198,7 +200,6 @@ stdgcc="gcc -Os -std=c99 -Wno-implicit -ffast-math -fno-inline -fomit-frame-poin
 if [[ $EXTERNLIB = 1 ]]; then
   ldcmd="$ldcmd $LDFLAGS"
   stdgcc="$stdgcc $CFLAGS"
-  other_compiler=true
   skipstrip=true
 else
   # Add nostdlib if external libraries are not used

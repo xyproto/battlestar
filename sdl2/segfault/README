@@ -1,0 +1,4 @@
+Work in progress, currently compiles but segfaults when being run.
+
+This is a good example of what should rather be done in C than in Battlestar.
+
