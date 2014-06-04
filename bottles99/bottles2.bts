@@ -11,7 +11,7 @@ const store = "Go to the store and buy some more, "
 const dotnl = ".\n"
 const nl = "\n"
 
-// Write two digits, uses the value in a
+// Write two digits, based on the value in a
 fun writenum
     b = a
     loop

@@ -1,6 +1,9 @@
 Battlestar
 ==========
 
+[![Build Status](https://travis-ci.org/xyproto/battlestar.svg?branch=master)](https://travis-ci.org/xyproto/battlestar)
+[![Build Status](https://drone.io/github.com/xyproto/battlestar/status.png)](https://drone.io/github.com/xyproto/battlestar/latest)
+
 * Version: 0.3
 * License: MIT
 * Author: Alexander Rødseth
@@ -47,3 +50,4 @@ Optional runtime dependencies
 * binutils (for disassembling with objdump)
 * dosbox (for running 16-bit executables) (only GCC 4.9 and up supports compiling to 16-bit with -m16)
 * SDL 2 (must be compiled and installed manually if on Red Hat 6)
+* tcc (for even smaller binaries, in many cases)

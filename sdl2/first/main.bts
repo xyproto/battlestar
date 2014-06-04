@@ -1,0 +1,22 @@
+const initsdl = "Initializing the SDL 2 video subsystem..."
+const sleep2 = "Sleeping for 200 milliseconds..."
+const done = "done.", 10
+
+extern SDL_Init
+extern SDL_Delay
+
+fun main
+    // Initialize the SDL2 Video subsystem
+    write(initsdl)
+    funparam[0] = 0x20
+    call SDL_Init
+    write(done)
+
+    // Sleep 200 milliseconds
+    write(sleep2)
+    funparam[0] = 200
+    call SDL_Delay
+    write(done)
+end
+
+// vim: set syntax=c ts=4 sw=4 et:
