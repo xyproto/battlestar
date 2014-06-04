@@ -8,6 +8,7 @@ const read_binary = "rb", 0
 const filename = "boxes.bmp", 0
 const alldone = "All done!\n"
 const hepp = "hepp\n"
+const heppa = "heppa\n"
 
 extern SDL_Init
 extern SDL_Delay
@@ -23,33 +24,52 @@ extern SDL_RenderPresent
 extern SDL_DestroyTexture
 extern SDL_DestroyRenderer
 extern SDL_DestroyWindow
+extern kakebusk
+
+inline_c
+
+#include <SDL2/SDL.h>
+
+void error();
+char* helloworld;
+
+int kakebusk() {
+
+    if (SDL_Init(0x7231) != 0) {
+        error();
+        return 1;
+    }
+
+    SDL_Window *win = SDL_CreateWindow(helloworld, 100, 100, 960, 540, 0x4);
+    if (win == NULL) {
+        error();
+        return 1;
+    }
+
+    SDL_Renderer *ren = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    if (ren == NULL) {
+        error();
+        return 1;
+    }
+
+}
+end
+
+fun error
+    write(err)
+end
 
 fun main
 
     // --- Initialize SDL2 ---
 
-    write(initsdl)
-    funparam[0] = 0x32  // SDL_INIT_TIMER | SDL_INIT_VIDEO   // 0x7231 = SDL_INIT_EVERYTHING
-    call SDL_Init
+    write(heppa)
+    kakebusk()
     write(done)
 
+    exit 7
+
     // --- Create a window ---
-
-    funparam[0] = helloworld    // window title
-    a = 100
-    funparam[1] = a             // x = 100
-    funparam[2] = a             // y = 100
-    funparam[3] = 960           // width = 960
-    funparam[4] = 540           // height = 540
-    funparam[5] = 4             // SDL_WINDOW_SHOWN
-    call SDL_CreateWindow
-
-    // Pointer to SDL_Window is now in a. Save it and check if it is 0.
-    a -> stack
-    a == 0
-        write(err)
-        exit
-    end
 
     // STACK: *SDL_Window
 
@@ -60,11 +80,9 @@ fun main
     a -> stack
 
     funparam[0] = a             // the pointer to the SDL_Window
-    funparam[1] = 0-1             // not sure if this Nasm-workaround is neede for Yasm. Want -1!
-    funparam[2] = 0x1          // software   // 0x6 = SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC
+    funparam[1] = 0-1           // not sure if this Nasm-workaround is neede for Yasm
+    funparam[2] = 6             // SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC
     call SDL_CreateRenderer
-
-    write(hepp)
 
     // Pointer to SDL_Renderer is now in a. Save it and check if it is 0.
     a -> stack
@@ -84,6 +102,8 @@ fun main
     funparam[0] = a             // First parameter to SDL_LoadBMP_RW is the file pointer.
     funparam[1] = 1             // The second parameter to SDL_LoadBMP_RW is 1 (ref SDL_surface.h)
     call SDL_LoadBMP_RW
+
+    write(hepp)
 
     // Pointer to the SDL_Surface is now in a. Save it and check if it is 0.
     a -> stack

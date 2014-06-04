@@ -8,7 +8,7 @@ extern SDL_Delay
 fun main
     // Initialize the SDL2 Video subsystem
     write(initsdl)
-    funparam[0] = 0x20
+    funparam[0] = 0x00000020 // SDL_INIT_VIDEO
     call SDL_Init
     write(done)
 

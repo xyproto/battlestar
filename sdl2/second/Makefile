@@ -11,9 +11,8 @@ all: clean
 
 debug: clean
 	CFLAGS="-O1 -g" EXTERNLIB=1 bts build
-	gcc -O1 -g -nostdlib main.o ${CFLAGS} -o main
+	gcc -O0 -g -nostdlib main.o ${CFLAGS} -o main
 	bts size
-
 
 clean:
 	bts clean

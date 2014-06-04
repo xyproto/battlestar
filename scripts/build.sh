@@ -112,7 +112,12 @@ function build {
   [ -e $n.o ] || return 1
   if [[ $linkfail = false ]]; then
     if [[ $compiledc = true ]]; then
-      $ldcmd "${n}_c.o" "$n.o" -o "$n" || echo "$n failed to link"
+      if [[ $EXTERNLIB = 1 ]]; then
+	echo 'Skipping linking, external lib'
+	return 0
+      else
+        $ldcmd "${n}_c.o" "$n.o" -o "$n" || echo "$n failed to link"
+      fi
     elif [ -e $n.o ]; then
       if [[ $bits = 16 ]]; then
       	# The output file is a .com file
@@ -193,6 +198,8 @@ stdgcc="gcc -Os -std=c99 -Wno-implicit -ffast-math -fno-inline -fomit-frame-poin
 if [[ $EXTERNLIB = 1 ]]; then
   ldcmd="$ldcmd $LDFLAGS"
   stdgcc="$stdgcc $CFLAGS"
+  other_compiler=true
+  skipstrip=true
 else
   # Add nostdlib if external libraries are not used
   ldcmd="$ldcmd -nostdlib"
@@ -200,8 +207,6 @@ else
 fi
 
 asmcmd="$asm -f elf64"
-ldcmd='ld -s --fatal-warnings -nostdlib --relax'
-stdgcc='gcc -Os -nostdlib -nostdinc -std=c99 -Wno-implicit -ffast-math -fno-inline -fomit-frame-pointer'
 cccmd="$stdgcc -m64"
 
 if [ $bits = 32 ]; then
