@@ -11,4 +11,3 @@ func TestProgramState(t *testing.T) {
 		t.Errorf("Error initializing program state.\n")
 	}
 }
-
