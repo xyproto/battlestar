@@ -638,7 +638,7 @@ func (st Statement) String(ps *ProgramState) string {
 				// stack -> something (pop)
 				return "\tpop " + st[2].value + "\t\t\t\t; stack -> " + st[2].value + "\n"
 			}
-		} else if (st[0].t == REGISTER) && (st[1].t == ASSIGNMENT) && ((st[2].t == RESERVED || st[2].t == VALUE)) && (st[3].t == VALUE) {
+		} else if (st[0].t == REGISTER) && (st[1].t == ASSIGNMENT) && (st[2].t == RESERVED || st[2].t == VALUE) && (st[3].t == VALUE) {
 			if st[2].value == "funparam" {
 				paramoffset, err := strconv.Atoi(st[3].value)
 				if err != nil {
@@ -842,7 +842,7 @@ func (st Statement) String(ps *ProgramState) string {
 			retval = "\tmov " + reserved_and_value(st[:2]) + ", " + reserved_and_value(st[3:]) + "\t\t\t; "
 		} else {
 			retval = "\tmov eax, " + reserved_and_value(st[3:]) + "\t\t\t; Uses eax as a temporary variable\n"
-			retval += "\tmov " + reserved_and_value(st[:2]) + ", ebx\t\t\t; ";
+			retval += "\tmov " + reserved_and_value(st[:2]) + ", ebx\t\t\t; "
 		}
 		retval += fmt.Sprintf("%s[%s] = %s[%s]\n", st[0].value, st[1].value, st[3].value, st[4].value)
 		return retval
