@@ -48,6 +48,8 @@ func main() {
 	c_file := flag.String("oc", "", "C output file")
 	// Input file
 	bts_file := flag.String("f", "", "BTS source file")
+	// Is it not a standalone program, but a component? (just the .o file is needed)
+	is_component := flag.Bool("c", false, "Component, not a standalone program")
 
 	flag.Parse()
 
@@ -57,6 +59,8 @@ func main() {
 	asmfile := *asm_file
 	cfile := *c_file
 	btsfile := *bts_file
+
+	component := *is_component
 
 	if flag.Arg(0) != "" {
 		btsfile = flag.Arg(0)
@@ -141,7 +145,11 @@ func main() {
 			}
 		}
 		if asmcode != "" {
-			asmdata += fmt.Sprintln(add_starting_point_if_missing(asmcode, ps) + "\n")
+			if component {
+				asmdata += asmcode + "\n"
+			} else {
+				asmdata += add_starting_point_if_missing(asmcode, ps) + "\n"
+			}
 			if bootable {
 				asmdata = strings.Replace(asmdata, "; starting point of the program\n", "; starting point of the program\n\tmov esp, stack_top\t; set the esp register to the top of the stack (special case for bootable kernels)\n", 1)
 			}

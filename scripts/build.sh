@@ -29,22 +29,29 @@ function build {
     skipstrip=true
     shift
   fi
+  if [[ $2 = -c ]]; then
+    other_compiler=true
+    skipstrip=true
+  fi
 
   f=$1
   shift
 
   params=$@
+ 
   echo "Building $f"
   n=`echo ${f/.bts} | sed 's/ //'`
 
-  # TODO: This could probably be more robust
   if [[ $params != *bits* ]]; then
     params="$params -bits=$bits"
   fi
 
-  # TODO: This could probably be more robust
   if [[ $params != *osx* ]]; then
     params="$params -osx=$osx"
+  fi
+
+  if [[ $other_compiler = true ]]; then
+    params="$params -c"
   fi
 
   # Don't output the log if "fail" is in the filename
@@ -110,6 +117,9 @@ function build {
   # Save the filenames for later cleaning
   echo -e "\n$n.o ${n}_c.o $n.asm $n $n.log" >> "$n.log"
   [ -e $n.o ] || return 1
+  if [[ $other_compiler = true ]]; then
+    return 0
+  fi
   if [[ $linkfail = false ]]; then
     if [[ $compiledc = true ]]; then
       if [[ $EXTERNLIB = 1 ]]; then

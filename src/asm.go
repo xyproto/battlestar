@@ -654,6 +654,15 @@ func (st Statement) String(ps *ProgramState) string {
 				log.Fatalln("Error: Can only handle \"funparam\" lists when assigning to a register, so far.")
 			}
 		}
+		if (st[1].t == ADDITION) && (st[2].t == REGISTER) {
+			return "\tadd " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " += " + st[2].value
+		} else if (st[1].t == SUBTRACTION) && (st[2].t == REGISTER) {
+			return "\tsub " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " -= " + st[2].value
+		} else if (st[1].t == MULTIPLICATION) && (st[2].t == REGISTER) {
+			return "\timul " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " *= " + st[2].value
+		} else if (st[1].t == DIVISION) && (st[2].t == REGISTER) {
+			return "\tidiv " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " /= " + st[2].value
+		}
 		if (st[1].t == ADDITION) && (st[2].t == VALUE) {
 			if st[2].value == "1" {
 				return "\tinc " + st[0].value + "\t\t\t; " + st[0].value + "++"
@@ -835,6 +844,10 @@ func (st Statement) String(ps *ProgramState) string {
 			pointercomment = "&"
 		}
 		retval += fmt.Sprintf("%s[%s] = %s%s\n", st[0].value, st[1].value, pointercomment, st[3].value)
+		return retval
+	} else if (len(st) == 4) && (st[0].t == REGISTER) && (st[1].t == ASSIGNMENT) && (st[2].t == RESERVED) && (st[3].t == VALUE) {
+		retval := "\tmov " + st[0].value + ", " + reserved_and_value(st[2:]) + "\t\t\t; "
+		retval += fmt.Sprintf("%s = %s[%s]\n", st[0].value, st[2].value, st[3].value)
 		return retval
 	} else if (len(st) == 5) && (st[0].t == RESERVED) && (st[1].t == VALUE) && (st[2].t == ASSIGNMENT) && (st[3].t == RESERVED) && (st[4].t == VALUE) {
 		retval := ""
