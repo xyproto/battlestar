@@ -1,0 +1,1 @@
+When using -l sdl2 as parameter to /usr/bin/bts, pkg-config should be used and the right flags should be added automatically.
