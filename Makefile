@@ -3,6 +3,8 @@ PREFIX ?= /usr
 BINDIR = $(PREFIX)/bin
 PWD = $(shell pwd)
 
+.PHONY: all samples clean install-bin install devinstall uninstall
+
 all: src/battlestarc
 
 samples:
@@ -14,6 +16,7 @@ samples:
 	make -C kernel
 	make -C bottles99
 	make -C sdl2
+	make -C fibonacci
 
 clean:
 	make -C src clean
@@ -25,6 +28,7 @@ clean:
 	make -C kernel clean
 	make -C bottles99 clean
 	make -C sdl2 clean
+	make -C fibonacci clean
 
 src/battlestarc:
 	make -C src
