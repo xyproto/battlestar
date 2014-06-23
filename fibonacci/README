@@ -1,1 +1,3 @@
 Recursive version of the fibonacci algorithm
+
+Currently only works on 64-bit, not 32-bit.
