@@ -34,10 +34,11 @@ Features
 In progress
 -----------
 * OS X support
+* Qemu support
 
 Build dependencies
 ------------------
-* go 1.2
+* go 1.3
 
 Runtime dependencies
 --------------------
@@ -51,3 +52,4 @@ Optional runtime dependencies
 * dosbox (for running 16-bit executables) (only GCC 4.9 and up supports compiling to 16-bit with -m16)
 * SDL 2 (must be compiled and installed manually if on Red Hat 6)
 * tcc (for even smaller binaries, in many cases)
+
