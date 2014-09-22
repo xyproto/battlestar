@@ -1,0 +1,42 @@
+fun main
+    al = 0x13
+    int(10)
+
+    (asm 16) pop sp
+    stack -> bx             // just stack -> b should be possible, but does not translate correctly
+    (asm 16) pop ds
+    (asm 16) push ds
+    (asm 16) pop es
+
+    al = 62
+    ch = 0xFA
+    (asm 16) rep stosb
+
+    loop
+
+        (asm 16) rol di, 3
+        di -= 7
+        (asm 16) xor di, 2
+
+        (asm 16) mov al, [di]       // does not translate correctly
+        (asm 16) add al, [di+321]   // does not translate correctly
+        al /= 2
+
+        (asm 16) push di
+
+        (asm 16) stosb
+        (asm 16) stosb
+
+        di += 0x13E
+
+        (asm 16) stosb
+        (asm 16) stosb
+
+        (asm 16) pop di
+
+    end
+
+    // endless loop                      // TODO: add keyword for skipping ret
+end
+
+// vim: set syntax=c ts=4 sw=4 et:
