@@ -6,7 +6,7 @@ LDFLAGS+=$(shell pkg-config sdl2 --libs)
 all: clean
 	@CFLAGS="${CFLAGS}" EXTERNLIB=1 bts build
 	${CC} -Os -nostdlib main.o ${CFLAGS} -o main
-	-sstrip main
+	@-sstrip main 2>/dev/null || echo 'sstrip is not installed!'
 	bts size
 
 debug: clean

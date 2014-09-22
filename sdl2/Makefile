@@ -1,9 +1,9 @@
 all:
 	make -C simple
-	make -C segfault
+	make -C error
 	make -C display_image
 
 clean:
 	make -C simple clean
-	make -C segfault clean
+	make -C error clean
 	make -C display_image clean
