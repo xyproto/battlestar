@@ -6,7 +6,7 @@ LDFLAGS+=$(shell pkg-config sdl2 --libs)
 all: clean
 	@CFLAGS="${CFLAGS}" EXTERNLIB=1 bts build
 	${CC} -Os -nostdlib main_c.o main.o ${CFLAGS} -o main
-	sstrip main
+	-sstrip main
 	bts size
 
 debug: clean

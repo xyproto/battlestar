@@ -1,5 +1,5 @@
-const initsdl = "Initializing the SDL 2 video subsystem..."
-const sleep2 = "Sleeping for 200 milliseconds..."
+const initsdl = "Initializing the SDL 2 video subsystem... "
+const sleep2 = "Sleeping for 200 milliseconds... "
 const done = "done.", 10
 
 extern SDL_Init
