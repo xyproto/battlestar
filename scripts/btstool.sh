@@ -35,7 +35,7 @@ fi
 if [[ $osx = true ]]; then
   asmcmd='yasm -f macho'
   ldcmd="ld -macosx_version_min 10.8 -lSystem $LDFLAGS"
-  bits=32
+  #bits=32
 fi
 
 function run {
