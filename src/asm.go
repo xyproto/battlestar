@@ -37,6 +37,7 @@ func is_16_bit_register(reg string) bool {
 }
 
 // Try to find the 32-bit version of a 64-bit register, or a 16-bit version of a 32-bit register
+// Requires the string to be non-empty
 func downgrade(reg string) string {
 	if reg[0] == 'r' {
 		return "e" + reg[1:]
@@ -47,7 +48,17 @@ func downgrade(reg string) string {
 	return reg
 }
 
+// Downgrade a register until it is the size of a byte. Requires the string to be non-empty.
+func downgradeToByte(reg string) string {
+	retval := ""
+	if reg[0] == 'r' || reg[0] == 'e' {
+		retval = reg[1:]
+	}
+	return strings.Replace(retval, "x", "l", 1)
+}
+
 // Try to find the 64-bit version of a 32-bit register, or a 32-bit version of a 16-bit register
+// Requires the string to be non-empty
 func upgrade(reg string) string {
 	if (reg[0] == 'e') && is_64_bit_register("r"+reg[1:]) {
 		return "r" + reg[1:]
@@ -562,17 +573,25 @@ func (st Statement) String(ps *ProgramState) string {
 		}
 		return asmcode
 	} else if (st[0].t == KEYWORD && st[0].value == "mem") && (st[1].t == VALUE || st[1].t == VALID_NAME || st[1].t == REGISTER) && (st[2].t == ASSIGNMENT) && (st[3].t == VALUE || st[3].t == VALID_NAME || st[3].t == REGISTER) {
-		// TODO: I suspect that st[1].t can't be value, only valid_name or perhaps only register. Correct?
-		what := "" // BYTE?
-		if st[3].t == VALUE {
-			if value, err := strconv.Atoi(st[3].value); err == nil {
-				if value < 256 {
-					what = "BYTE"
-				}
-			}
-		}
 		// memory assignment
-		return "\tmov " + what + " [" + st[1].value + "], " + st[3].value + "\t\t; " + "memory assignment" + "\n"
+		return "\tmov [" + st[1].value + "], " + st[3].value + "\t\t; " + "memory assignment" + "\n"
+	} else if (st[0].t == KEYWORD && st[0].value == "memb") && (st[1].t == VALUE || st[1].t == VALID_NAME || st[1].t == REGISTER) && (st[2].t == ASSIGNMENT) && (st[3].t == VALUE || st[3].t == VALID_NAME || st[3].t == REGISTER) {
+		// memory assignment (byte)
+		val := st[3].value
+		if st[3].t == REGISTER {
+			val = downgradeToByte(val)
+		}
+		return "\tmov BYTE [" + st[1].value + "], " + val + "\t\t; " + "memory assignment" + "\n"
+	} else if (st[0].t == REGISTER) && (st[1].t == ASSIGNMENT) && (st[2].t == KEYWORD && st[2].value == "mem") && (st[3].t == VALUE || st[3].t == VALID_NAME || st[3].t == REGISTER) {
+		// assignment from memory to register
+		return "\tmov " + st[0].value + ", [" + st[3].value + "]\t\t; memory assignment\n"
+	} else if (st[0].t == REGISTER) && (st[1].t == ASSIGNMENT) && (st[2].t == KEYWORD && st[2].value == "memb") && (st[3].t == VALUE || st[3].t == VALID_NAME || st[3].t == REGISTER) {
+		// assignment from memory to register (byte)
+		val := st[0].value
+		if st[0].t == REGISTER {
+			val = downgradeToByte(val)
+		}
+		return "\tmov BYTE " + val + ", [" + st[3].value + "]\t\t; memory assignment (byte)\n"
 	} else if ((st[0].t == REGISTER) || (st[0].t == DISREGARD) || (st[0].value == "stack")) && (len(st) == 3) {
 		// Statements like "eax = 3" are handled here
 		// TODO: Handle all sorts of equivivalents to assembly statements
@@ -685,6 +704,12 @@ func (st Statement) String(ps *ProgramState) string {
 				return "\tdec " + st[0].value + "\t\t\t; " + st[0].value + "--"
 			}
 			return "\tsub " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " -= " + st[2].value
+		} else if (st[1].t == AND) && (st[2].t == VALUE) {
+			return "\tand " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " &= " + st[2].value
+		} else if (st[1].t == OR) && (st[2].t == VALUE) {
+			return "\tor " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " |= " + st[2].value
+		} else if (st[1].t == XOR) && (st[2].t == VALUE) {
+			return "\txor " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " ^= " + st[2].value
 		} else if (st[1].t == MULTIPLICATION) && (st[2].t == VALUE) {
 			// TODO: Don't use a list, write a function that covers the lot
 			shifts := []string{"2", "4", "8", "16", "32", "64", "128"}
