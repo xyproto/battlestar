@@ -561,6 +561,18 @@ func (st Statement) String(ps *ProgramState) string {
 			return "; End of inline C block"
 		}
 		return asmcode
+	} else if (st[0].t == KEYWORD && st[0].value == "mem") && (st[1].t == VALUE || st[1].t == VALID_NAME || st[1].t == REGISTER) && (st[2].t == ASSIGNMENT) && (st[3].t == VALUE || st[3].t == VALID_NAME || st[3].t == REGISTER) {
+		// TODO: I suspect that st[1].t can't be value, only valid_name or perhaps only register. Correct?
+		what := "" // BYTE?
+		if st[3].t == VALUE {
+			if value, err := strconv.Atoi(st[3].value); err == nil {
+				if value < 256 {
+					what = "BYTE"
+				}
+			}
+		}
+		// memory assignment
+		return "\tmov " + what + " [" + st[1].value + "], " + st[3].value + "\t\t; " + "memory assignment" + "\n"
 	} else if ((st[0].t == REGISTER) || (st[0].t == DISREGARD) || (st[0].value == "stack")) && (len(st) == 3) {
 		// Statements like "eax = 3" are handled here
 		// TODO: Handle all sorts of equivivalents to assembly statements

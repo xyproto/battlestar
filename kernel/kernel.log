@@ -1,0 +1,42 @@
+2014/10/29 11:17:28 Battlestar compiler
+2014/10/29 11:17:28 Version 0.3
+2014/10/29 11:17:28 Alexander Rødseth
+2014/10/29 11:17:28 2014
+2014/10/29 11:17:28 MIT licensed
+2014/10/29 11:17:28 TOKEN keyword:bootable
+2014/10/29 11:17:28 TOKEN keyword:extern
+2014/10/29 11:17:28 TOKEN name:kmain
+2014/10/29 11:17:28 TOKEN keyword:fun
+2014/10/29 11:17:28 TOKEN name:main
+2014/10/29 11:17:28 TOKEN name:kmain
+2014/10/29 11:17:28 TOKEN built-in:halt
+2014/10/29 11:17:28 TOKEN keyword:end
+2014/10/29 11:17:28 Found inline_c, starting inline C block
+2014/10/29 11:17:28 Found void, starting C block
+2014/10/29 11:17:28 Found the } of void C block
+2014/10/29 11:17:28 Found the end of inline C block
+2014/10/29 11:17:28 TOKEN keyword:bootable
+2014/10/29 11:17:28 TOKEN keyword:extern
+2014/10/29 11:17:28 TOKEN name:kmain
+2014/10/29 11:17:28 TOKEN keyword:fun
+2014/10/29 11:17:28 TOKEN name:main
+2014/10/29 11:17:28 TOKEN name:kmain
+2014/10/29 11:17:28 TOKEN built-in:halt
+2014/10/29 11:17:28 TOKEN keyword:end
+2014/10/29 11:17:28 Found inline_c, starting inline C block
+2014/10/29 11:17:28 Found void, starting C block
+2014/10/29 11:17:28 Found the } of void C block
+2014/10/29 11:17:28 Found the end of inline C block
+2014/10/29 11:17:28 --- Done tokenizing ---
+2014/10/29 11:17:28 Warning: Bootable kernels has nowhere to return after the main function. You might want to use the "halt" builtin at the end of the main function.
+2014/10/29 11:17:28 No _start has been defined, creating one
+2014/10/29 11:17:28 found inline_c starting inline_c block
+2014/10/29 11:17:28 found end ending inline_c block
+2014/10/29 11:17:28 --- Finalizing ---
+2014/10/29 11:17:28 Wrote kernel.asm (1892 bytes)
+2014/10/29 11:17:28 Wrote kernel.c (638 bytes)
+2014/10/29 11:17:28 Done.
+
+kernel.o kernel_c.o kernel.asm kernel kernel.log
+
+kernel kernel.asm kernel.c kernel.o kernel_c.o kernel kernel.log
