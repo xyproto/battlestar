@@ -34,7 +34,7 @@ src/battlestarc:
 	make -C src
 
 install-bin: src/battlestarc
-	install -Dm755 "$(PWD)/scripts/btstool.sh" "$(DESTDIR)$(BINDIR)/bts"
+	install -Dm755 "$(PWD)/scripts/bts.sh" "$(DESTDIR)$(BINDIR)/bts"
 	install -Dm755 "$(PWD)/scripts/build.sh" "$(DESTDIR)$(BINDIR)/btsbuild"
 	install -Dm755 "$(PWD)/src/battlestarc" "$(DESTDIR)$(BINDIR)/battlestarc"
 
@@ -42,7 +42,7 @@ install: install-bin
 
 devinstall: src/battlestarc
 	ln -sf $(PWD)/src/battlestarc /usr/bin/battlestarc
-	ln -sf $(PWD)/scripts/btstool.sh /usr/bin/bts
+	ln -sf $(PWD)/scripts/bts.sh /usr/bin/bts
 	ln -sf $(PWD)/scripts/build.sh /usr/bin/btsbuild
 
 uninstall:
