@@ -38,3 +38,10 @@ Built in functions:
     len(name)
 
     Represents the length of a constant, by the given name
+
+Comparison starts an if block:
+
+    x = 2
+	write(message)
+
+
