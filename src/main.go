@@ -108,8 +108,6 @@ func main() {
 		bootable := false
 		if temptokens := tokenize(string(bytes), true, " "); (len(temptokens) > 2) && (temptokens[0].t == KEYWORD) && (temptokens[0].value == "bootable") && (temptokens[1].t == SEP) {
 			bootable = true
-			// Header for bootable kernels, use 32-bit assembly
-			platform_bits = 32
 			asmdata += fmt.Sprintf("bits %d\n", platform_bits)
 		} else {
 			// Header for regular programs
@@ -151,7 +149,11 @@ func main() {
 				asmdata += add_starting_point_if_missing(asmcode, ps) + "\n"
 			}
 			if bootable {
-				asmdata = strings.Replace(asmdata, "; starting point of the program\n", "; starting point of the program\n\tmov esp, stack_top\t; set the esp register to the top of the stack (special case for bootable kernels)\n", 1)
+				reg := "esp"
+				if platform_bits == 64 {
+					reg = "rsp"
+				}
+				asmdata = strings.Replace(asmdata, "; starting point of the program\n", "; starting point of the program\n\tmov "+reg+", stack_top\t; set the "+reg+" register to the top of the stack (special case for bootable kernels)\n", 1)
 			}
 		}
 		ccode := ExtractInlineC(strings.TrimSpace(string(bytes)), true)

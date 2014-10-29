@@ -13,7 +13,7 @@ var (
 	comparisons = []string{"==", "!=", "<", ">", "<=", ">="}
 
 	// TODO: "use" and make the bootable kernel work somehow
-	keywords = []string{"fun", "ret", "const", "call", "extern", "end", "bootable", "counter", "address", "value", "loopwrite", "rawloop", "loop", "break", "continue", "use", "asm"}
+	keywords = []string{"fun", "ret", "const", "call", "extern", "end", "bootable", "counter", "address", "value", "loopwrite", "rawloop", "loop", "break", "continue", "use", "asm", "mem", "memb"}
 
 	// TODO: "read"
 	builtins = []string{"len", "int", "exit", "halt", "chr", "write", "read", "syscall"} // built-in functions

@@ -1,0 +1,59 @@
+bootable                       // This is not a regular program, but a bootable kernel
+                               // (ELF32 - must be loaded by grub, qemu -kernel or similar)
+
+const msg = "Success!"         // Not zero terminated, length is len(msg)
+const blank = " "              // Character for clearing the screen
+
+fun clear_screen
+  a = 0xb8000                  // Video memory for text
+  d = memb blank               // The first character in the blank string
+  loop 2000                    // 2000 characters (80*25), every other byte is an attribute
+    memb a = d                 // Clear character
+    a++                        // Go to attribute byte
+    memb a = 0x3E              // Cyan background (0x3) with yellow text (0x4), see https://en.wikipedia.org/wiki/BIOS_color_attributes
+    a++                        // Go to character byte
+  end
+end
+
+fun success
+  clear_screen
+
+  a = 0xb8000                  // Video memory
+  a += 660                     // Add offset, to move text further down
+  b = msg                      // Address of character to print
+
+  loop len(msg)
+    d = memb b                 // Get character
+    memb a = d                 // Store character in video memory
+    a += 2                     // Next character in video memory (skip attribute byte)
+    b++                        // Next character in message
+  end
+end
+
+fun place_cursor
+  b = 338                      // position = row * 80 + col
+  a = 0xf
+  d = 0x3df
+  (asm 32) out dx, eax
+  a = b
+  a &= 0xff
+  d = 0x3d5
+  (asm 32) out dx, eax
+  a = 0xe
+  d = 0x3d4
+  (asm 32) out dx, eax
+  a = b
+  a /= 0xff
+  a &= 0xff
+  d = 0x3d5
+  (asm 32) out, dx, eax
+end
+
+fun main
+    clear_screen               // Clear the screen
+    success                    // Print a message
+    place_cursor
+    halt                       // Clear interrupts, halt and loop forever
+end
+
+// vim: set syntax=c ts=4 sw=4 et:

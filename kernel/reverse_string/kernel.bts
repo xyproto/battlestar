@@ -1,0 +1,42 @@
+bootable                       // this is not a regular source file, but a kernel
+                               // (is ELF32 and must be loaded by grub, qemu -kernel or similar)
+
+const msg = "Success!"         // not zero terminated, length is len(msg)
+const blank = " "              // character for clearing the screen
+
+fun clear_screen
+  a = 0xb8000                  // video memory for text
+  d = memb blank               // the first character in the blank string
+  loop 2000                    // 2000 characters (80*25), every other byte is an attribute
+    memb a = d                 // clear character
+    a++                        // go to attribute byte
+    memb a = 0x07              // light gray on black background
+    a++                        // go to character byte
+  end
+end
+
+fun kernel_main
+  clear_screen
+  d = 0xb8000
+  loop len(msg)
+    b = c
+    b--
+    b *= 2
+
+    d += 2
+
+    b = msg
+    b += c
+    b--
+
+    a = memb b
+    memb d = a
+  end
+end
+
+fun main
+    kernel_main                // start the kernel
+    halt                       // clear interrupts, halt and loop forever
+end
+
+// vim: set syntax=c ts=4 sw=4 et:

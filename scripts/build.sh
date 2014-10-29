@@ -235,22 +235,35 @@ fi
 if [[ $1 == bootable ]]; then
   shift
 
-  echo 'Building a bootable kernel.'
+  echo "Building a bootable kernel ($bits-bits)."
   echo
 
-  asmcmd="$asm -f elf32"
-  echo $asmcmd
+  if [ $bits = 32 ]; then
+    asmcmd="$asm -f elf32"
+    cccmd="$stdgcc -m32 -ffreestanding -Wall -Wextra -fno-exceptions -Wno-implicit"
+    ldcmd='gcc -lgcc -nostdlib -Os -s -m32'
+  fi
 
-  cccmd="$stdgcc -m32 -ffreestanding -Wall -Wextra -fno-exceptions -Wno-implicit"
-  echo "$cccmd"
+  if [ $bits = 64 ]; then
+    asmcmd="$asm -f elf64"
+    cccmd="$stdgcc -m64 -ffreestanding -Wall -Wextra -fno-exceptions -Wno-implicit"
+    ldcmd='gcc -lgcc -nostdlib -Os -s -m64'
+  fi
 
-  ldcmd='gcc -lgcc -nostdlib -Os -s -m32'
-  if [ -e ../scripts/linker.ld ]; then
-    ldcmd="$ldcmd -T ../scripts/linker.ld"
+  if [ -e linker.ld$bits ]; then
+    ldcmd="$ldcmd -T linker.ld$bits"
   elif [ -e linker.ld ]; then
     ldcmd="$ldcmd -T linker.ld"
+  elif [ -e ../scripts/linker.ld$bits ]; then
+    ldcmd="$ldcmd -T ../scripts/linker.ld$bits"
+  elif [ -e ../scripts/linker.ld ]; then
+    ldcmd="$ldcmd -T ../scripts/linker.ld"
   fi
-  echo $ldcmd
+
+  echo "$asmcmd"
+  echo "$cccmd"
+  echo "$ldcmd"
+
   skipstrip=true
 fi
 
