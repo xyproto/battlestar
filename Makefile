@@ -38,6 +38,15 @@ install-bin: src/battlestarc
 	install -Dm755 "$(PWD)/scripts/build.sh" "$(DESTDIR)$(BINDIR)/btsbuild"
 	install -Dm755 "$(PWD)/src/battlestarc" "$(DESTDIR)$(BINDIR)/battlestarc"
 
+install-osx:
+	cp "$(PWD)/scripts/btstool.sh" "$(DESTDIR)$(BINDIR)/bts"
+	cp "$(PWD)/scripts/build.sh" "$(DESTDIR)$(BINDIR)/btsbuild"
+	cp "$(PWD)/src/battlestarc" "$(DESTDIR)$(BINDIR)/battlestarc"
+	chmod +x "$(DESTDIR)$(BINDIR)/bts"
+	chmod +x "$(DESTDIR)$(BINDIR)/btsbuild"
+	chmod +x "$(DESTDIR)$(BINDIR)/battlestarc"
+
+
 install: install-bin
 
 devinstall: src/battlestarc
