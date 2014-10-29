@@ -1,14 +1,18 @@
-all:
+SRC=kernel.bts
+BIN=kernel
+
+all: ${BIN}
+
+${BIN}: ${SRC}
 	@echo
-	bts build bootable boot.bts --bits=32
-	@mv boot boot.bin
-	@chmod -x boot.bin
-	@cat README
+	bts build bootable ${SRC} --bits=32
+	@chmod -x ${BIN}
 
 clean:
 	@echo 'Cleaning...'
 	bts clean
 	@-rm -f *.bin core.*
 
-boot:
-	qemu-system-i386 -kernel boot.bin
+boot: ${BIN}
+	@echo 'Booting...'
+	qemu-system-i386 -kernel ${BIN}
