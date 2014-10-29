@@ -250,6 +250,7 @@ if [[ $1 == bootable ]]; then
     ldcmd='gcc -lgcc -nostdlib -Os -s -m64'
   fi
 
+  # TODO Find a better way
   if [ -e linker.ld$bits ]; then
     ldcmd="$ldcmd -T linker.ld$bits"
   elif [ -e linker.ld ]; then
@@ -258,6 +259,12 @@ if [[ $1 == bootable ]]; then
     ldcmd="$ldcmd -T ../scripts/linker.ld$bits"
   elif [ -e ../scripts/linker.ld ]; then
     ldcmd="$ldcmd -T ../scripts/linker.ld"
+  elif [ -e ../../scripts/linker.ld$bits ]; then
+    ldcmd="$ldcmd -T ../../scripts/linker.ld$bits"
+  elif [ -e ../../scripts/linker.ld ]; then
+    ldcmd="$ldcmd -T ../../scripts/linker.ld"
+  else
+    abort "Could not find linker.ld script!"
   fi
 
   echo "$asmcmd"
