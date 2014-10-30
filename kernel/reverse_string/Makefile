@@ -15,4 +15,4 @@ clean:
 
 boot: ${BIN}
 	@echo 'Booting...'
-	qemu-system-x86_64 -kernel ${BIN}
+	qemu-system-i386 -kernel ${BIN}
