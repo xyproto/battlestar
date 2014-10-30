@@ -1,3 +1,6 @@
+// "Life"
+// The original was written by "melezov" (http://256bytes.untergrund.net/demo/334)
+
 fun main
     al = 0x13
     int 10

@@ -137,9 +137,14 @@ func main() {
 			asmdata += "section .text\n"
 		}
 		if platform_bits == 16 {
-			// If there is a main function, jump to it. If not, just start at the top.
-			if strings.Contains(asmcode, "\nmain:") {
-				asmdata += "jmp " + linker_start_function + "\n"
+			// If there are defined functions, jump over the definitions and start at
+			// the main/_start function. If there is a main function, jump to the
+			// linker start function. If not, just start at the top.
+			// TODO: This is a quick fix. Don't depend on the comment, find a better way.
+			if strings.Count(asmcode, "; name of the function") > 1 {
+				if strings.Contains(asmcode, "\nmain:") {
+					asmdata += "jmp " + linker_start_function + "\n"
+				}
 			}
 		}
 		if asmcode != "" {
