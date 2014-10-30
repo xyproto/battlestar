@@ -223,7 +223,7 @@ func tokenize(program string, debug bool, sep string) []Token {
 				}
 			} else if has(reserved, word) {
 				if has([]string{"a", "b", "c", "d"}, word) {
-					reg := ""
+					reg := word
 					switch platform_bits {
 					case 64:
 						reg = "r" + word
@@ -414,15 +414,15 @@ func reduce(st Statement, debug bool, ps *ProgramState) Statement {
 			if debug {
 				log.Println("SUCCESSFULL REPLACEMENT WITH", st[i])
 			}
-		} else if (st[i].t == BUILTIN) && (st[i].value == "write") && (st[i+1].t == STRING) {
-			log.Fatalln("Error: write can only write const strings, not immediate strings")
-		} else if (st[i].t == BUILTIN) && (st[i].value == "write") && ((st[i+1].t == VALID_NAME) || (st[i+1].t == REGISTER)) {
-			// replace write(msg) with
+		} else if (st[i].t == BUILTIN) && (st[i].value == "print") && (st[i+1].t == STRING) {
+			log.Fatalln("Error: print can only print const strings, not immediate strings")
+		} else if (st[i].t == BUILTIN) && (st[i].value == "print") && ((st[i+1].t == VALID_NAME) || (st[i+1].t == REGISTER)) {
+			// replace print(msg) with
 			// int(0x80, 4, 1, msg, len(msg)) on 32-bit
 			// syscall(1, msg, len(msg)) on 64-bit
 
 			// TODO: Find a way to output additional statements when a statement can be broken into several statements
-			//       (Like printing all the arguments to write, one by one)
+			//       (Like printing all the arguments to print, one by one)
 			//for _, token := range st[1:] {
 			//    Use token instead of st[i+1]
 			//}

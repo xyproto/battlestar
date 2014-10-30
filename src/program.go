@@ -17,6 +17,7 @@ type (
 		in_function               string              // name of the function we are currently in
 		in_loop                   string              // name of the loop we are currently in
 		in_if_block               string              // name of the if block we are currently in
+		endless                   bool                // ending the program with endless keyword?
 	}
 )
 

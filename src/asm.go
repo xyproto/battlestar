@@ -1,5 +1,7 @@
 package main
 
+// TODO Refactor
+
 import (
 	"fmt"
 	"log"
@@ -10,7 +12,7 @@ import (
 
 var (
 	registers = []string{"ah", "al", "bh", "bl", "ch", "cl", "dh", "dl", // 8-bit
-		"si", "di", "sp", "bp", "ip", "ax", "bx", "cx", "dx", "cs", "es", // 16-bit
+		"ax", "bx", "cx", "dx", "si", "di", "sp", "bp", "ip", "cs", "es", "ds", // 16-bit
 		"eax", "ebx", "ecx", "edx", "esi", "edi", "esp", "ebp", "eip", // 32-bit
 		"rax", "rbx", "rcx", "rdx", "rsi", "rdi", "rsp", "rbp", "rip", "r8", "r9",
 		"r10", "r11", "r12", "r13", "r14", "r15", "sil", "dil", "spl", "bpl",
@@ -20,20 +22,24 @@ var (
 )
 
 func is_64_bit_register(reg string) bool {
-	// pos 26 and upwards
-	return pos(registers, reg) >= 26
+	// Anything after "rax" (including)
+	return pos(registers, reg) >= pos(registers, "rax")
 }
 
 func is_32_bit_register(reg string) bool {
-	// pos 17 up to 26
-	p := pos(registers, reg)
-	return (17 <= p) && (p < 26)
+	regPos := pos(registers, reg)
+	eaxPos := pos(registers, "eax")
+	raxPos := pos(registers, "rax")
+	// Between "eax" (including) and "rax" (excluding)
+	return (eaxPos <= regPos) && (regPos < raxPos)
 }
 
 func is_16_bit_register(reg string) bool {
-	// pos 8 up to and including 16
-	p := pos(registers, reg)
-	return (8 <= p) && (p <= 16)
+	regPos := pos(registers, reg)
+	axPos := pos(registers, "ax")
+	eaxPos := pos(registers, "eax")
+	// Between "ax" (including) and "eax" (excluding)
+	return (axPos <= regPos) && (regPos < eaxPos)
 }
 
 // Try to find the 32-bit version of a 64-bit register, or a 16-bit version of a 32-bit register
@@ -50,7 +56,7 @@ func downgrade(reg string) string {
 
 // Downgrade a register until it is the size of a byte. Requires the string to be non-empty.
 func downgradeToByte(reg string) string {
-	retval := ""
+	retval := reg
 	if reg[0] == 'r' || reg[0] == 'e' {
 		retval = reg[1:]
 	}
@@ -325,7 +331,7 @@ func syscall_or_interrupt(st Statement, syscall bool) string {
 		}
 	}
 	if syscall {
-		// TODO: comment which system call it is, ie "write"
+		// TODO: comment which system call it is, ie "print"
 		precode = "\t;--- system call ---\n" + precode
 	} else {
 		comment := "\t;--- call interrupt "
@@ -420,7 +426,7 @@ func (st Statement) String(ps *ProgramState) string {
 			if st[3].t == STRING {
 				asmcode += "\t\t; constant string\n"
 				if platform_bits == 16 {
-					// Add an extra $, for safety, if on a 16-bit platform. Needed for write().
+					// Add an extra $, for safety, if on a 16-bit platform. Needed for print().
 					asmcode += "\tdb \"$\"\t\t\t; end of string, for when using ah=09/int 21h\n"
 				}
 			} else {
@@ -466,7 +472,7 @@ func (st Statement) String(ps *ProgramState) string {
 		asmcode += "\thlt\n"
 		asmcode += "\tjmp .hang\t; loop forever\n\n"
 		return asmcode
-	} else if (platform_bits == 16) && (st[0].t == BUILTIN) && (st[0].value == "write") && (st[1].t == VALID_NAME) {
+	} else if (platform_bits == 16) && (st[0].t == BUILTIN) && (st[0].value == "print") && (st[1].t == VALID_NAME) {
 		asmcode := "\t; --- output string that ends with $ ---\n"
 		asmcode += "\tmov dx, " + st[1].value + "\n"
 		asmcode += "\tmov ah, 0x09\n"
@@ -491,7 +497,7 @@ func (st Statement) String(ps *ProgramState) string {
 			}
 		}
 		if ps.in_function != "" {
-			if !bootable_kernel {
+			if !bootable_kernel && !ps.endless && (ps.in_function == "main") {
 				asmcode += "\n\t;--- return from \"" + ps.in_function + "\" ---\n"
 			}
 		} else if st[0].value == "exit" {
@@ -544,7 +550,11 @@ func (st Statement) String(ps *ProgramState) string {
 						}
 						asmcode += "\tint 0x21\t\t\t; exit program\n"
 					} else {
-						asmcode += "\tret\t\t\t; exit program\n"
+						if !ps.endless {
+							asmcode += "\tret\t\t\t; exit program\n"
+						} else {
+							asmcode += "\t; endless loop, there is no return\n"
+						}
 					}
 				}
 			} else {
@@ -920,7 +930,10 @@ func (st Statement) String(ps *ProgramState) string {
 					return "\t" + st[2].value + " " + st[3].value + " " + st[4].value + ", " + st[5].value + "\t\t\t; asm with floating point instructions\n"
 				}
 			} else if len(st) == 5 {
-				if st[3].value == "st" {
+				// with address calculations
+				if strings.Contains(st[4].value, "+") {
+					return "\t" + st[2].value + " " + st[3].value + ", [" + st[4].value + "]\t\t\t; asm with address calculation\n"
+				} else if st[3].value == "st" {
 					return "\t" + st[2].value + " " + st[3].value + " (" + st[4].value + ")\t\t\t; asm\n"
 				} else {
 					return "\t" + st[2].value + " " + st[3].value + ", " + st[4].value + "\t\t\t; asm\n"
@@ -928,8 +941,12 @@ func (st Statement) String(ps *ProgramState) string {
 			} else if len(st) == 4 {
 				return "\t" + st[2].value + " " + st[3].value + "\t\t\t; asm\n"
 			} else if len(st) == 3 {
-				// a label
-				return "\t" + st[2].value + "\t\t\t; asm label\n"
+				// a label or keyword like "stosb"
+				if strings.Contains(st[2].value, ":") {
+					return "\t" + st[2].value + "\t\t\t; asm label\n"
+				} else {
+					return "\t" + st[2].value + "\t\t\t; asm\n"
+				}
 			} else {
 				log.Fatalln("Error: Unrecognized length of assembly epxression:", len(st)-2)
 			}
@@ -1018,14 +1035,26 @@ func (st Statement) String(ps *ProgramState) string {
 		asmcode := ""
 		switch platform_bits {
 		case 16:
-			// TODO: Check the state set when value was used to find out if rep stosb or rep stosw should be used
 			if ps.loop_step == 2 {
 				asmcode += "\trep stosw\t\t\t; write the value in ax, cx times, starting at es:di\n"
-			} else if ps.loop_step == 1 {
+			} else { // if ps.loop_step == 1 {
 				asmcode += "\trep stosb\t\t\t; write the value in al, cx times, starting at es:di\n"
-			} else {
-				log.Fatalln("Error: Unrecognized step size when looping. Expected 1 or 2, found:", ps.loop_step)
 			}
+			//else log.Fatalln("Error: Unrecognized step size when looping. Defaulting to 1.")
+		default:
+			log.Fatalln("Error: Unimplemented: the", st[0].value, "keyword for", platform_bits, "bit platforms")
+		}
+		return asmcode
+	} else if (st[0].t == KEYWORD) && (st[0].value == "write") && (len(st) == 1) {
+		asmcode := ""
+		switch platform_bits {
+		case 16:
+			if ps.loop_step == 2 {
+				asmcode += "\tstosw\t\t\t; write the value in ax, starting at es:di\n"
+			} else { // if ps.loop_step == 1 {
+				asmcode += "\tstosb\t\t\t; write the value in al, starting at es:di\n"
+			}
+			//else log.Fatalln("Error: Unrecognized step size. Defaulting to 1.")
 		default:
 			log.Fatalln("Error: Unimplemented: the", st[0].value, "keyword for", platform_bits, "bit platforms")
 		}
@@ -1274,7 +1303,11 @@ section .text
 		} else {
 			log.Fatalln("Error: Unclear which loop one should continue to the top of.")
 		}
-
+	} else if (st[0].t == KEYWORD) && (st[0].value == "endless") && (len(st) == 1) {
+		//ps.in_loop = ""
+		//ps.in_function = ""
+		ps.endless = true
+		return "; there is no return\n"
 	} else if (st[0].t == KEYWORD) && (st[0].value == "end") && (len(st) == 1) {
 		if inline_c {
 			inline_c = false
@@ -1294,6 +1327,7 @@ section .text
 			}
 			if endless {
 				asmcode += "\tjmp " + ps.in_loop + "\t\t\t\t; loop forever\n"
+				ps.endless = true
 			} else {
 				//asmcode += "\tloop " + in_loop + "\t\t\t\t; loop until " + counter_register() + " is zero\n"
 				asmcode += "\tdec " + counter_register() + "\t\t\t\t; decrease counter\n"
@@ -1310,7 +1344,7 @@ section .text
 			return newstatement.String(ps)
 		} else {
 			// If the function was already ended with "exit", don't freak out when encountering an "end"
-			if !ps.surprise_ending_with_exit {
+			if !ps.surprise_ending_with_exit && !ps.endless {
 				log.Fatalln("Error: Not in a function or block of inline C, hard to tell what should be ended with \"end\". Statement nr:", st[0].line)
 			} else {
 				// Prepare for more surprises
