@@ -34,7 +34,7 @@ Features
 In progress
 -----------
 * OS X support
-* Qemu support
+* Reimplementation of 256b demoscene demos
 
 Build dependencies
 ------------------
