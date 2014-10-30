@@ -8,9 +8,9 @@ fun main
         r8 *= 2
     end
     loop r8
-        write(dot)
+        print(dot)
     end
-    write(nl)
+    print(nl)
 end
 
 // vim: set syntax=c ts=4 sw=4 et:

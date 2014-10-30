@@ -4,11 +4,11 @@ const bstring = "B"
 const nl = 10
 
 fun printb
-    write(bstring)
+    print(bstring)
 end
 
 fun newline
-    write(nl)
+    print(nl)
 end
 
 fun get7

@@ -10,7 +10,7 @@ fun main
     syscall(1, 1, chr(rax), 4)
 
     // Output a newline
-    write(nl)
+    print(nl)
 end
 
 // vim: set syntax=c ts=4 sw=4 et:

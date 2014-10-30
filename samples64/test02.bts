@@ -2,11 +2,11 @@ const astring = "A"
 const nl = 10
 
 fun printa
-    write(astring)
+    print(astring)
 end
 
 fun newline
-    write(nl)
+    print(nl)
 end
 
 void main() {

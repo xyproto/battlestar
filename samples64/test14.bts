@@ -1,22 +1,22 @@
 // Iterative version of the Fibonacci algorithm.
-// "writenum" will only print correct numbers up to 21.
+// "printnum" will only print correct numbers up to 21.
 
 const nl = "\n"
 
-// Write two digits, based on the value in a. Also writes a newline.
-fun writenum
+// Write two digits, based on the value in a. Also prints a newline.
+fun printnum
     b = a
     a >= 10
         a /= 10
         // modulo is in the d register after idiv
         b = d
         a += 48 // ASCII value for '0'
-        write(chr(a))
+        print(chr(a))
     end
     a = b
     a += 48 // ASCII value for '0'
-    write(chr(a))
-    write(nl)
+    print(chr(a))
+    print(nl)
 end
 
 // Fibonacci sequence
@@ -27,7 +27,7 @@ fun main
     loop
         a = r8
         break (a > 21)
-        writenum()
+        printnum()
 
         a = r8
         a += r9
