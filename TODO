@@ -1,3 +1,7 @@
+* Reimplement more 16-bit demoscene demos.
+
+* A way to combine string constants.
+
 * Require yasm or nasm, not just yasm.
 
 * Make bottle99 and fibonacci work on OS X
@@ -6,18 +10,15 @@
   Something like: x:8 ? x.8 ? x8 ? For every variable name ending with 8, 16, 32 or 64, the number
   becomes the bits?
 
-* Syntax for combining string constants.
-
 * Add support for Kolibri OS http://wiki.kolibrios.org/wiki/Writing_applications_for_KolibriOS
 
 * "bts --help" and "man bts"
 
 * String blocks can consists of: constants, immediate strings, registers (interpreted as ASCII numbers) and numbers (interpreted as strings)
 
-* Add internal state that keeps track of what the values in the various registers are.
+* Add internal state that keeps track of what the values in the various registers are used for.
 
-* Create syntax for combining strings
-* Create a keyword "protected". If a register is protected, it will be pushed and popped
+* Create a keyword "keep" or "protected". If a register is protected, it will be pushed and popped
   at every function call.
 * Consider making cx/ecx/rcx protected by default in every loop.
 

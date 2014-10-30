@@ -4,7 +4,7 @@ Battlestar
 [![Build Status](https://travis-ci.org/xyproto/battlestar.svg?branch=master)](https://travis-ci.org/xyproto/battlestar)
 [![Build Status](https://drone.io/github.com/xyproto/battlestar/status.png)](https://drone.io/github.com/xyproto/battlestar/latest)
 
-* Version: 0.3
+* Version: 0.4
 * License: MIT
 * Author: Alexander Rødseth
 
@@ -22,7 +22,7 @@ Features
 
 * The resulting executables are tiny!
 * "hello world" is only *129* bytes on 32-bit Linux (when using sstrip from elfkickers).
-* It's possible to write an operating system with only one source file.
+* It's possible to write an operating system / kernel with only one source file.
 * Full support for inline C (by utilizing gcc).
 * C and Battlestar code can exist in the same source file and calls can be made both ways.
 * Battlestar programs compiles almost instantly.
@@ -34,7 +34,8 @@ Features
 In progress
 -----------
 * OS X support
-* Reimplementation of 256b demoscene demos
+* Reimplementing 16-bit demoscene demos without using any inline assembly
+* See TODO
 
 Build dependencies
 ------------------

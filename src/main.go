@@ -25,7 +25,7 @@ var (
 
 func main() {
 	name := "Battlestar"
-	version := "0.3"
+	version := "0.4"
 	log.Println(name + " compiler")
 	log.Println("Version " + version)
 	log.Println("Alexander Rødseth")
