@@ -15,9 +15,10 @@ samples:
 	make -C samples16
 	make -C kernel/simple
 	make -C kernel/with_c
+	make -C kernel/reverse_string
 	make -C bottles99
-	make -C sdl2
 	make -C fibonacci
+	make -C sdl2
 
 clean:
 	make -C src clean
@@ -28,22 +29,20 @@ clean:
 	make -C samples16 clean
 	make -C kernel/simple clean
 	make -C kernel/with_c clean
+	make -C kernel/reverse_string clean
 	make -C bottles99 clean
-	make -C sdl2 clean
 	make -C fibonacci clean
+	make -C sdl2 clean
 
 src/battlestarc:
 	make -C src
 
-install-bin: src/battlestarc
+install-linux: src/battlestarc
 	install -Dm755 "$(PWD)/scripts/bts.sh" "$(DESTDIR)$(BINDIR)/bts"
 	install -Dm755 "$(PWD)/scripts/build.sh" "$(DESTDIR)$(BINDIR)/btsbuild"
 	install -Dm755 "$(PWD)/src/battlestarc" "$(DESTDIR)$(BINDIR)/battlestarc"
 
-install-osx: src/battlestarc
-	rm -f "$(DESTDIR)$(BINDIR)/bts"
-	rm -f "$(DESTDIR)$(BINDIR)/btsbuild"
-	rm -f "$(DESTDIR)$(BINDIR)/battlestarc"
+install-osx: uninstall src/battlestarc
 	cp -v "$(PWD)/scripts/bts.sh" "$(DESTDIR)$(BINDIR)/bts"
 	cp -v "$(PWD)/scripts/build.sh" "$(DESTDIR)$(BINDIR)/btsbuild"
 	cp -v "$(PWD)/src/battlestarc" "$(DESTDIR)$(BINDIR)/battlestarc"
@@ -51,7 +50,9 @@ install-osx: src/battlestarc
 	chmod +x "$(DESTDIR)$(BINDIR)/btsbuild"
 	chmod +x "$(DESTDIR)$(BINDIR)/battlestarc"
 
-install: install-bin
+install:
+	@# TODO: Add OS X detection
+	@echo 'Use "make install-linux" for Linux and "make install-osx" for OS X'
 
 devinstall: src/battlestarc
 	ln -sf $(PWD)/src/battlestarc /usr/bin/battlestarc
