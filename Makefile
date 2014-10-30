@@ -13,7 +13,8 @@ samples:
 	make -C samples64
 	make -C samples32
 	make -C samples16
-	make -C kernel
+	make -C kernel/simple
+	make -C kernel/with_c
 	make -C bottles99
 	make -C sdl2
 	make -C fibonacci
@@ -25,7 +26,8 @@ clean:
 	make -C samples64 clean
 	make -C samples32 clean
 	make -C samples16 clean
-	make -C kernel clean
+	make -C kernel/simple clean
+	make -C kernel/with_c clean
 	make -C bottles99 clean
 	make -C sdl2 clean
 	make -C fibonacci clean

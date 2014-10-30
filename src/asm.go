@@ -743,6 +743,8 @@ func (st Statement) String(ps *ProgramState) string {
 				return "\tshr " + st[0].value + ", " + strconv.Itoa(pos) + "\t\t; " + st[0].value + " /= " + st[2].value
 			} else {
 				asmcode := "\n\t;--- signed division: " + st[0].value + " /= " + st[2].value + " ---\n"
+				// TODO Add support for division with 16-bit registers as well!
+
 				if platform_bits == 32 {
 					// Dividing a 64-bit number in edx:eax by the number in ecx. Clearing out edx and only using 32-bit numbers for now.
 					// If the register to be divided is rax, do a quicker division than if it's another register
@@ -761,6 +763,9 @@ func (st Statement) String(ps *ProgramState) string {
 						asmcode += "\tpop edx\t\t; restore edx\n"
 						// restore ecx
 						asmcode += "\tpop ecx\t\t; restore ecx\n"
+					} else if st[0].value == "ax" {
+						// to be implemented!
+						log.Fatalln("ax divison is to be implemented!")
 					} else {
 						// TODO: if the given register is a different one than eax, ecx and edx,
 						//       just divide directly with that register, like for eax above
@@ -778,6 +783,10 @@ func (st Statement) String(ps *ProgramState) string {
 						if is_64_bit_register(st[0].value) {
 							if downgrade(st[0].value) != "eax" {
 								asmcode += "\tmov eax, " + downgrade(st[0].value) + "\t\t; dividend, number to be divided\n"
+							}
+						} else if is_16_bit_register(st[0].value) {
+							if upgrade(st[0].value) != "eax" {
+								asmcode += "\tmov eax, " + upgrade(st[0].value) + "\t\t; dividend, number to be divided\n"
 							}
 						} else {
 							if st[0].value != "eax" {

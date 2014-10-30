@@ -46,7 +46,7 @@ fun place_cursor
   a /= 0xff
   a &= 0xff
   d = 0x3d5
-  (asm 32) out, dx, eax
+  (asm 32) out dx, eax
 end
 
 fun main
