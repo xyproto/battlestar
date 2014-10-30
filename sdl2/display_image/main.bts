@@ -48,17 +48,17 @@ end
 
 fun main
     // Initialize SDL2
-    write(init_msg)
+    print(init_msg)
     init_sdl
-    write(done)
+    print(done)
 
     // Load the bitmap image
-    write(load_msg1)
-    write(image_filename_z)
-    write(load_msg2)
+    print(load_msg1)
+    print(image_filename_z)
+    print(load_msg2)
     funparam[0] = image_filename_z
     load_bmp
-    write(done)
+    print(done)
 
     // Show the image and wait 2 seconds
     display
@@ -66,9 +66,9 @@ fun main
     SDL_Delay
 
     // Close down SDL2
-    write(quit_msg)
+    print(quit_msg)
     close_sdl
-    write(done)
+    print(done)
 end
 
 // vim: set syntax=c ts=4 sw=4 et:

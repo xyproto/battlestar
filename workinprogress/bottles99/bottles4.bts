@@ -11,19 +11,19 @@ const store = "Go to the store and buy some more, "
 const dotnl = ".\n"
 const nl = "\n"
 
-// Write two digits, uses the value in a
-fun writenum
+// Print two digits, use the value in a
+fun printnum
     b = a
     a >= 10
         a /= 10
         // modulo is in the d register after idiv
         b = d
         a += 48 // ASCII value for '0'
-        write(chr(a))
+        print(chr(a))
     end
     a = b
     a += 48 // ASCII value for '0'
-    write(chr(a))
+    print(chr(a))
 end
 
 fun main
@@ -34,7 +34,7 @@ fun main
 
         // Print the loop counter (passed in the a register)
         a = c
-        writenum()
+        printnum()
 
         // N, "bottles of beer on the wall, "
         writestack_reverse // save the stackpointer to a
@@ -48,7 +48,7 @@ fun main
 
         // Retrieve and print the number
         stack -> a
-        writenum()
+        printnum()
 
         // N, "bottles of beer."
         writestack_reverse
@@ -59,21 +59,21 @@ fun main
         end
 
         // "Take one down and pass it around,"
-        write(takedown)
+        print(takedown)
 
         // N-1, "bottles of beer on the wall."
         stack -> a
         a--
         // Store N-1, used just a few lines down
         a -> stack
-        writenum()
+        printnum()
 
-        write(bottle)
+        print(bottle)
         // Retrieve N-1
         stack -> a
         // Write an "s" if the count is not 1
         a != 1
-            write(plural)
+            print(plural)
         end
 
         // Write the rest
@@ -91,7 +91,7 @@ fun main
 
         // "1 bottle of beer on the wall,"
         a = 1
-        writenum()
+        printnum()
 
         writestack_reverse
             bottle -> stack
@@ -102,7 +102,7 @@ fun main
 
         // "1"
         a = 1
-        writenum()
+        printnum()
 
         writestack_reverse
             // " bottle of beer."
@@ -136,7 +136,7 @@ fun main
 
         // "99 bottles of beer on the wall."
         a = 99
-        writenum()
+        printnum()
 
         writestack_reverse
             bottle -> stack

@@ -7,16 +7,16 @@ extern SDL_Delay
 
 fun main
     // Initialize the SDL2 Video subsystem
-    write(initsdl)
+    print(initsdl)
     funparam[0] = 0x20 // SDL_INIT_VIDEO
     call SDL_Init
-    write(done)
+    print(done)
 
     // Sleep 200 milliseconds
-    write(sleep2)
+    print(sleep2)
     funparam[0] = 200
     call SDL_Delay
-    write(done)
+    print(done)
 end
 
 // vim: set syntax=c ts=4 sw=4 et:

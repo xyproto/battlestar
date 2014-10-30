@@ -28,10 +28,10 @@ fun main
 
     // --- Initialize SDL2 ---
 
-    write(initsdl)
+    print(initsdl)
     funparam[0] = 0x32  // SDL_INIT_TIMER | SDL_INIT_VIDEO   // 0x7231 = SDL_INIT_EVERYTHING
     call SDL_Init
-    write(done)
+    print(done)
 
     // --- Create a window ---
 
@@ -47,7 +47,7 @@ fun main
     // Pointer to SDL_Window is now in a. Save it and check if it is 0.
     a -> stack
     a == 0
-        write(err)
+        print(err)
         exit
     end
 
@@ -64,12 +64,12 @@ fun main
     funparam[2] = 0x1          // software   // 0x6 = SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC
     call SDL_CreateRenderer
 
-    write(hepp)
+    print(hepp)
 
     // Pointer to SDL_Renderer is now in a. Save it and check if it is 0.
     a -> stack
     a == 0
-        write(err)
+        print(err)
         exit
     end
 
@@ -88,7 +88,7 @@ fun main
     // Pointer to the SDL_Surface is now in a. Save it and check if it is 0.
     a -> stack
     a == 0
-        write(err)
+        print(err)
         exit
     end
 
@@ -111,7 +111,7 @@ fun main
     // Pointer to the SDL_Texture is now in a. Save it and check if it is 0.
     a -> stack
     a == 0
-        write(err)
+        print(err)
         exit
     end
 
@@ -155,12 +155,12 @@ fun main
     b -> stack                  // put back the texture
 
     // Wait 2 seconds
-    write(sleeping)
+    print(sleeping)
     funparam[0] = 2000
     call SDL_Delay
-    write(done)
+    print(done)
 
-    write(alldone)
+    print(alldone)
 end
 
 // vim: set syntax=c ts=4 sw=4 et:
