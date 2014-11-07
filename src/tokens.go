@@ -24,11 +24,12 @@ const (
 	OR             = 15
 	XOR            = 16
 	COMPARISON     = 17
-	PUSHPOP        = 18
+	ARROW          = 18
 	MEMEXP         = 19 // memory expressions, like [di+321]
 	ASMLABEL       = 20
 	ROL            = 21  // rotate left instruction
 	ROR            = 22  // rotate right instruction
+	SEGOFS         = 23  // segment:offset for 16-bit assembly
 	SEP            = 127 // statement separator
 	UNKNOWN        = 255
 )
@@ -38,7 +39,7 @@ var (
 	tokenDebug     = false
 	newTokensDebug = true
 
-	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard", RESERVED: "reserved", VARIABLE: "variable", ADDITION: "addition", SUBTRACTION: "subtraction", MULTIPLICATION: "multiplication", DIVISION: "division", COMPARISON: "comparison", PUSHPOP: "stack operation", MEMEXP: "address expression", ASMLABEL: "assembly label", AND: "and", XOR: "xor", OR: "or", ROL: "rol", ROR: "ror"}
+	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard", RESERVED: "reserved", VARIABLE: "variable", ADDITION: "addition", SUBTRACTION: "subtraction", MULTIPLICATION: "multiplication", DIVISION: "division", COMPARISON: "comparison", ARROW: "stack operation", MEMEXP: "address expression", ASMLABEL: "assembly label", AND: "and", XOR: "xor", OR: "or", ROL: "rol", ROR: "ror", SEGOFS: "segment+offset"}
 	// see also the top of language.go, when adding tokens
 )
 
@@ -219,7 +220,7 @@ func tokenize(program string, sep string) []Token {
 				case ">>>":
 					tokentype = ROR
 				case "->":
-					tokentype = PUSHPOP
+					tokentype = ARROW
 				default:
 					log.Fatalln("Error: Unhandled operator:", word)
 				}
@@ -336,6 +337,16 @@ func tokenize(program string, sep string) []Token {
 				t = Token{ASMLABEL, word, statementnr, ""}
 				tokens = append(tokens, t)
 				logtoken(t)
+			} else if strings.Count(word, ":") == 1 {
+				regs := strings.Split(word, ":")
+				if has(registers, regs[0]) && has(registers, regs[1]) {
+					// segment:offset
+					t = Token{SEGOFS, "[" + word + "]", statementnr, ""}
+					tokens = append(tokens, t)
+					logtoken(t)
+				} else {
+					log.Fatalln("Unrecognized segment:offset token:", word)
+				}
 			} else {
 				log.Println("TOKEN", word, "unknown")
 				log.Fatalln("Error: Unrecognized token:", word)

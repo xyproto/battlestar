@@ -670,7 +670,7 @@ func (st Statement) String(ps *ProgramState) string {
 			return "\tmov " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " " + st[1].value + " " + st[2].value
 		} else if (st[0].t == RESERVED) && (st[1].t == VALUE) {
 			return reserved_and_value(st[:2])
-		} else if (len(st) == 3) && ((st[0].t == REGISTER) || st[0].value == "stack") && (st[1].t == PUSHPOP) && ((st[2].t == REGISTER) || (st[2].value == "stack")) {
+		} else if (len(st) == 3) && ((st[0].t == REGISTER) || (st[0].value == "stack") || (st[0].t == VALUE)) && (st[1].t == ARROW) && ((st[2].t == REGISTER) || (st[2].value == "stack")) {
 			// push and pop
 			if (st[0].value == "stack") && (st[2].value == "stack") {
 				log.Fatalln("Error: can't pop and push to stack at the same time")
@@ -723,7 +723,9 @@ func (st Statement) String(ps *ProgramState) string {
 			return "\tand " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " &= " + st[2].value
 		} else if (st[1].t == OR) && ((st[2].t == VALUE) || (st[2].t == MEMEXP)) {
 			return "\tor " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " |= " + st[2].value
-		} else if (st[1].t == XOR) && ((st[2].t == VALUE) || (st[2].t == MEMEXP)) {
+			// TODO: All == MEMEXP should be followed by || st[2].t == REGEXP. In fact,
+			//       a better system is needed. Some sort of pattern matching.
+		} else if (st[1].t == XOR) && ((st[2].t == VALUE) || (st[2].t == MEMEXP) || (st[2].t == REGISTER)) {
 			return "\txor " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " ^= " + st[2].value
 		} else if (st[1].t == ROL) && ((st[2].t == VALUE) || (st[2].t == MEMEXP) || (st[2].t == REGISTER)) {
 			return "\trol " + st[0].value + ", " + st[2].value + "\t\t\t; rotate " + st[0].value + " left" + st[2].value
