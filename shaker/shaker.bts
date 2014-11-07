@@ -1,0 +1,53 @@
+// TODO: Don't strip [ and ] for inline assembly!
+//       One approach is to have tokens for [ and ].
+//       Another is to not tokenize the rest of the line after (asm ...)
+
+	al = 0x13
+	int 10
+
+    // TODO: Make this work with "0x0a000 -> stack" and "0x09000 -> stack"
+	(asm 16) push 0x0a000
+	(asm 16) push 0x09000
+	stack -> ds
+	stack -> es
+
+(asm 16) P:	
+
+    // Generates sine-like table
+    (asm 16) mov [bx], ch // TODO: Make this work
+
+    c += si
+	a = 40
+
+    // TODO: Add support for imul with only one parameter
+	(asm 16) imul cx
+
+	si -= d
+	b++
+	(asm 16) jnz P
+
+(asm 16) L:
+	si = 320
+	a = di
+	d = 0
+	(asm 16) div si
+	si = d
+	al += [si+bx]                  // add al, byte [si+bx]
+	si = a
+	dl += [si+bx]                  // add dl, byte [si+bx]
+	al ^= dl
+	write
+	(asm 16) loop L
+	
+	(asm 16) mov al, [es:bx]
+	d = 0x3c9
+	(asm 16) out dx, al
+	(asm 16) out dx, al
+	(asm 16) out dx, al
+	b++
+	(asm 16) in al, 60h
+	a--
+	(asm 16) jnz L
+
+
+// vim: set syntax=c ts=4 sw=4 et:
