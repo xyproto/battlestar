@@ -1,3 +1,5 @@
+* Support for adc, cwd, jz and jnz (use the loop label automatically)
+
 * Reimplement more 16-bit demoscene demos.
 
 * A way to combine string constants.

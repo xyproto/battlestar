@@ -725,9 +725,9 @@ func (st Statement) String(ps *ProgramState) string {
 			return "\tor " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " |= " + st[2].value
 		} else if (st[1].t == XOR) && ((st[2].t == VALUE) || (st[2].t == MEMEXP)) {
 			return "\txor " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " ^= " + st[2].value
-		} else if (st[1].t == ROL) && ((st[2].t == VALUE) || (st[2].t == MEMEXP)) {
+		} else if (st[1].t == ROL) && ((st[2].t == VALUE) || (st[2].t == MEMEXP) || (st[2].t == REGISTER)) {
 			return "\trol " + st[0].value + ", " + st[2].value + "\t\t\t; rotate " + st[0].value + " left" + st[2].value
-		} else if (st[1].t == ROR) && ((st[2].t == VALUE) || (st[2].t == MEMEXP)) {
+		} else if (st[1].t == ROR) && ((st[2].t == VALUE) || (st[2].t == MEMEXP) || (st[2].t == REGISTER)) {
 			return "\tror " + st[0].value + ", " + st[2].value + "\t\t\t; rotate " + st[0].value + " right " + st[2].value
 		} else if (st[1].t == MULTIPLICATION) && ((st[2].t == VALUE) || (st[2].t == MEMEXP)) {
 			// TODO: Don't use a list, write a function that covers the lot
