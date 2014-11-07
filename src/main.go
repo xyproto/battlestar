@@ -106,7 +106,7 @@ func main() {
 
 		// If "bootable" is the first token
 		bootable := false
-		if temptokens := tokenize(string(bytes), true, " "); (len(temptokens) > 2) && (temptokens[0].t == KEYWORD) && (temptokens[0].value == "bootable") && (temptokens[1].t == SEP) {
+		if temptokens := tokenize(string(bytes), " "); (len(temptokens) > 2) && (temptokens[0].t == KEYWORD) && (temptokens[0].value == "bootable") && (temptokens[1].t == SEP) {
 			bootable = true
 			asmdata += fmt.Sprintf("bits %d\n", platform_bits)
 		} else {
@@ -122,7 +122,7 @@ func main() {
 		init_interrupt_parameter_registers(platform_bits)
 
 		bts_code := add_extern_main_if_missing(string(bytes))
-		tokens := add_exit_token_if_missing(tokenize(bts_code, true, " "))
+		tokens := add_exit_token_if_missing(tokenize(bts_code, " "))
 		log.Println("--- Done tokenizing ---")
 		constants, asmcode := TokensToAssembly(tokens, true, false, ps)
 		if constants != "" {

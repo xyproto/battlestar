@@ -672,12 +672,17 @@ func (st Statement) String(ps *ProgramState) string {
 			return reserved_and_value(st[:2])
 		} else if (len(st) == 3) && ((st[0].t == REGISTER) || st[0].value == "stack") && (st[1].t == PUSHPOP) && ((st[2].t == REGISTER) || (st[2].value == "stack")) {
 			// push and pop
-			if st[2].value == "stack" {
+			if (st[0].value == "stack") && (st[2].value == "stack") {
+				log.Fatalln("Error: can't pop and push to stack at the same time")
+			} else if st[2].value == "stack" {
 				// something -> stack (push)
 				return "\tpush " + st[0].value + "\t\t\t; " + st[0].value + " -> stack\n"
-			} else {
+			} else if st[0].value == "stack" {
 				// stack -> something (pop)
 				return "\tpop " + st[2].value + "\t\t\t\t; stack -> " + st[2].value + "\n"
+			} else if (st[0].t == REGISTER) && (st[2].t == REGISTER) {
+				// reg -> reg (push and then pop)
+				return "\tpush " + st[0].value + "\t\t\t; " + st[0].value + " -> " + st[2].value + "\n\tpop " + st[2].value + "\t\t\t\t;\n"
 			}
 		} else if (st[0].t == REGISTER) && (st[1].t == ASSIGNMENT) && (st[2].t == RESERVED || st[2].t == VALUE) && (st[3].t == VALUE) {
 			if st[2].value == "funparam" {
@@ -704,23 +709,27 @@ func (st Statement) String(ps *ProgramState) string {
 		} else if (st[1].t == DIVISION) && (st[2].t == REGISTER) {
 			return "\tidiv " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " /= " + st[2].value
 		}
-		if (st[1].t == ADDITION) && (st[2].t == VALUE) {
+		if (st[1].t == ADDITION) && ((st[2].t == VALUE) || (st[2].t == MEMEXP)) {
 			if st[2].value == "1" {
 				return "\tinc " + st[0].value + "\t\t\t; " + st[0].value + "++"
 			}
 			return "\tadd " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " += " + st[2].value
-		} else if (st[1].t == SUBTRACTION) && (st[2].t == VALUE) {
+		} else if (st[1].t == SUBTRACTION) && ((st[2].t == VALUE) || (st[2].t == MEMEXP)) {
 			if st[2].value == "1" {
 				return "\tdec " + st[0].value + "\t\t\t; " + st[0].value + "--"
 			}
 			return "\tsub " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " -= " + st[2].value
-		} else if (st[1].t == AND) && (st[2].t == VALUE) {
+		} else if (st[1].t == AND) && ((st[2].t == VALUE) || (st[2].t == MEMEXP)) {
 			return "\tand " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " &= " + st[2].value
-		} else if (st[1].t == OR) && (st[2].t == VALUE) {
+		} else if (st[1].t == OR) && ((st[2].t == VALUE) || (st[2].t == MEMEXP)) {
 			return "\tor " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " |= " + st[2].value
-		} else if (st[1].t == XOR) && (st[2].t == VALUE) {
+		} else if (st[1].t == XOR) && ((st[2].t == VALUE) || (st[2].t == MEMEXP)) {
 			return "\txor " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " ^= " + st[2].value
-		} else if (st[1].t == MULTIPLICATION) && (st[2].t == VALUE) {
+		} else if (st[1].t == ROL) && ((st[2].t == VALUE) || (st[2].t == MEMEXP)) {
+			return "\trol " + st[0].value + ", " + st[2].value + "\t\t\t; rotate " + st[0].value + " left" + st[2].value
+		} else if (st[1].t == ROR) && ((st[2].t == VALUE) || (st[2].t == MEMEXP)) {
+			return "\tror " + st[0].value + ", " + st[2].value + "\t\t\t; rotate " + st[0].value + " right " + st[2].value
+		} else if (st[1].t == MULTIPLICATION) && ((st[2].t == VALUE) || (st[2].t == MEMEXP)) {
 			// TODO: Don't use a list, write a function that covers the lot
 			shifts := []string{"2", "4", "8", "16", "32", "64", "128"}
 			if has(shifts, st[2].value) {
@@ -737,7 +746,7 @@ func (st Statement) String(ps *ProgramState) string {
 			} else {
 				return "\timul " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " *= " + st[2].value
 			}
-		} else if (st[1].t == DIVISION) && (st[2].t == VALUE) {
+		} else if (st[1].t == DIVISION) && ((st[2].t == VALUE) || (st[2].t == MEMEXP)) {
 			// TODO: Don't use a list, write a function that covers the lot
 			shifts := []string{"2", "4", "8", "16", "32", "64", "128"}
 			if has(shifts, st[2].value) {

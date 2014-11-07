@@ -2,17 +2,15 @@
 // The original was written by "melezov" (http://256bytes.untergrund.net/demo/334)
 
 fun main
-    al = 0x13
+    al = 0x13               // set graphics mode (mode 13h)  
+                            // 320x200, 256 colors, one byte per pixel
     int 10
 
     stack -> sp             // pop  sp
     stack -> b              // pop  bx
     stack -> ds             // pop  ds
 
-    //ds -> es // TODO: translate into two instructions that push ds and pop es
-
-    ds -> stack             // push ds
-    stack -> es             // pop  es
+    ds -> es                // push ds, pop es
 
     al = 62
     ch = 0xFA
@@ -20,13 +18,13 @@ fun main
 
     loop
 
-        (asm 16) rol di, 3
+        di <<< 3           // rotate left 3
 
-        di -= 7
-        di ^= 2
+        di -= 7            // subtraction
+        di ^= 2            // xor
 
-        al = memb di         // read byte from memory
-        (asm 16) add al, [di+321]
+        al = memb di       // read byte from memory
+        al += [di+321]     // add value at [di+321] (pixel on the line below)
         al /= 2
 
         di -> stack
@@ -39,9 +37,8 @@ fun main
 
         stack -> di
 
-    end
+    end // loops forever
 
-    //endless                              // Endless loop, don't return
 end
 
 // vim: set syntax=c ts=4 sw=4 et:
