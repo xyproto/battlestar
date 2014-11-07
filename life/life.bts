@@ -8,6 +8,9 @@ fun main
     stack -> sp             // pop  sp
     stack -> b              // pop  bx
     stack -> ds             // pop  ds
+
+    //ds -> es // TODO: translate into two instructions that push ds and pop es
+
     ds -> stack             // push ds
     stack -> es             // pop  es
 
