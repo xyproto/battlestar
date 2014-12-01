@@ -6,8 +6,8 @@ fun main
     rawloop 2
         
         // Save the counter register, independent of bit size (not needed for 16-bit assembly)
-        (asm 32) mov edi, ecx // ecx is changed by write(), but edi is not, on 32-bit
-        (asm 64) mov rbx, rcx // rcx is changed by write(), but rbx is not, on 64-bit
+        (asm 32) mov edi, ecx // ecx is changed by print(), but edi is not, on 32-bit
+        (asm 64) mov rbx, rcx // rcx is changed by print(), but rbx is not, on 64-bit
 
         // The print syscall changes rcx on 64-bit, ecx on 32-bit, but not cx on 16-bit
         print(hello)
