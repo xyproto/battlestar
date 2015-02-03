@@ -23,7 +23,7 @@ fun main
         di -= 7            // subtraction
         di ^= 2            // xor
 
-        al = memb di       // read byte from memory
+        al = readbyte di   // read byte from memory
         al += [di+321]     // add value at [di+321] (pixel on the line below)
         al /= 2
 
