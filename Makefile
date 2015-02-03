@@ -19,6 +19,7 @@ samples:
 	make -C bottles99
 	make -C fibonacci
 	make -C sdl2
+	make -C life
 
 clean:
 	make -C src clean
@@ -33,6 +34,7 @@ clean:
 	make -C bottles99 clean
 	make -C fibonacci clean
 	make -C sdl2 clean
+	make -C life clean
 
 src/battlestarc:
 	make -C src
