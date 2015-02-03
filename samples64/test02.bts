@@ -9,7 +9,7 @@ fun newline
     print(nl)
 end
 
-void main() {
+int main() {
     // Output 'A' 10 times
     for (int i=0; i < 10; i++) printa();
     // And a newline

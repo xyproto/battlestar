@@ -73,7 +73,7 @@ func ExtractInlineC(code string, debug bool) string {
 }
 
 func add_extern_main_if_missing(bts_code string) string {
-	// If there is a line starting with "void main", but no line starting with "extern main",
+	// If there is a line starting with "void main", or "int main" but no line starting with "extern main",
 	// add "extern main" at the top.
 	found_main := false
 	found_extern := false
@@ -81,6 +81,8 @@ func add_extern_main_if_missing(bts_code string) string {
 	for _, line := range strings.Split(bts_code, "\n") {
 		trimline = strings.TrimSpace(line)
 		if strings.HasPrefix(trimline, "void main") {
+			found_main = true
+		} else if strings.HasPrefix(trimline, "int main") {
 			found_main = true
 		} else if strings.HasPrefix(trimline, "extern main") {
 			found_extern = true
