@@ -1,0 +1,66 @@
+r10 = 0b11111111
+r8 = 0
+(asm64) movq xmm1, r8
+r15 = 0x000100010001
+r14 = 0xff
+(asm64) movq xmms7, r14
+r13 = rsp
+r14 = rsp
+r14 -= 2*8*7
+
+rdi = 1
+rcx = 0
+(asm64) movq xmm8, rcx
+(asm64) movq mm0, rcx
+
+next_state:
+(asm64) bsf rcx, r10
+(asm64) jz backtrack
+(asm64) btc r10, rcx
+
+eax = 0
+(asm64) bts eax, ecx
+(asm64) pinsrb xmm8, eax, 0
+
+(asm64) cmp rsp, r14
+(asm64) je win
+(asm64) movq rax, xmm1
+r10 -> stack
+rax -> stack
+(asm64) pslldq xmm8, 1
+rax = r15
+rax << cl
+(asm64) movq xmm2, rax
+(asm64) por xmm1, xmm2
+(asm64) vpsllw xmm2, xmm1, 1
+(asm64) vpsrlw xmm3, xmm1, 1
+(asm64) pblendw xm1, xmm2, 0b0100
+(asm64) pblendw xmm1, xmm3, 0b010
+(asm64) vpsrldq xmm2, xmm1, 4
+(asm64) vpsrldq xmm3, xmm1, 2
+(asm64) por xmm2, xmm3
+(asm64) por xmm2, xmm1
+(asm64) vpandn xmm4, xmm2, xmm7
+(asm64) movq r10, xmm4
+(asm64) jmp next_state
+
+backgrack:
+  (asm64) cmp rsp, r13
+  (asm64) je done
+  (asm64) stack -> rcx
+  (asm64) stack -> r10
+  (asm64) movq xmm1, rcx
+  (asm64) psrldq xmm8, 1
+  (asm64) jmp next_state
+
+win:
+  r8++
+  ; winprinter.asm include here
+  (asm64) jmp next_state
+
+done:
+    rax = SYSCALL_EXIT
+    rdi = r8
+    syscall
+    
+
