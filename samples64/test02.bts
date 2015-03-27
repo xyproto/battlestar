@@ -9,11 +9,13 @@ fun newline
     print(nl)
 end
 
+inline_c
 int main() {
     // Output 'A' 10 times
     for (int i=0; i < 10; i++) printa();
     // And a newline
     newline();
 }
+end
 
 // vim: set syntax=c ts=4 sw=4 et:
