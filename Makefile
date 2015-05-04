@@ -3,6 +3,8 @@ PREFIX ?= /usr
 BINDIR = $(PREFIX)/bin
 PWD = $(shell pwd)
 
+.PHONY: battlestarc samples clean
+
 all: battlestarc
 
 samples:
