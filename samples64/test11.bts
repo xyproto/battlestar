@@ -5,13 +5,13 @@ fun main
     // This type of loop does not push and pop rcx
     rawloop 4
         rbx = rcx           // Save rcx
-        write(hello_there)  // The write syscall changes rcx as a side-effect
+        print(hello_there)  // The print syscall changes rcx as a side-effect
         rcx = rbx           // Restore rcx
     end
 
     // This type of loop saves and restores rcx automatically, which makes it easier to use
     loop 3
-        write(hi_there)
+        print(hi_there)
     end
 end
 

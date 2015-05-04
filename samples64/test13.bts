@@ -10,7 +10,7 @@ fun fivetimes
         rax *= 3
 
         rax -> stack
-        write(five)
+        print(five)
         stack -> rax
 
         break (rax == 243)
@@ -29,7 +29,7 @@ fun threetimes
 
         rax -> stack
         rcx -> stack
-        write(three)
+        print(three)
         stack -> rcx
         stack -> rax
 
@@ -39,7 +39,7 @@ end
 
 fun onetime
     rawloop 1
-        write(one)
+        print(one)
         counter 1
     end
 end
@@ -48,7 +48,7 @@ fun main
     fivetimes
     threetimes
     onetime
-    write(nl)
+    print(nl)
 end
 
 

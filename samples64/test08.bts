@@ -8,8 +8,8 @@ end
 fun main
     rax = 7
     todigit
-    write(chr(rax))
-    write(nl)
+    print(chr(rax))
+    print(nl)
 end
 
 // vim: set syntax=c ts=4 sw=4 et:

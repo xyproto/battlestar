@@ -1,0 +1,77 @@
+#!/usr/bin/bts -l sdl2
+
+const image_filename_z = "boxes.bmp", 0
+const init_msg = "Initializing SDL 2... "
+const quit_msg = "Shutting down SDL 2... "
+const load_msg1 = "Loading "
+const load_msg2 = "... "
+const done = "ok.\n"
+
+extern init_sdl
+extern load_bmp
+extern display
+extern close_sdl
+
+extern SDL_Delay
+
+inline_c
+
+#include <SDL2/SDL.h>
+
+SDL_Window* win;
+SDL_Renderer* ren;
+SDL_Texture *tex;
+
+void init_sdl() {
+    SDL_Init(SDL_INIT_TIMER | SDL_INIT_VIDEO);
+    SDL_CreateWindowAndRenderer(960, 540, SDL_WINDOW_SHOWN, &win, &ren);
+}
+
+void load_bmp(char* filename) {
+    SDL_Surface *bmp = SDL_LoadBMP(filename);
+    tex = SDL_CreateTextureFromSurface(ren, bmp);
+    SDL_FreeSurface(bmp);
+}
+
+void display() {
+    SDL_RenderClear(ren);
+    SDL_RenderCopy(ren, tex, NULL, NULL);
+    SDL_RenderPresent(ren);
+}
+
+void close_sdl() {
+    SDL_DestroyTexture(tex);
+    SDL_DestroyRenderer(ren);
+    SDL_DestroyWindow(win);
+    SDL_Quit();
+}
+
+end
+
+fun main
+    // Initialize SDL2
+    print(init_msg)
+    init_sdl
+    print(done)
+
+    // Load the bitmap image
+    print(load_msg1)
+    print(image_filename_z)
+    print(load_msg2)
+    funparam[0] = image_filename_z
+    load_bmp
+    print(done)
+
+    // Show the image and wait 2 seconds
+    display
+    funparam[0] = 2000
+    SDL_Delay
+
+    // Close down SDL2
+    print(quit_msg)
+    close_sdl
+    print(done)
+end
+
+// vim: set syntax=c ts=4 sw=4 et:
+

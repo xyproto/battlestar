@@ -3,8 +3,8 @@ const nl = 10
 fun main
     // Write an 'A'
     rax = 65
-    write(chr(rax))
-    write(nl)
+    print(chr(rax))
+    print(nl)
 end
 
 // vim: set syntax=c ts=4 sw=4 et:

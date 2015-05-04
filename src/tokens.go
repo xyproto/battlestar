@@ -24,15 +24,23 @@ const (
 	OR             = 15
 	XOR            = 16
 	COMPARISON     = 17
-	PUSHPOP        = 18
-	COMBINATION    = 19
+	ARROW          = 18
+	MEMEXP         = 19 // memory expressions, like [di+321]
 	ASMLABEL       = 20
-	SEP            = 127
+	ROL            = 21  // rotate left instruction
+	ROR            = 22  // rotate right instruction
+	SEGOFS         = 23  // segment:offset for 16-bit assembly
+	SEP            = 127 // statement separator
 	UNKNOWN        = 255
 )
 
 var (
-	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard", RESERVED: "reserved", VARIABLE: "variable", ADDITION: "addition", SUBTRACTION: "subtraction", MULTIPLICATION: "multiplication", DIVISION: "division", COMPARISON: "comparison", PUSHPOP: "stack operation", COMBINATION: "address expression", ASMLABEL: "assembly label"}
+	debug          = true
+	tokenDebug     = false
+	newTokensDebug = true
+
+	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard", RESERVED: "reserved", VARIABLE: "variable", ADDITION: "addition", SUBTRACTION: "subtraction", MULTIPLICATION: "multiplication", DIVISION: "division", COMPARISON: "comparison", ARROW: "stack operation", MEMEXP: "address expression", ASMLABEL: "assembly label", AND: "and", XOR: "xor", OR: "or", ROL: "rol", ROR: "ror", SEGOFS: "segment+offset"}
+	// see also the top of language.go, when adding tokens
 )
 
 type (
@@ -78,11 +86,11 @@ func (toktyp TokenType) String() string {
 }
 
 // Split a string into more tokens and tokenize them
-func retokenize(word string, sep string, debug bool) []Token {
+func retokenize(word string, sep string) []Token {
 	var newtokens []Token
 	words := strings.Split(word, sep)
 	for _, s := range words {
-		tokens := tokenize(s, debug, sep)
+		tokens := tokenize(s, sep)
 		//log.Println("RETOKEN", tokens)
 		for _, t := range tokens {
 			if t.t != SEP {
@@ -93,8 +101,20 @@ func retokenize(word string, sep string, debug bool) []Token {
 	return newtokens
 }
 
+func logtoken(tok Token) {
+	if tokenDebug {
+		log.Println("TOKEN", tok)
+	}
+}
+
+func lognewtokens(tokens []Token) {
+	if newTokensDebug {
+		log.Println("NEWTOKENS", tokens)
+	}
+}
+
 // Tokenize a string
-func tokenize(program string, debug bool, sep string) []Token {
+func tokenize(program string, sep string) []Token {
 	statements := maps(maps(strings.Split(program, "\n"), strings.TrimSpace), removecomments)
 	tokens := make([]Token, 0, 0)
 	var (
@@ -171,15 +191,11 @@ func tokenize(program string, debug bool, sep string) []Token {
 			} else if has(registers, word) {
 				t = Token{REGISTER, word, statementnr, "?"}
 				tokens = append(tokens, t)
-				if debug {
-					log.Println("TOKEN", t)
-				}
+				logtoken(t)
 			} else if has(comparisons, word) {
 				t = Token{COMPARISON, word, statementnr, ""}
 				tokens = append(tokens, t)
-				if debug {
-					log.Println("TOKEN", t)
-				}
+				logtoken(t)
 			} else if has(operators, word) {
 				var tokentype TokenType
 				switch word {
@@ -199,31 +215,29 @@ func tokenize(program string, debug bool, sep string) []Token {
 					tokentype = OR
 				case "^=":
 					tokentype = XOR
+				case "<<<":
+					tokentype = ROL
+				case ">>>":
+					tokentype = ROR
 				case "->":
-					tokentype = PUSHPOP
+					tokentype = ARROW
 				default:
 					log.Fatalln("Error: Unhandled operator:", word)
 				}
 				t = Token{tokentype, word, statementnr, ""}
 				tokens = append(tokens, t)
-				if debug {
-					log.Println("TOKEN", t)
-				}
+				logtoken(t)
 			} else if has(keywords, word) {
 				t = Token{KEYWORD, word, statementnr, ""}
 				tokens = append(tokens, t)
-				if debug {
-					log.Println("TOKEN", t)
-				}
+				logtoken(t)
 			} else if has(builtins, word) {
 				t = Token{BUILTIN, word, statementnr, ""}
 				tokens = append(tokens, t)
-				if debug {
-					log.Println("TOKEN", t)
-				}
+				logtoken(t)
 			} else if has(reserved, word) {
 				if has([]string{"a", "b", "c", "d"}, word) {
-					reg := ""
+					reg := word
 					switch platform_bits {
 					case 64:
 						reg = "r" + word
@@ -236,71 +250,63 @@ func tokenize(program string, debug bool, sep string) []Token {
 					t = Token{RESERVED, word, statementnr, ""}
 				}
 				tokens = append(tokens, t)
-				if debug {
-					log.Println("TOKEN", t)
-				}
+				logtoken(t)
 			} else if is_value(word) {
 				t = Token{VALUE, word, statementnr, ""}
 				tokens = append(tokens, t)
-				if debug {
-					log.Println("TOKEN", t)
-				}
+				logtoken(t)
 			} else if word == "_" {
 				t = Token{DISREGARD, word, statementnr, ""}
 				tokens = append(tokens, t)
-				if debug {
-					log.Println("TOKEN", t)
-				}
+				logtoken(t)
 			} else if strings.HasSuffix(word, "++") {
 				firstpart := word[:len(word)-2]
-				newtokens := retokenize(firstpart+" += 1", " ", debug)
+				newtokens := retokenize(firstpart+" += 1", " ")
 				for _, newtoken := range newtokens {
 					tokens = append(tokens, newtoken)
 				}
-				log.Println("NEWTOKENS", newtokens)
+				lognewtokens(newtokens)
 			} else if strings.HasSuffix(word, "--") {
 				firstpart := word[:len(word)-2]
-				newtokens := retokenize(firstpart+" -= 1", " ", debug)
+				newtokens := retokenize(firstpart+" -= 1", " ")
 				for _, newtoken := range newtokens {
 					tokens = append(tokens, newtoken)
 				}
-				log.Println("NEWTOKENS", newtokens)
+				lognewtokens(newtokens)
 			} else if is_valid_name(word) {
 				t = Token{VALID_NAME, word, statementnr, ""}
 				tokens = append(tokens, t)
-				if debug {
-					log.Println("TOKEN", t)
-				}
+				logtoken(t)
 			} else if strings.Contains(word, "(") {
-				newtokens := retokenize(word, "(", debug)
+				newtokens := retokenize(word, "(")
 				for _, newtoken := range newtokens {
 					tokens = append(tokens, newtoken)
 				}
-				log.Println("NEWTOKENS", newtokens)
+				lognewtokens(newtokens)
 			} else if strings.Contains(word, ")") {
-				newtokens := retokenize(word, ")", debug)
+				newtokens := retokenize(word, ")")
 				for _, newtoken := range newtokens {
 					tokens = append(tokens, newtoken)
 				}
-				log.Println("NEWTOKENS", newtokens)
+				lognewtokens(newtokens)
 			} else if strings.Contains(word, "[") {
-				newtokens := retokenize(word, "[", debug)
+				newtokens := retokenize(word, "[")
 				for _, newtoken := range newtokens {
 					tokens = append(tokens, newtoken)
 				}
-				log.Println("NEWTOKENS", newtokens)
+				lognewtokens(newtokens)
 			} else if strings.Contains(word, "]") {
-				newtokens := retokenize(word, "]", debug)
+				newtokens := retokenize(word, "]")
 				for _, newtoken := range newtokens {
 					tokens = append(tokens, newtoken)
 				}
-				log.Println("NEWTOKENS", newtokens)
+				lognewtokens(newtokens)
 			} else if (!constexpr) && strings.Contains(word, ",") {
-				newtokens := retokenize(word, ",", debug)
+				newtokens := retokenize(word, ",")
 				for _, newtoken := range newtokens {
 					tokens = append(tokens, newtoken)
 				}
-				log.Println("NEWTOKENS", newtokens)
+				lognewtokens(newtokens)
 			} else if strings.Contains(word, "\"") {
 				if debug {
 					log.Println("TOKEN", word, "is part of a string")
@@ -321,26 +327,28 @@ func tokenize(program string, debug bool, sep string) []Token {
 				// Assume it's a value
 				t = Token{VALUE, word, statementnr, ""}
 				tokens = append(tokens, t)
-				if debug {
-					log.Println("TOKEN", t)
-				}
+				logtoken(t)
 			} else if strings.Contains(word, "+") {
 				// Assume it's an adress, like bp+5
-				t = Token{COMBINATION, word, statementnr, ""}
+				t = Token{MEMEXP, "[" + word + "]", statementnr, ""}
 				tokens = append(tokens, t)
-				if debug {
-					log.Println("TOKEN", t)
-				}
+				logtoken(t)
 			} else if strings.HasSuffix(word, ":") {
 				t = Token{ASMLABEL, word, statementnr, ""}
 				tokens = append(tokens, t)
-				if debug {
-					log.Println("TOKEN", t)
+				logtoken(t)
+			} else if strings.Count(word, ":") == 1 {
+				regs := strings.Split(word, ":")
+				if has(registers, regs[0]) && has(registers, regs[1]) {
+					// segment:offset
+					t = Token{SEGOFS, "[" + word + "]", statementnr, ""}
+					tokens = append(tokens, t)
+					logtoken(t)
+				} else {
+					log.Fatalln("Unrecognized segment:offset token:", word)
 				}
 			} else {
-				if debug {
-					log.Println("TOKEN", word, "unknown")
-				}
+				log.Println("TOKEN", word, "unknown")
 				log.Fatalln("Error: Unrecognized token:", word)
 				return tokens
 			}
@@ -414,15 +422,15 @@ func reduce(st Statement, debug bool, ps *ProgramState) Statement {
 			if debug {
 				log.Println("SUCCESSFULL REPLACEMENT WITH", st[i])
 			}
-		} else if (st[i].t == BUILTIN) && (st[i].value == "write") && (st[i+1].t == STRING) {
-			log.Fatalln("Error: write can only write const strings, not immediate strings")
-		} else if (st[i].t == BUILTIN) && (st[i].value == "write") && ((st[i+1].t == VALID_NAME) || (st[i+1].t == REGISTER)) {
-			// replace write(msg) with
+		} else if (st[i].t == BUILTIN) && (st[i].value == "print") && (st[i+1].t == STRING) {
+			log.Fatalln("Error: print can only print const strings, not immediate strings")
+		} else if (st[i].t == BUILTIN) && (st[i].value == "print") && ((st[i+1].t == VALID_NAME) || (st[i+1].t == REGISTER)) {
+			// replace print(msg) with
 			// int(0x80, 4, 1, msg, len(msg)) on 32-bit
 			// syscall(1, msg, len(msg)) on 64-bit
 
 			// TODO: Find a way to output additional statements when a statement can be broken into several statements
-			//       (Like printing all the arguments to write, one by one)
+			//       (Like printing all the arguments to print, one by one)
 			//for _, token := range st[1:] {
 			//    Use token instead of st[i+1]
 			//}
@@ -434,12 +442,12 @@ func reduce(st Statement, debug bool, ps *ProgramState) Statement {
 			switch platform_bits {
 			case 64:
 				cmd = "syscall(1, 1, " + st[i+1].value + ", len(" + st[i+1].value + "))"
-				tokens = tokenize(cmd, true, " ")
+				tokens = tokenize(cmd, " ")
 				// Position of the token that is to be written
 				tokenpos = 3
 			case 32:
 				cmd = "int(0x80, 4, 1, " + st[i+1].value + ", len(" + st[i+1].value + "))"
-				tokens = tokenize(cmd, true, " ")
+				tokens = tokenize(cmd, " ")
 				// Position of the token that is to be written
 				tokenpos = 4
 			case 16:

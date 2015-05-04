@@ -2,7 +2,7 @@ const hi = "Hello there", 10
 
 fun main
     loop 7
-        write(hi)
+        print(hi)
     end
 end
 

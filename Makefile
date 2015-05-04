@@ -3,9 +3,9 @@ PREFIX ?= /usr
 BINDIR = $(PREFIX)/bin
 PWD = $(shell pwd)
 
-.PHONY: battlestarc samples clean
+.PHONY: all samples clean install-bin install devinstall uninstall
 
-all: battlestarc
+all: src/battlestarc
 
 samples:
 	make -C helloworld
@@ -13,8 +13,13 @@ samples:
 	make -C samples64
 	make -C samples32
 	make -C samples16
-	make -C kernel
+	make -C kernel/simple
+	make -C kernel/with_c
+	make -C kernel/reverse_string
 	make -C bottles99
+	make -C fibonacci
+	make -C sdl2
+	make -C life
 
 clean:
 	make -C src clean
@@ -23,22 +28,37 @@ clean:
 	make -C samples64 clean
 	make -C samples32 clean
 	make -C samples16 clean
-	make -C kernel clean
+	make -C kernel/simple clean
+	make -C kernel/with_c clean
+	make -C kernel/reverse_string clean
 	make -C bottles99 clean
+	make -C fibonacci clean
+	make -C sdl2 clean
+	make -C life clean
 
-battlestarc:
+src/battlestarc:
 	make -C src
 
-install-bin: battlestarc
-	install -Dm755 "$(PWD)/scripts/btstool.sh" "$(DESTDIR)$(BINDIR)/bts"
+install-linux: src/battlestarc
+	install -Dm755 "$(PWD)/scripts/bts.sh" "$(DESTDIR)$(BINDIR)/bts"
 	install -Dm755 "$(PWD)/scripts/build.sh" "$(DESTDIR)$(BINDIR)/btsbuild"
 	install -Dm755 "$(PWD)/src/battlestarc" "$(DESTDIR)$(BINDIR)/battlestarc"
 
-install: install-bin
+install-osx: uninstall src/battlestarc
+	cp -v "$(PWD)/scripts/bts.sh" "$(DESTDIR)$(BINDIR)/bts"
+	cp -v "$(PWD)/scripts/build.sh" "$(DESTDIR)$(BINDIR)/btsbuild"
+	cp -v "$(PWD)/src/battlestarc" "$(DESTDIR)$(BINDIR)/battlestarc"
+	chmod +x "$(DESTDIR)$(BINDIR)/bts"
+	chmod +x "$(DESTDIR)$(BINDIR)/btsbuild"
+	chmod +x "$(DESTDIR)$(BINDIR)/battlestarc"
 
-devinstall: battlestarc
+install:
+	@# TODO: Add OS X detection
+	@echo 'Use "make install-linux" for Linux and "make install-osx" for OS X'
+
+devinstall: src/battlestarc
 	ln -sf $(PWD)/src/battlestarc /usr/bin/battlestarc
-	ln -sf $(PWD)/scripts/btstool.sh /usr/bin/bts
+	ln -sf $(PWD)/scripts/bts.sh /usr/bin/bts
 	ln -sf $(PWD)/scripts/build.sh /usr/bin/btsbuild
 
 uninstall:

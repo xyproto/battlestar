@@ -5,16 +5,16 @@ const nooo = "Nooo!", 10
 
 fun main
     loop 17
-        write(once)
+        print(once)
         break        // Break out of loop
     end
     loop 2 
-        write(twice) // This happens two times
+        print(twice) // This happens two times
     end
     loop 3
-        write(thrice)
+        print(thrice)
         continue     // Continue loop from top
-        write(nooo)  // This never happens
+        print(nooo)  // This never happens
     end
 end
 

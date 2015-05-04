@@ -1,0 +1,40 @@
+// Iterative version of the Fibonacci algorithm.
+// "printnum" will only print correct numbers up to 21.
+
+const nl = "\n"
+
+// Write two digits, based on the value in a. Also prints a newline.
+fun printnum
+    b = a
+    a >= 10
+        a /= 10
+        // modulo is in the d register after idiv
+        b = d
+        a += 48 // ASCII value for '0'
+        print(chr(a))
+    end
+    a = b
+    a += 48 // ASCII value for '0'
+    print(chr(a))
+    print(nl)
+end
+
+// Fibonacci sequence
+fun main
+    r8 = 0
+    r9 = 1
+
+    loop
+        a = r8
+        break (a > 21)
+        printnum()
+
+        a = r8
+        a += r9
+        r8 = r9
+        r9 = a
+    end
+end
+
+
+// vim: set syntax=c ts=4 sw=4 et:

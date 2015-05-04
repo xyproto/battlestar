@@ -29,22 +29,29 @@ function build {
     skipstrip=true
     shift
   fi
+  if [[ $2 = -c ]]; then
+    other_compiler=true
+    skipstrip=true
+  fi
 
   f=$1
   shift
 
   params=$@
+ 
   echo "Building $f"
   n=`echo ${f/.bts} | sed 's/ //'`
 
-  # TODO: This could probably be more robust
   if [[ $params != *bits* ]]; then
     params="$params -bits=$bits"
   fi
 
-  # TODO: This could probably be more robust
   if [[ $params != *osx* ]]; then
     params="$params -osx=$osx"
+  fi
+
+  if [[ $other_compiler = true ]]; then
+    params="$params -c"
   fi
 
   # Don't output the log if "fail" is in the filename
@@ -91,6 +98,7 @@ function build {
     echo "WARNING: Can't compile inline C for 64-bit executables on a 32-bit system."
   fi
   asmok=true
+  [ -e $n.asm ] && echo $asmcmd -o "$n.o" "$n.asm"
   [ -e $n.asm ] && ($asmcmd -o "$n.o" "$n.asm" || asmok=false)
   if [[ $asmok = false ]]; then
     [ -e $n.asm ] && echo "Failed to assemble: $n."
@@ -109,9 +117,19 @@ function build {
   # Save the filenames for later cleaning
   echo -e "\n$n.o ${n}_c.o $n.asm $n $n.log" >> "$n.log"
   [ -e $n.o ] || return 1
+  if [[ $other_compiler = true ]]; then
+    return 0
+  fi
   if [[ $linkfail = false ]]; then
     if [[ $compiledc = true ]]; then
-      $ldcmd "${n}_c.o" "$n.o" -o "$n" || echo "$n failed to link"
+      if [[ $EXTERNLIB = 1 ]]; then
+	echo 'Skipping linking, external lib'
+	# Save the filenames for later cleaning
+	echo -e "\n$n $n.asm $n.c $n.o ${n}_c.o $n $n.log" >> "$n.log"
+	return 0
+      else
+        $ldcmd "${n}_c.o" "$n.o" -o "$n" || echo "$n failed to link"
+      fi
     elif [ -e $n.o ]; then
       if [[ $bits = 16 ]]; then
       	# The output file is a .com file
@@ -186,12 +204,13 @@ fi
 osx=$([[ `uname -s` = Darwin ]] && echo true || echo false)
 
 ldcmd="ld -s --fatal-warnings --relax"
-stdgcc="gcc -Os -std=c11 -Wno-implicit -ffast-math -fno-inline -fomit-frame-pointer"
+stdgcc="gcc -Os -std=c99 -Wno-implicit -ffast-math -fno-inline -fomit-frame-pointer"
 
 # Set the right flags if the environment variable EXTERNLIB=1
 if [[ $EXTERNLIB = 1 ]]; then
   ldcmd="$ldcmd $LDFLAGS"
   stdgcc="$stdgcc $CFLAGS"
+  skipstrip=true
 else
   # Add nostdlib if external libraries are not used
   ldcmd="$ldcmd -nostdlib"
@@ -209,28 +228,49 @@ fi
 
 if [ $bits = 16 ]; then
   asmcmd="$asm -f bin"
+  ldcmd='ld -s --fatal-warnings -nostdlib --relax'
   cccmd="$stdgcc -m16"
 fi
 
 if [[ $1 == bootable ]]; then
   shift
 
-  echo 'Building a bootable kernel.'
+  echo "Building a bootable kernel ($bits-bits)."
   echo
 
-  asmcmd="$asm -f elf32"
-  echo $asmcmd
+  if [ $bits = 32 ]; then
+    asmcmd="$asm -f elf32"
+    cccmd="$stdgcc -m32 -ffreestanding -Wall -Wextra -fno-exceptions -Wno-implicit"
+    ldcmd='gcc -lgcc -nostdlib -Os -s -m32'
+  fi
 
-  cccmd="$stdgcc -m32 -ffreestanding -Wall -Wextra -fno-exceptions -Wno-implicit"
-  echo "$cccmd"
+  if [ $bits = 64 ]; then
+    asmcmd="$asm -f elf64"
+    cccmd="$stdgcc -m64 -ffreestanding -Wall -Wextra -fno-exceptions -Wno-implicit"
+    ldcmd='gcc -lgcc -nostdlib -Os -s -m64'
+  fi
 
-  ldcmd='gcc -lgcc -nostdlib -Os -s -m32'
-  if [ -e ../scripts/linker.ld ]; then
-    ldcmd="$ldcmd -T ../scripts/linker.ld"
+  # TODO Find a better way
+  if [ -e linker.ld$bits ]; then
+    ldcmd="$ldcmd -T linker.ld$bits"
   elif [ -e linker.ld ]; then
     ldcmd="$ldcmd -T linker.ld"
+  elif [ -e ../scripts/linker.ld$bits ]; then
+    ldcmd="$ldcmd -T ../scripts/linker.ld$bits"
+  elif [ -e ../scripts/linker.ld ]; then
+    ldcmd="$ldcmd -T ../scripts/linker.ld"
+  elif [ -e ../../scripts/linker.ld$bits ]; then
+    ldcmd="$ldcmd -T ../../scripts/linker.ld$bits"
+  elif [ -e ../../scripts/linker.ld ]; then
+    ldcmd="$ldcmd -T ../../scripts/linker.ld"
+  else
+    abort "Could not find linker.ld script!"
   fi
-  echo $ldcmd
+
+  echo "$asmcmd"
+  echo "$cccmd"
+  echo "$ldcmd"
+
   skipstrip=true
 fi
 

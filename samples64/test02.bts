@@ -2,18 +2,20 @@ const astring = "A"
 const nl = 10
 
 fun printa
-    write(astring)
+    print(astring)
 end
 
 fun newline
-    write(nl)
+    print(nl)
 end
 
-void main() {
+inline_c
+int main() {
     // Output 'A' 10 times
     for (int i=0; i < 10; i++) printa();
     // And a newline
     newline();
 }
+end
 
 // vim: set syntax=c ts=4 sw=4 et:

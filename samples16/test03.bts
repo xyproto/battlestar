@@ -7,7 +7,7 @@ fun wait_for_keypress
 end
 
 fun main
-    write(hi)
+    print(hi)
     wait_for_keypress
 end
 

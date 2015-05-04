@@ -25,7 +25,7 @@ var (
 
 func main() {
 	name := "Battlestar"
-	version := "0.3"
+	version := "0.4"
 	log.Println(name + " compiler")
 	log.Println("Version " + version)
 	log.Println("Alexander Rødseth")
@@ -48,6 +48,8 @@ func main() {
 	c_file := flag.String("oc", "", "C output file")
 	// Input file
 	bts_file := flag.String("f", "", "BTS source file")
+	// Is it not a standalone program, but a component? (just the .o file is needed)
+	is_component := flag.Bool("c", false, "Component, not a standalone program")
 
 	flag.Parse()
 
@@ -57,6 +59,8 @@ func main() {
 	asmfile := *asm_file
 	cfile := *c_file
 	btsfile := *bts_file
+
+	component := *is_component
 
 	if flag.Arg(0) != "" {
 		btsfile = flag.Arg(0)
@@ -102,10 +106,8 @@ func main() {
 
 		// If "bootable" is the first token
 		bootable := false
-		if temptokens := tokenize(string(bytes), true, " "); (len(temptokens) > 2) && (temptokens[0].t == KEYWORD) && (temptokens[0].value == "bootable") && (temptokens[1].t == SEP) {
+		if temptokens := tokenize(string(bytes), " "); (len(temptokens) > 2) && (temptokens[0].t == KEYWORD) && (temptokens[0].value == "bootable") && (temptokens[1].t == SEP) {
 			bootable = true
-			// Header for bootable kernels, use 32-bit assembly
-			platform_bits = 32
 			asmdata += fmt.Sprintf("bits %d\n", platform_bits)
 		} else {
 			// Header for regular programs
@@ -120,7 +122,7 @@ func main() {
 		init_interrupt_parameter_registers(platform_bits)
 
 		bts_code := add_extern_main_if_missing(string(bytes))
-		tokens := add_exit_token_if_missing(tokenize(bts_code, true, " "))
+		tokens := add_exit_token_if_missing(tokenize(bts_code, " "))
 		log.Println("--- Done tokenizing ---")
 		constants, asmcode := TokensToAssembly(tokens, true, false, ps)
 		if constants != "" {
@@ -135,15 +137,28 @@ func main() {
 			asmdata += "section .text\n"
 		}
 		if platform_bits == 16 {
-			// If there is a main function, jump to it. If not, just start at the top.
-			if strings.Contains(asmcode, "\nmain:") {
-				asmdata += "jmp " + linker_start_function + "\n"
+			// If there are defined functions, jump over the definitions and start at
+			// the main/_start function. If there is a main function, jump to the
+			// linker start function. If not, just start at the top.
+			// TODO: This is a quick fix. Don't depend on the comment, find a better way.
+			if strings.Count(asmcode, "; name of the function") > 1 {
+				if strings.Contains(asmcode, "\nmain:") {
+					asmdata += "jmp " + linker_start_function + "\n"
+				}
 			}
 		}
 		if asmcode != "" {
-			asmdata += fmt.Sprintln(add_starting_point_if_missing(asmcode, ps) + "\n")
+			if component {
+				asmdata += asmcode + "\n"
+			} else {
+				asmdata += add_starting_point_if_missing(asmcode, ps) + "\n"
+			}
 			if bootable {
-				asmdata = strings.Replace(asmdata, "; starting point of the program\n", "; starting point of the program\n\tmov esp, stack_top\t; set the esp register to the top of the stack (special case for bootable kernels)\n", 1)
+				reg := "esp"
+				if platform_bits == 64 {
+					reg = "rsp"
+				}
+				asmdata = strings.Replace(asmdata, "; starting point of the program\n", "; starting point of the program\n\tmov "+reg+", stack_top\t; set the "+reg+" register to the top of the stack (special case for bootable kernels)\n", 1)
 			}
 		}
 		ccode := ExtractInlineC(strings.TrimSpace(string(bytes)), true)

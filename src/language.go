@@ -8,15 +8,15 @@ import (
 
 var (
 	// TODO: Several of the operators (and the difference between signed/unsigned)
-	operators = []string{"=", "+=", "-=", "*=", "/=", "&=", "|=", "->"}
+	operators = []string{"=", "+=", "-=", "*=", "/=", "&=", "|=", "^=", "->", "<<<", ">>>"}
 
 	comparisons = []string{"==", "!=", "<", ">", "<=", ">="}
 
 	// TODO: "use" and make the bootable kernel work somehow
-	keywords = []string{"fun", "ret", "const", "call", "extern", "end", "bootable", "counter", "address", "value", "loopwrite", "rawloop", "loop", "break", "continue", "use", "asm"}
+	keywords = []string{"fun", "ret", "const", "call", "extern", "end", "bootable", "counter", "address", "value", "loopwrite", "rawloop", "loop", "break", "continue", "use", "asm", "mem", "readbyte", "readword", "readdouble", "membyte", "memword", "memdouble", "write"}
 
 	// TODO: "read"
-	builtins = []string{"len", "int", "exit", "halt", "chr", "write", "read", "syscall"} // built-in functions
+	builtins = []string{"len", "int", "exit", "halt", "chr", "print", "read", "syscall"} // built-in functions
 
 	reserved = []string{"funparam", "sysparam", "a", "b", "c", "d"} // built-in lists that can be accessed with [index], or register aliases
 )
