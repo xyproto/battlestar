@@ -1,3 +1,7 @@
 Recursive version of the fibonacci algorithm
 
 Currently only works on 64-bit, not 32-bit.
+
+Currently does not work on OS X.
+
+Should output: "fib 6765"

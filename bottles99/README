@@ -1,3 +1,5 @@
 The source files here are experimental.
 
-bottles1.bts and bottles2.bts should work for 64-bit Linux.
+bottles1.bts and bottles2.bts works on 64-bit Linux.
+
+Currently does not work on OS X.
