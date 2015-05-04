@@ -805,26 +805,44 @@ func (st Statement) String(ps *ProgramState) string {
 				// TODO Add support for division with 16-bit registers as well!
 
 				if platform_bits == 32 {
-					// Dividing a 64-bit number in edx:eax by the number in ecx. Clearing out edx and only using 32-bit numbers for now.
-					// If the register to be divided is rax, do a quicker division than if it's another register
 					if st[0].value == "eax" {
+						// Dividing a 64-bit number in edx:eax by the number in ecx. Clearing out edx and only using 32-bit numbers for now.
+						// If the register to be divided is rax, do a quicker division than if it's another register
+
 						// save ecx
 						asmcode += "\tpush ecx\t\t; save ecx\n"
-						// save edx
-						asmcode += "\tpush edx\t\t; save edx\n"
+						//// save edx
+						//asmcode += "\tpush edx\t\t; save edx\n"
 						// clear edx
 						asmcode += "\txor edx, edx\t\t; edx = 0 (32-bit 0:eax instead of 64-bit edx:eax)\n"
 						// ecx = st[2].value
 						asmcode += "\tmov ecx, " + st[2].value + "\t\t; divisor, ecx = " + st[2].value + "\n"
 						// idiv ecx
 						asmcode += "\tidiv ecx\t\t\t; eax = edx:eax / ecx\n"
-						// restore edx
-						asmcode += "\tpop edx\t\t; restore edx\n"
+						asmcode += "\t\t\t; remainder is in edx\n"
+						//// restore edx
+						//asmcode += "\tpop edx\t\t; restore edx\n"
 						// restore ecx
 						asmcode += "\tpop ecx\t\t; restore ecx\n"
 					} else if st[0].value == "ax" {
-						// to be implemented!
-						log.Fatalln("ax divison is to be implemented!")
+						// Dividing a 32-bit number in dx:ax by the number in bx. Clearing out dx and only using 16-bit numbers for now.
+						// If the register to be divided is ax, do a quicker division than if it's another register
+
+						// save bx
+						asmcode += "\tpush cx\t\t; save cx\n"
+						//// save dx
+						//asmcode += "\tpush dx\t\t; save dx\n"
+						// clear dx
+						asmcode += "\txor dx, dx\t; dx = 0 (16-bit 0:ax instead of 32-bit dx:ax)\n"
+						// bx = st[2].value
+						asmcode += "\tmov cx, " + st[2].value + "\t; divisor, cx = " + st[2].value + "\n"
+						asmcode += "\t\t\t; remainder is in dx\n"
+						// idiv bx
+						asmcode += "\tidiv cx\t\t; ax = dx:ax / cx\n"
+						//// restore dx
+						//asmcode += "\tpop dx\t\t; restore dx\n"
+						// restore cx
+						asmcode += "\tpop cx\t\t; restore cx\n"
 					} else {
 						// TODO: if the given register is a different one than eax, ecx and edx,
 						//       just divide directly with that register, like for eax above
