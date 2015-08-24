@@ -1,7 +1,8 @@
 #!/bin/sh
 
-asm=yasm
-#asm=nasm
+# Select yasm or nasm
+hash yasm 2>/dev/null && assembler=yasm || assembler=nasm
+asm=$assembler
 
 function require {
   if [ $2 == 0 ]; then
@@ -38,7 +39,7 @@ function build {
   shift
 
   params=$@
- 
+
   echo "Building $f"
   n=`echo ${f/.bts} | sed 's/ //'`
 

@@ -21,9 +21,12 @@ function require {
 
 require uname 1
 
+# Select yasm or nasm
+hash yasm 2>/dev/null && assembler=yasm || assembler=nasm
+
 bits=`getconf LONG_BIT`
 osx=$([[ `uname -s` = Darwin ]] && echo true || echo false)
-asmcmd="yasm -f elf$bits"
+asmcmd="$assembler -f elf$bits"
 ldcmd="ld -s --fatal-warnings -nostdlib --relax"
 cccmd="gcc -Os -std=c99 -m64 -nostdlib $CFLAGS"
 
@@ -33,10 +36,19 @@ if [[ $bits = 32 ]]; then
 fi
 
 if [[ $osx = true ]]; then
-  asmcmd='yasm -f macho'
+  asmcmd='$assembler -f macho'
   ldcmd="ld -macosx_version_min 10.8 -lSystem $LDFLAGS"
   #bits=32
 fi
+
+function asm64check {
+  if [[ $bits = 64 ]]; then
+    if [[ $assembler = nasm ]]; then
+      echo "Nasm does not support 64-bit assembly correctly. Please install Yasm."
+      exit 1
+    fi
+  fi
+}
 
 function run {
   # Check for the given source file
@@ -44,6 +56,8 @@ function run {
     echo "No such file: $1"
     exit 1
   fi
+
+  asm64check 
 
   # Set up temporary filenames
   asmfn=`mktemp --suffix=.asm`
@@ -91,10 +105,11 @@ function run {
 if [[ $1 == run ]]; then
   # Check for needed utilities
   require battlestarc 1
-  require yasm 1
+  require $assembler 1
   require ld 1
   require gcc 2
   require sstrip 2
+  asm64check 
 
   shift
   run $@
@@ -104,6 +119,7 @@ fi
 # The "build" command
 if [[ $1 == build ]]; then
   require btsbuild 1
+  asm64check 
 
   shift
   btsbuild $@
@@ -113,6 +129,7 @@ fi
 # The "compile" command
 if [[ $1 == compile ]]; then
   require btsbuild 1
+  asm64check 
 
   shift
   btsbuild -c $@
