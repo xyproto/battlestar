@@ -1,10 +1,10 @@
 const image_filename_z = "boxes.bmp", 0
-const init_msg = "Initializing SDL 2... "
-const quit_msg = "Shutting down SDL 2... "
-const display_msg = "Displaying image... "
+const init_msg = "Initializing SDL 2..."
+const quit_msg = "Shutting down SDL 2..."
+const display_msg = "Displaying image..."
 const load_msg1 = "Loading "
-const load_msg2 = "... "
-const done = "done\n"
+const load_msg2 = "..."
+const done = "ok\n"
 
 extern init_sdl
 extern load_bmp
@@ -20,7 +20,7 @@ inline_c
 
 SDL_Window* win;
 SDL_Renderer* ren;
-SDL_Texture *tex;
+SDL_Texture* tex;
 
 void init_sdl() {
     SDL_Init(SDL_INIT_TIMER | SDL_INIT_VIDEO);
@@ -61,7 +61,7 @@ fun main
     load_bmp
     print(done)
 
-    // Show the image for 2 seconds
+    // Display the image for 2 seconds
     print(display_msg)
     loop 20
         // Render the image
@@ -75,9 +75,8 @@ fun main
     // Close down SDL2
     print(quit_msg)
     close_sdl
-    print(done)
-
     SDL_Quit
+    print(done)
 end
 
 // vim: set syntax=c ts=4 sw=4 et:
