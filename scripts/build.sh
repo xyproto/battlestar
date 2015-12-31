@@ -242,13 +242,15 @@ if [[ $1 == bootable ]]; then
   if [ $bits = 32 ]; then
     asmcmd="$asm -f elf32"
     cccmd="$stdgcc -m32 -ffreestanding -Wall -Wextra -fno-exceptions -Wno-implicit"
-    ldcmd='gcc -lgcc -nostdlib -Os -s -m32'
+    #ldcmd='gcc -lgcc -nostdlib -Os -s -m32'
+    ldcmd='gcc -nostdlib -Os -s -m32'
   fi
 
   if [ $bits = 64 ]; then
     asmcmd="$asm -f elf64"
     cccmd="$stdgcc -m64 -ffreestanding -Wall -Wextra -fno-exceptions -Wno-implicit"
-    ldcmd='gcc -lgcc -nostdlib -Os -s -m64'
+    #ldcmd='gcc -lgcc -nostdlib -Os -s -m64'
+    ldcmd='gcc -nostdlib -Os -s -m64'
   fi
 
   # TODO Find a better way
