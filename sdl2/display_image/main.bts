@@ -12,6 +12,7 @@ extern display
 extern close_sdl
 
 extern SDL_Delay
+extern SDL_Quit
 
 inline_c
 
@@ -42,7 +43,6 @@ void close_sdl() {
     SDL_DestroyTexture(tex);
     SDL_DestroyRenderer(ren);
     SDL_DestroyWindow(win);
-    SDL_Quit();
 }
 
 end
@@ -63,7 +63,6 @@ fun main
 
     // Show the image for 2 seconds
     print(display_msg)
-    // 20 times
     loop 20
         // Render the image
         display
@@ -71,13 +70,14 @@ fun main
         funparam[0] = 100
         SDL_Delay
     end
-
     print(done)
 
     // Close down SDL2
     print(quit_msg)
     close_sdl
     print(done)
+
+    SDL_Quit
 end
 
 // vim: set syntax=c ts=4 sw=4 et:
