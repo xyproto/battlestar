@@ -1,9 +1,10 @@
 const image_filename_z = "boxes.bmp", 0
 const init_msg = "Initializing SDL 2... "
 const quit_msg = "Shutting down SDL 2... "
+const display_msg = "Displaying image... "
 const load_msg1 = "Loading "
 const load_msg2 = "... "
-const done = "ok.\n"
+const done = "done\n"
 
 extern init_sdl
 extern load_bmp
@@ -60,10 +61,18 @@ fun main
     load_bmp
     print(done)
 
-    // Show the image and wait 2 seconds
-    display
-    funparam[0] = 2000
-    SDL_Delay
+    // Show the image for 2 seconds
+    print(display_msg)
+    // 20 times
+    loop 20
+        // Render the image
+        display
+        // Wait 100 ms
+        funparam[0] = 100
+        SDL_Delay
+    end
+
+    print(done)
 
     // Close down SDL2
     print(quit_msg)
