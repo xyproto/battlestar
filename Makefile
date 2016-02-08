@@ -60,6 +60,9 @@ devinstall: src/battlestarc
 	ln -sf $(PWD)/src/battlestarc /usr/bin/battlestarc
 	ln -sf $(PWD)/scripts/bts.sh /usr/bin/bts
 	ln -sf $(PWD)/scripts/build.sh /usr/bin/btsbuild
+	chmod a+rx $(PWD)/src/battlestarc
+	chmod a+rx $(PWD)/scripts/bts.sh
+	chmod a+rx $(PWD)/scripts/build.sh
 
 uninstall:
 	rm -f "$(DESTDIR)$(BINDIR)/bts"
