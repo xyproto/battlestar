@@ -8,6 +8,8 @@ Battlestar
 * License: MIT
 * Author: Alexander Rødseth
 
+
+
 What is Battlestar?
 -------------------
 
@@ -37,9 +39,30 @@ In progress
 * Reimplementing 16-bit demoscene demos without using any inline assembly
 * See TODO
 
+Quick installation
+------------------
+
+Make sure Go, Yasm and GCC are installed.
+
+Install on Linux:
+
+`sudo make install-linux`
+
+Install on OS X:
+
+`sudo make install-osx`
+
+For development, install soft links instead:
+
+`sudo make devinstall`
+
+Build all the samples:
+
+`make samples`
+
 Build dependencies
 ------------------
-* go 1.3
+* go >= 1.3
 
 Runtime dependencies
 --------------------
