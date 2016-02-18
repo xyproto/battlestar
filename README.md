@@ -39,7 +39,14 @@ In progress
 * Reimplementing 16-bit demoscene demos without using any inline assembly
 * See TODO
 
-Quick installation
+Quick start
+-----------
+
+Build and install Battlestar, build the samples and run the "life" sample:
+
+* `make; sudo make devinstall; make samples; cd life; ./life.sh`
+
+Installation
 ------------------
 
 Make sure Go, Yasm and GCC are installed.
