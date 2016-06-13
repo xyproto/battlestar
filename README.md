@@ -23,7 +23,7 @@ Features
 --------
 
 * The resulting executables are tiny!
-* "hello world" is only *129* bytes on 32-bit Linux (when using sstrip from elfkickers).
+* "hello world" is only *174* bytes for 32-bit Linux (when using sstrip from elfkickers). (238 bytes for 64-bit Linux, 31 bytes for 16-bit DOS)
 * It's possible to write an operating system / kernel with only one source file.
 * Full support for inline C (by utilizing gcc).
 * C and Battlestar code can exist in the same source file and calls can be made both ways.
