@@ -16,10 +16,10 @@ var (
 //   void...}
 func ExtractInlineC(code string, debug bool) string {
 	var (
-		clines     string
-		inline_c   bool
-		c_block    bool
-		whitespace = -1 // Where to strip whitespace
+		clines       string
+		inBlockType1 bool
+		inBlockType2 bool
+		whitespace   = -1 // Where to strip whitespace
 	)
 	for _, line := range strings.Split(code, "\n") {
 		firstword := strings.TrimSpace(removecomments(line))
@@ -27,27 +27,27 @@ func ExtractInlineC(code string, debug bool) string {
 			firstword = firstword[:pos]
 		}
 		//log.Println("firstword: "+ firstword)
-		if !c_block && !inline_c && (firstword == "inline_c") {
+		if !inBlockType2 && !inBlockType1 && (firstword == "inline_c") {
 			log.Println("found", firstword, "starting inline_c block")
-			inline_c = true
+			inBlockType1 = true
 			// Don't include "inline_c" in the inline C code
 			continue
-		} else if !inline_c && !c_block && (firstword == "void") {
-			log.Println("found", firstword, "starting c_block block")
-			c_block = true
+		} else if !inBlockType1 && !inBlockType2 && (firstword == "void") {
+			log.Println("found", firstword, "starting inBlockType2 block")
+			inBlockType2 = true
 			// Include "void" in the inline C code
-		} else if !c_block && inline_c && (firstword == "end") {
+		} else if !inBlockType2 && inBlockType1 && (firstword == "end") {
 			log.Println("found", firstword, "ending inline_c block")
-			inline_c = false
+			inBlockType1 = false
 			// Don't include "end" in the inline C code
 			continue
-		} else if !inline_c && c_block && (firstword == "}") {
-			log.Println("found", firstword, "ending c_block block")
-			c_block = false
+		} else if !inBlockType1 && inBlockType2 && (firstword == "}") {
+			log.Println("found", firstword, "ending inBlockType2 block")
+			inBlockType2 = false
 			// Include "}" in the inline C code
 		}
 
-		if !inline_c && !c_block && (firstword != "}") {
+		if !inBlockType1 && !inBlockType2 && (firstword != "}") {
 			// Skip lines that are not in an "inline_c ... end" or "void ... }" block.
 			//log.Println("not C, skipping:", line)
 			continue
@@ -75,7 +75,7 @@ func ExtractInlineC(code string, debug bool) string {
 	return clines
 }
 
-func add_extern_main_if_missing(bts_code string) string {
+func addExternMainIfMissing(bts_code string) string {
 	// If there is a line starting with "void main", or "int main" but no line starting with "extern main",
 	// add "extern main" at the top.
 	found_main := false
@@ -100,7 +100,7 @@ func add_extern_main_if_missing(bts_code string) string {
 	return bts_code
 }
 
-func add_starting_point_if_missing(asmcode string, ps *ProgramState) string {
+func addStartingPointIfMissing(asmcode string, ps *ProgramState) string {
 	// Check if the resulting code contains a starting point or not
 	if strings.Contains(asmcode, "extern "+linker_start_function) {
 		log.Println("External starting point for linker, not adding one.")
@@ -130,7 +130,7 @@ func add_starting_point_if_missing(asmcode string, ps *ProgramState) string {
 	return asmcode
 }
 
-func add_exit_token_if_missing(tokens []Token) []Token {
+func addExitTokenIfMissing(tokens []Token) []Token {
 	var (
 		twolast   []Token
 		lasttoken Token

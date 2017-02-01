@@ -121,8 +121,8 @@ func main() {
 
 		init_interrupt_parameter_registers(platform_bits)
 
-		bts_code := add_extern_main_if_missing(string(bytes))
-		tokens := add_exit_token_if_missing(tokenize(bts_code, " "))
+		btsCode := addExternMainIfMissing(string(bytes))
+		tokens := addExitTokenIfMissing(tokenize(btsCode, " "))
 		log.Println("--- Done tokenizing ---")
 		constants, asmcode := TokensToAssembly(tokens, true, false, ps)
 		if constants != "" {
@@ -151,7 +151,7 @@ func main() {
 			if component {
 				asmdata += asmcode + "\n"
 			} else {
-				asmdata += add_starting_point_if_missing(asmcode, ps) + "\n"
+				asmdata += addStartingPointIfMissing(asmcode, ps) + "\n"
 			}
 			if bootable {
 				reg := "esp"
