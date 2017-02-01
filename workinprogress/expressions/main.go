@@ -47,7 +47,7 @@ func OrGenerator(a, b OnlyFunction) OnlyFunction {
 
 func KeysAsString(m map[string]int) string {
 	s := ""
-	for k, _ := range m {
+	for k := range m {
 		s += k
 	}
 	return s
