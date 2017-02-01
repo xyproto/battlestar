@@ -105,7 +105,7 @@ func init_interrupt_parameter_registers(bits int) {
 
 func paramnum2reg(num int) string {
 	var offset, reg string
-	switch platform_bits {
+	switch platformBits {
 	case 64:
 		offset = strconv.Itoa(num * 8)
 		// ref: page 34 at http://people.freebsd.org/~obrien/amd64-elf-abi.pdf (Figure 3.17)
@@ -167,7 +167,7 @@ func paramnum2reg(num int) string {
 }
 
 func counter_register() string {
-	switch platform_bits {
+	switch platformBits {
 	case 16:
 		return "cx"
 	case 32:
@@ -175,12 +175,12 @@ func counter_register() string {
 	case 64:
 		return "rcx"
 	default:
-		log.Fatalln("Error: Unhandled bit size:", platform_bits)
+		log.Fatalln("Error: Unhandled bit size:", platformBits)
 		return ""
 	}
 }
 
-func syscall_or_interrupt(st Statement, syscall bool) string {
+func syscallOrInterrupt(st Statement, syscall bool) string {
 	var i int
 
 	if !syscall {
@@ -251,7 +251,7 @@ func syscall_or_interrupt(st Statement, syscall bool) string {
 					} else {
 						comment = "parameter #" + n + " is " + st[i].value
 						// Already recognized not to be a register
-						switch platform_bits {
+						switch platformBits {
 						case 64:
 							if st[i].value == "rsp" {
 								if is_64_bit_register(st[i].extra) {
@@ -313,7 +313,7 @@ func syscall_or_interrupt(st Statement, syscall bool) string {
 			} else {
 				// TODO: Remove special case, implement general local variables
 				if st[i].value == "x" {
-					switch platform_bits {
+					switch platformBits {
 					case 64:
 						codeline += "\tmov " + reg + ", rbp"
 						codeline += "\n\tsub " + reg + ", 8"
@@ -398,9 +398,9 @@ func (st Statement) String(ps *ProgramState) string {
 		log.Fatalln("Error: Empty statement.")
 		return ""
 	} else if (st[0].t == BUILTIN) && (st[0].value == "int") { // interrrupt call
-		return syscall_or_interrupt(st, false)
+		return syscallOrInterrupt(st, false)
 	} else if (st[0].t == BUILTIN) && (st[0].value == "syscall") {
-		return syscall_or_interrupt(st, true)
+		return syscallOrInterrupt(st, true)
 	} else if (st[0].t == KEYWORD) && (st[0].value == "const") && (len(st) >= 4) { // constant data
 		constname := ""
 		if st[1].t == VALID_NAME {
@@ -420,7 +420,7 @@ func (st Statement) String(ps *ProgramState) string {
 			ps.defined_names = append(ps.defined_names, constname)
 			// For the .DATA section (recognized by the keyword)
 			if st[3].t == VALUE {
-				switch platform_bits {
+				switch platformBits {
 				case 64:
 					asmcode += constname + ":\tdq "
 				case 32:
@@ -441,7 +441,7 @@ func (st Statement) String(ps *ProgramState) string {
 			}
 			if st[3].t == STRING {
 				asmcode += "\t\t; constant string\n"
-				if platform_bits == 16 {
+				if platformBits == 16 {
 					// Add an extra $, for safety, if on a 16-bit platform. Needed for print().
 					asmcode += "\tdb \"$\"\t\t\t; end of string, for when using ah=09/int 21h\n"
 				}
@@ -470,7 +470,7 @@ func (st Statement) String(ps *ProgramState) string {
 		// TODO: Remember to sub ebp/rbp
 		// TODO: Remove this special case and implement general local variables
 		codeline := ""
-		switch platform_bits {
+		switch platformBits {
 		case 64:
 			codeline += "\tsub rbp, 16\n"
 			codeline += "\tmov QWORD [rbp-16], " + st[2].value + "\t\t\t; " + "local variable x!" + "\n"
@@ -488,7 +488,7 @@ func (st Statement) String(ps *ProgramState) string {
 		asmcode += "\thlt\n"
 		asmcode += "\tjmp .hang\t; loop forever\n\n"
 		return asmcode
-	} else if (platform_bits == 16) && (st[0].t == BUILTIN) && (st[0].value == "print") && (st[1].t == VALID_NAME) {
+	} else if (platformBits == 16) && (st[0].t == BUILTIN) && (st[0].value == "print") && (st[1].t == VALID_NAME) {
 		asmcode := "\t; --- output string that ends with $ ---\n"
 		asmcode += "\tmov dx, " + st[1].value + "\n"
 		asmcode += "\tmov ah, 0x09\n"
@@ -500,7 +500,7 @@ func (st Statement) String(ps *ProgramState) string {
 			if (ps.in_function == "main") || (ps.in_function == linker_start_function) {
 				//log.Println("Not taking down stack frame in the main/_start/start function.")
 			} else {
-				switch platform_bits {
+				switch platformBits {
 				case 64:
 					asmcode += "\t;--- takedown stack frame ---\n"
 					asmcode += "\tmov rsp, rbp\t\t\t; use base pointer as new stack pointer\n"
@@ -528,7 +528,7 @@ func (st Statement) String(ps *ProgramState) string {
 				exit_code = st[1].value
 			}
 			if !bootable_kernel {
-				switch platform_bits {
+				switch platformBits {
 				case 64:
 					asmcode += "\tmov rax, 60\t\t\t; function call: 60\n\t"
 					if exit_code == "0" {
@@ -810,7 +810,7 @@ func (st Statement) String(ps *ProgramState) string {
 				asmcode := "\n\t;--- signed division: " + st[0].value + " /= " + st[2].value + " ---\n"
 				// TODO Add support for division with 16-bit registers as well!
 
-				if platform_bits == 32 {
+				if platformBits == 32 {
 					if st[0].value == "eax" {
 						// Dividing a 64-bit number in edx:eax by the number in ecx. Clearing out edx and only using 32-bit numbers for now.
 						// If the register to be divided is rax, do a quicker division than if it's another register
@@ -965,7 +965,7 @@ func (st Statement) String(ps *ProgramState) string {
 		log.Println("Unfamiliar 3-token expression!")
 	} else if (len(st) == 4) && (st[0].t == RESERVED) && (st[1].t == VALUE) && (st[2].t == ASSIGNMENT) && ((st[3].t == VALID_NAME) || (st[3].t == VALUE) || (st[3].t == REGISTER)) {
 		retval := "\tmov " + reserved_and_value(st[:2]) + ", " + st[3].value + "\t\t\t; "
-		if (platform_bits == 32) && (st[3].t != REGISTER) {
+		if (platformBits == 32) && (st[3].t != REGISTER) {
 			retval = strings.Replace(retval, "mov", "mov DWORD", 1)
 		}
 		pointercomment := ""
@@ -980,7 +980,7 @@ func (st Statement) String(ps *ProgramState) string {
 		return retval
 	} else if (len(st) == 5) && (st[0].t == RESERVED) && (st[1].t == VALUE) && (st[2].t == ASSIGNMENT) && (st[3].t == RESERVED) && (st[4].t == VALUE) {
 		retval := ""
-		if platform_bits != 32 {
+		if platformBits != 32 {
 			retval = "\tmov " + reserved_and_value(st[:2]) + ", " + reserved_and_value(st[3:]) + "\t\t\t; "
 		} else {
 			retval = "\tmov eax, " + reserved_and_value(st[3:]) + "\t\t\t; Uses eax as a temporary variable\n"
@@ -993,7 +993,7 @@ func (st Statement) String(ps *ProgramState) string {
 		if err != nil {
 			log.Fatalln("Error: " + st[1].value + " is not a valid platform bit size (like 32 or 64)")
 		}
-		if platform_bits == target_bits {
+		if platformBits == target_bits {
 			// Add the rest of the line as a regular assembly expression
 			if len(st) == 6 {
 				// with address calculations
@@ -1037,7 +1037,7 @@ func (st Statement) String(ps *ProgramState) string {
 			log.Fatalln("Error: Can not declare function, name is already defined:", ps.in_function)
 		}
 		ps.defined_names = append(ps.defined_names, ps.in_function)
-		if platform_bits != 16 {
+		if platformBits != 16 {
 			asmcode += "global " + ps.in_function + "\t\t\t; make label available to the linker\n"
 		}
 		asmcode += ps.in_function + ":\t\t\t\t; name of the function\n\n"
@@ -1045,7 +1045,7 @@ func (st Statement) String(ps *ProgramState) string {
 			//log.Println("Not setting up stack frame in the main/_start/start function.")
 			return asmcode
 		}
-		switch platform_bits {
+		switch platformBits {
 		case 64:
 			asmcode += "\t;--- setup stack frame ---\n"
 			asmcode += "\tpush rbp\t\t\t; save old base pointer\n"
@@ -1068,7 +1068,7 @@ func (st Statement) String(ps *ProgramState) string {
 		return "\tmov " + counter_register() + ", " + st[1].value + "\t\t\t; set (loop) counter\n"
 	} else if (st[0].t == KEYWORD) && (st[0].value == "value") && (len(st) == 2) {
 		asmcode := ""
-		switch platform_bits {
+		switch platformBits {
 		case 64:
 			asmcode = "\tmov rax, " + st[1].value + "\t\t\t; set value, in preparation for looping\n"
 			ps.loop_step = 8
@@ -1101,12 +1101,12 @@ func (st Statement) String(ps *ProgramState) string {
 				log.Fatalln("Error: Unable to tell if this is a word or a byte:", st[1].value)
 			}
 		default:
-			log.Fatalln("Error: Unimplemented: the", st[0].value, "keyword for", platform_bits, "bit platforms")
+			log.Fatalln("Error: Unimplemented: the", st[0].value, "keyword for", platformBits, "bit platforms")
 		}
 		return asmcode
 	} else if (st[0].t == KEYWORD) && (st[0].value == "loopwrite") && (len(st) == 1) {
 		asmcode := ""
-		switch platform_bits {
+		switch platformBits {
 		case 16:
 			if ps.loop_step == 2 {
 				asmcode += "\trep stosw\t\t\t; write the value in ax, cx times, starting at es:di\n"
@@ -1115,12 +1115,12 @@ func (st Statement) String(ps *ProgramState) string {
 			}
 			//else log.Fatalln("Error: Unrecognized step size when looping. Defaulting to 1.")
 		default:
-			log.Fatalln("Error: Unimplemented: the", st[0].value, "keyword for", platform_bits, "bit platforms")
+			log.Fatalln("Error: Unimplemented: the", st[0].value, "keyword for", platformBits, "bit platforms")
 		}
 		return asmcode
 	} else if (st[0].t == KEYWORD) && (st[0].value == "write") && (len(st) == 1) {
 		asmcode := ""
-		switch platform_bits {
+		switch platformBits {
 		case 16:
 			if ps.loop_step == 2 {
 				asmcode += "\tstosw\t\t\t; write the value in ax, starting at es:di\n"
@@ -1129,7 +1129,7 @@ func (st Statement) String(ps *ProgramState) string {
 			}
 			//else log.Fatalln("Error: Unrecognized step size. Defaulting to 1.")
 		default:
-			log.Fatalln("Error: Unimplemented: the", st[0].value, "keyword for", platform_bits, "bit platforms")
+			log.Fatalln("Error: Unimplemented: the", st[0].value, "keyword for", platformBits, "bit platforms")
 		}
 		return asmcode
 	} else if (st[0].t == KEYWORD) && ((st[0].value == "rawloop") || (st[0].value == "loop")) && ((len(st) == 1) || (len(st) == 2)) {
@@ -1178,7 +1178,7 @@ func (st Statement) String(ps *ProgramState) string {
 		return asmcode
 	} else if (st[0].t == KEYWORD) && (st[0].value == "address") && (len(st) == 2) {
 		asmcode := ""
-		switch platform_bits {
+		switch platformBits {
 		case 16:
 			segment_offset := st[1].value
 			if !strings.Contains(segment_offset, ":") {
@@ -1204,7 +1204,7 @@ func (st Statement) String(ps *ProgramState) string {
 		case 64:
 			asmcode += "\tmov rdi, " + st[1].value + "\t\t\t; set address/offset\n"
 		default:
-			log.Fatalln("Error: Unimplemented: the", st[0].value, "keyword for", platform_bits, "bit platforms")
+			log.Fatalln("Error: Unimplemented: the", st[0].value, "keyword for", platformBits, "bit platforms")
 		}
 		return asmcode
 	} else if (st[0].t == KEYWORD) && (st[0].value == "bootable") && (len(st) == 1) {
@@ -1441,7 +1441,7 @@ section .text
 		negative_offset := strconv.Itoa(paramoffset*4 + 8)
 		reg := ""
 		asmcode := ""
-		switch platform_bits {
+		switch platformBits {
 		case 32:
 			reg = "ebp"
 			asmcode = "\tmov DWORD [" + reg + "-" + negative_offset + "], " + st[2:].String(ps)

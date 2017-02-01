@@ -238,7 +238,7 @@ func tokenize(program string, sep string) []Token {
 			} else if has(reserved, word) {
 				if has([]string{"a", "b", "c", "d"}, word) {
 					reg := word
-					switch platform_bits {
+					switch platformBits {
 					case 64:
 						reg = "r" + word
 					case 32:
@@ -389,7 +389,7 @@ func reduce(st Statement, debug bool, ps *ProgramState) Statement {
 				st[i] = Token{token_type, "_length_of_" + name, st[0].line, ""}
 			} else if st[i+1].t == REGISTER {
 				var length string
-				switch platform_bits {
+				switch platformBits {
 				case 64:
 					length = "4"
 				case 32:
@@ -425,7 +425,7 @@ func reduce(st Statement, debug bool, ps *ProgramState) Statement {
 			var tokens []Token
 			var tokenpos int
 			extra := st[i+1].extra
-			switch platform_bits {
+			switch platformBits {
 			case 64:
 				cmd = "syscall(1, 1, " + st[i+1].value + ", len(" + st[i+1].value + "))"
 				tokens = tokenize(cmd, " ")
@@ -451,7 +451,7 @@ func reduce(st Statement, debug bool, ps *ProgramState) Statement {
 
 			// Replace str(register) with a token VALID_NAME with esp/rsp + register name as the value.
 			// This is not perfect, but allows us to output register values with a system call.
-			switch platform_bits {
+			switch platformBits {
 			case 64:
 				// remove the element at i+1
 				st = st[:i+1+copy(st[i+1:], st[i+2:])]

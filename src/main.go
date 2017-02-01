@@ -14,7 +14,7 @@ import (
 // Global variables
 var (
 	// 32-bit (i686), 64-bit (x86_64) or 16-bit (i386)
-	platform_bits = 32
+	platformBits = 32
 
 	// Is this a bootable kernel? (declared with "bootable" at the top)
 	bootable_kernel = false
@@ -39,28 +39,26 @@ func main() {
 	// TODO: ARM support
 
 	// Check for -bits=32 or -bits=64 (default)
-	bits := flag.Int("bits", 64, "Output 32-bit or 64-bit x86 assembly")
+	platformBitsArg := flag.Int("bits", 64, "Output 32-bit or 64-bit x86 assembly")
 	// Check for -osx=true or -osx=false (default)
-	is_osx := flag.Bool("osx", false, "On OS X?")
+	osxArg := flag.Bool("osx", false, "On OS X?")
 	// Assembly output file
-	asm_file := flag.String("o", "", "Assembly output file")
+	asmfileArg := flag.String("o", "", "Assembly output file")
 	// C output file
-	c_file := flag.String("oc", "", "C output file")
+	cfileArg := flag.String("oc", "", "C output file")
 	// Input file
-	bts_file := flag.String("f", "", "BTS source file")
+	btsfileArg := flag.String("f", "", "BTS source file")
 	// Is it not a standalone program, but a component? (just the .o file is needed)
-	is_component := flag.Bool("c", false, "Component, not a standalone program")
+	componentArg := flag.Bool("c", false, "Component, not a standalone program")
 
 	flag.Parse()
 
-	platform_bits = *bits
-	osx = *is_osx
-
-	asmfile := *asm_file
-	cfile := *c_file
-	btsfile := *bts_file
-
-	component := *is_component
+	platformBits = *platformBitsArg
+	osx = *osxArg
+	asmfile := *asmfileArg
+	cfile := *cfileArg
+	btsfile := *btsfileArg
+	component := *componentArg
 
 	if flag.Arg(0) != "" {
 		btsfile = flag.Arg(0)
@@ -108,18 +106,18 @@ func main() {
 		bootable := false
 		if temptokens := tokenize(string(bytes), " "); (len(temptokens) > 2) && (temptokens[0].t == KEYWORD) && (temptokens[0].value == "bootable") && (temptokens[1].t == SEP) {
 			bootable = true
-			asmdata += fmt.Sprintf("bits %d\n", platform_bits)
+			asmdata += fmt.Sprintf("bits %d\n", platformBits)
 		} else {
 			// Header for regular programs
-			asmdata += fmt.Sprintf("bits %d\n", platform_bits)
+			asmdata += fmt.Sprintf("bits %d\n", platformBits)
 		}
 
-		// Check if platform_bits is valid
-		if !hasi([]int{16, 32, 64}, platform_bits) {
-			log.Fatalln("Error: Unsupported bit size:", platform_bits)
+		// Check if platformBits is valid
+		if !hasi([]int{16, 32, 64}, platformBits) {
+			log.Fatalln("Error: Unsupported bit size:", platformBits)
 		}
 
-		init_interrupt_parameter_registers(platform_bits)
+		init_interrupt_parameter_registers(platformBits)
 
 		btsCode := addExternMainIfMissing(string(bytes))
 		tokens := addExitTokenIfMissing(tokenize(btsCode, " "))
@@ -129,14 +127,14 @@ func main() {
 			asmdata += "section .data\n"
 			asmdata += constants + "\n"
 		}
-		if platform_bits == 16 {
+		if platformBits == 16 {
 			asmdata += "org 0x100\n"
 		}
 		if !bootable {
 			asmdata += "\n"
 			asmdata += "section .text\n"
 		}
-		if platform_bits == 16 {
+		if platformBits == 16 {
 			// If there are defined functions, jump over the definitions and start at
 			// the main/_start function. If there is a main function, jump to the
 			// linker start function. If not, just start at the top.
@@ -155,7 +153,7 @@ func main() {
 			}
 			if bootable {
 				reg := "esp"
-				if platform_bits == 64 {
+				if platformBits == 64 {
 					reg = "rsp"
 				}
 				asmdata = strings.Replace(asmdata, "; starting point of the program\n", "; starting point of the program\n\tmov "+reg+", stack_top\t; set the "+reg+" register to the top of the stack (special case for bootable kernels)\n", 1)

@@ -109,7 +109,7 @@ func addStartingPointIfMissing(asmcode string, ps *ProgramState) string {
 	if !strings.Contains(asmcode, linker_start_function) {
 		log.Printf("No %s has been defined, creating one\n", linker_start_function)
 		var addstring string
-		if platform_bits != 16 {
+		if platformBits != 16 {
 			addstring += "global " + linker_start_function + "\t\t\t; make label available to the linker\n"
 		}
 		addstring += linker_start_function + ":\t\t\t\t; starting point of the program\n"
