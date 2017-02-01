@@ -315,7 +315,7 @@ func tokenize(program string, sep string) []Token {
 				tokens = append(tokens, t)
 				logtoken(t)
 			} else if strings.Contains(word, "+") {
-				// Assume it's an adress, like bp+5
+				// Assume it's an address, like bp+5
 				t = Token{MEMEXP, "[" + word + "]", statementnr, ""}
 				tokens = append(tokens, t)
 				logtoken(t)
@@ -406,7 +406,7 @@ func reduce(st Statement, debug bool, ps *ProgramState) Statement {
 			}
 
 			if debug {
-				log.Println("SUCCESSFULL REPLACEMENT WITH", st[i])
+				log.Println("SUCCESSFUL REPLACEMENT WITH", st[i])
 			}
 		} else if (st[i].t == BUILTIN) && (st[i].value == "print") && (st[i+1].t == STRING) {
 			log.Fatalln("Error: print can only print const strings, not immediate strings")
