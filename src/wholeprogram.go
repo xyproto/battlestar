@@ -8,16 +8,19 @@ import (
 var (
 	// TODO: Add an option for not adding start symbols
 	linker_start_function = "_start"
-	inline_c              bool // are we in a block of inline C? (inline_c ... end)
-	c_block               bool // are we in a block of inline C? (void ... })
 )
 
+// ExtractInlineCode retrieves the C code between:
+//   inline_c...end
+// or
+//   void...}
 func ExtractInlineC(code string, debug bool) string {
-	// Fetch the inline C code between the "c" and "end" kewyords
-	clines := ""
-	inline_c = false
-	c_block = false
-	whitespace := -1 // Where to strip whitespace
+	var (
+		clines     string
+		inline_c   bool
+		c_block    bool
+		whitespace = -1 // Where to strip whitespace
+	)
 	for _, line := range strings.Split(code, "\n") {
 		firstword := strings.TrimSpace(removecomments(line))
 		if pos := strings.Index(firstword, " "); pos != -1 {

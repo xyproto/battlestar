@@ -21,6 +21,10 @@ var (
 	interrupt_parameter_registers []string
 )
 
+type ParseState struct {
+	inlineC bool // currently in a block of inline C?
+}
+
 func is_64_bit_register(reg string) bool {
 	// Anything after "rax" (including)
 	return pos(registers, reg) >= pos(registers, "rax")
@@ -384,6 +388,8 @@ func syscall_or_interrupt(st Statement, syscall bool) string {
 func (st Statement) String(ps *ProgramState) string {
 	debug := true
 
+	var parseState ParseState
+
 	reduced := reduce(st, debug, ps)
 	if len(reduced) != len(st) {
 		return reduced.String(ps)
@@ -586,9 +592,9 @@ func (st Statement) String(ps *ProgramState) string {
 				ps.surprise_ending_with_exit = true
 			}
 		}
-		if inline_c {
+		if parseState.inlineC {
 			// Exiting from inline C
-			inline_c = false
+			parseState.inlineC = false
 			return "; End of inline C block"
 		}
 		return asmcode
@@ -1376,8 +1382,8 @@ section .text
 		ps.endless = true
 		return "; there is no return\n"
 	} else if (st[0].t == KEYWORD) && (st[0].value == "end") && (len(st) == 1) {
-		if inline_c {
-			inline_c = false
+		if parseState.inlineC {
+			parseState.inlineC = false
 			return "; end of inline C block\n"
 		} else if ps.in_if_block != "" {
 			// End the if block
@@ -1447,7 +1453,7 @@ section .text
 		asmcode += "\t\t; local variable #" + strconv.Itoa(paramoffset) + "\n"
 		return asmcode
 	} else if (st[0].t == KEYWORD) && (st[0].value == "inline_c") {
-		inline_c = true
+		parseState.inlineC = true
 		return "; start of inline C block\n"
 	} else if (st[0].t == KEYWORD) && (st[0].value == "const") {
 		log.Fatalln("Error: Incomprehensible constant:", st.String(ps))
