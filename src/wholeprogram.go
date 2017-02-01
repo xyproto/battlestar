@@ -159,9 +159,7 @@ func add_exit_token_if_missing(tokens []Token) []Token {
 
 	// If not, add an exit statement and return
 	newtokens := make([]Token, len(tokens)+2, len(tokens)+2)
-	for i, _ := range tokens {
-		newtokens[i] = tokens[i]
-	}
+	copy(newtokens, tokens)
 
 	// TODO: Check that the line nr is correct
 	ret_token := Token{BUILTIN, "exit", newtokens[len(newtokens)-1].line, ""}

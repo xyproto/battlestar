@@ -262,16 +262,12 @@ func tokenize(program string, sep string) []Token {
 			} else if strings.HasSuffix(word, "++") {
 				firstpart := word[:len(word)-2]
 				newtokens := retokenize(firstpart+" += 1", " ")
-				for _, newtoken := range newtokens {
-					tokens = append(tokens, newtoken)
-				}
+				tokens = append(tokens, newtokens...)
 				lognewtokens(newtokens)
 			} else if strings.HasSuffix(word, "--") {
 				firstpart := word[:len(word)-2]
 				newtokens := retokenize(firstpart+" -= 1", " ")
-				for _, newtoken := range newtokens {
-					tokens = append(tokens, newtoken)
-				}
+				tokens = append(tokens, newtokens...)
 				lognewtokens(newtokens)
 			} else if is_valid_name(word) {
 				t = Token{VALID_NAME, word, statementnr, ""}
@@ -279,33 +275,23 @@ func tokenize(program string, sep string) []Token {
 				logtoken(t)
 			} else if strings.Contains(word, "(") {
 				newtokens := retokenize(word, "(")
-				for _, newtoken := range newtokens {
-					tokens = append(tokens, newtoken)
-				}
+				tokens = append(tokens, newtokens...)
 				lognewtokens(newtokens)
 			} else if strings.Contains(word, ")") {
 				newtokens := retokenize(word, ")")
-				for _, newtoken := range newtokens {
-					tokens = append(tokens, newtoken)
-				}
+				tokens = append(tokens, newtokens...)
 				lognewtokens(newtokens)
 			} else if strings.Contains(word, "[") {
 				newtokens := retokenize(word, "[")
-				for _, newtoken := range newtokens {
-					tokens = append(tokens, newtoken)
-				}
+				tokens = append(tokens, newtokens...)
 				lognewtokens(newtokens)
 			} else if strings.Contains(word, "]") {
 				newtokens := retokenize(word, "]")
-				for _, newtoken := range newtokens {
-					tokens = append(tokens, newtoken)
-				}
+				tokens = append(tokens, newtokens...)
 				lognewtokens(newtokens)
 			} else if (!constexpr) && strings.Contains(word, ",") {
 				newtokens := retokenize(word, ",")
-				for _, newtoken := range newtokens {
-					tokens = append(tokens, newtoken)
-				}
+				tokens = append(tokens, newtokens...)
 				lognewtokens(newtokens)
 			} else if strings.Contains(word, "\"") {
 				if debug {
