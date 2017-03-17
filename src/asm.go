@@ -311,28 +311,14 @@ func syscallOrInterrupt(st Statement, syscall bool) string {
 			if st[i].value == "0" {
 				codeline += "\txor " + reg + ", " + reg
 			} else {
-				// TODO: Remove special case, implement general local variables
-				if st[i].value == "x" {
-					switch platformBits {
-					case 64:
-						codeline += "\tmov " + reg + ", rbp"
-						codeline += "\n\tsub " + reg + ", 8"
-					case 32:
-						codeline += "\tmov " + reg + ", ebp"
-						codeline += "\n\tsub " + reg + ", 8"
-					case 16:
-						log.Fatalln("Error: LOCAL VARIABLES are not implemented yet")
+				if osx {
+					if i == last_i {
+						codeline += "\tmov " + reg + ", " + st[i].value
+					} else {
+						codeline += "\tpush dword " + st[i].value
 					}
 				} else {
-					if osx {
-						if i == last_i {
-							codeline += "\tmov " + reg + ", " + st[i].value
-						} else {
-							codeline += "\tpush dword " + st[i].value
-						}
-					} else {
-						codeline += "\tmov " + reg + ", " + st[i].value
-					}
+					codeline += "\tmov " + reg + ", " + st[i].value
 				}
 			}
 		}
@@ -401,12 +387,54 @@ func (st Statement) String(ps *ProgramState) string {
 		return syscallOrInterrupt(st, false)
 	} else if (st[0].t == BUILTIN) && (st[0].value == "syscall") {
 		return syscallOrInterrupt(st, true)
+	} else if (st[0].t == KEYWORD) && (st[0].value == "var") && (len(st) >= 3) { // variable / bss declaration
+		varname := ""
+		if st[1].t == VALID_NAME {
+			varname = st[1].value
+		} else {
+			log.Fatalln("Error: "+st[1].value, "is not a valid name for a variable")
+		}
+		bsscode := ""
+		if (st[1].t == VALID_NAME) && ((st[2].t == VALUE) || (strings.HasPrefix(st[2].value, "_length_of_"))) {
+			if has(ps.defined_names, varname) {
+				log.Fatalln("Error: Can not declare variable, name is already defined: " + varname)
+			}
+			ps.defined_names = append(ps.defined_names, varname)
+			// Store the name of the declared variable in variables + the length
+			if !strings.HasPrefix(st[2].value, "_length_of_") {
+				var err error
+				ps.variables[varname], err = strconv.Atoi(st[2].value)
+				if err != nil {
+					log.Fatalln("Error: " + st[2].value + " is not a valid number of bytes to reserve")
+				}
+			}
+			// Will be placed in the .bss section at the end
+			bsscode += varname + ": resb " + st[2].value + "\t\t\t\t; reserve " + st[2].value + " bytes as " + varname + "\n"
+			bsscode += "_capacity_of_" + varname + " equ " + st[2].value + "\t\t; size of reserved memory\n"
+			bsscode += "_length_of_" + varname + ": "
+			switch platformBits {
+			case 64:
+				bsscode += "resd 1"
+			case 32:
+				bsscode += "resw 1"
+			case 16:
+				bsscode += "resb 1"
+			}
+			bsscode += "\t\t; current length of contents (points to after the data)\n"
+			return bsscode
+		}
+		log.Printf("Error: Variable statements are on the form: \"var x 1024\" for reserving 1024 bytes, not: %s %s %s\n", st[0].value, st[1].value, st[2].value)
+		log.Println("Invalid parameters for variable string statement:")
+		for _, t := range st {
+			log.Println(t.value)
+		}
+		os.Exit(1)
 	} else if (st[0].t == KEYWORD) && (st[0].value == "const") && (len(st) >= 4) { // constant data
 		constname := ""
 		if st[1].t == VALID_NAME {
 			constname = st[1].value
 		} else {
-			log.Fatalln("Error: "+st[1].value, "is not a valid name for a constant")
+			log.Fatalln("Error: "+st[1].value, " (or a,b,c,d) is not a valid name for a constant")
 		}
 		asmcode := ""
 		if (st[1].t == VALID_NAME) && (st[2].t == ASSIGNMENT) && ((st[3].t == STRING) || (st[3].t == VALUE) || (st[3].t == VALID_NAME)) {
@@ -441,10 +469,11 @@ func (st Statement) String(ps *ProgramState) string {
 			}
 			if st[3].t == STRING {
 				asmcode += "\t\t; constant string\n"
-				if platformBits == 16 {
-					// Add an extra $, for safety, if on a 16-bit platform. Needed for print().
-					asmcode += "\tdb \"$\"\t\t\t; end of string, for when using ah=09/int 21h\n"
-				}
+				//if platformBits == 16 {
+				// Add an extra $, for safety, if on a 16-bit platform. Needed for print().
+				// TODO: Remove, use a different int 21h call instead!
+				//asmcode += "\tdb \"$\"\t\t\t; end of string, for when using ah=09/int 21h\n"
+				//}
 			} else {
 				asmcode += "\t\t; constant value\n"
 			}
@@ -458,29 +487,74 @@ func (st Statement) String(ps *ProgramState) string {
 		}
 		os.Exit(1)
 	} else if (len(st) > 2) && (st[0].t == VALID_NAME) && (st[1].t == ASSIGNMENT) {
-		log.Println("local variable", st[0].value)
-		//for _, t := range st[2:] {
-		//    log.Println("new value:", t)
-		//}
-		// TODO: add proper support for 32-bit, 64-bit and local variable offsets
-		//       (-8, -12, -16 etc for 32-bit)
-		//       (-8, -16, -24 etc for 64-bit)
-		// TODO: add the variable name to the proper global maps and slices
-		log.Println("WARNING: Local variables are to be implemented, only one is supported for now")
-		// TODO: Remember to sub ebp/rbp
-		// TODO: Remove this special case and implement general local variables
-		codeline := ""
+		// Copying data from constants to variables (reserved memory in the .bss section)
+		asmcode := ""
+		from := st[2].value
+		to := st[0].value
+		lengthexpr := "_length_of_" + from
+		toPosition := "[_length_of_" + to + "]"
+		// TODO: Make this a lot smarter and handle copying ranges of data, adr or value
+		// TODO: Actually, redesign the whole language
 		switch platformBits {
 		case 64:
-			codeline += "\tsub rbp, 16\n"
-			codeline += "\tmov QWORD [rbp-16], " + st[2].value + "\t\t\t; " + "local variable x!" + "\n"
+			asmcode += "\tmov rdi, " + to + "\t\t\t; copy bytes from " + from + " to " + to + "\n"
+			asmcode += "\tmov rsi, " + from + "\n"
+			asmcode += "\tmov rcx, " + lengthexpr + "\n"
+			//asmcode += "\tmov QWORD " + toPosition + ", " + to + "\n"
+			asmcode += "\tmov " + toPosition + ", rcx" + "\n"
+			asmcode += "\tcld\n"
+			asmcode += "\trep movsb\t\t\t\t; copy bytes\n" // optimized ok on 64-bit CPUs
 		case 32:
-			codeline += "\tsub ebp, 8\n"
-			codeline += "\tmov DWORD [ebp-8], " + st[2].value + "\t\t\t; " + "local variable x!" + "\n"
+			asmcode += "\tmov edi, " + to + "\t\t\t; copy bytes from " + from + " to " + to + "\n"
+			asmcode += "\tmov esi, " + from + "\n"
+			asmcode += "\tmov ecx, " + lengthexpr + "\n"
+			asmcode += "\tmov " + toPosition + ", ecx\n"
+			asmcode += "\tcld\n"
+			asmcode += "\trep movsb\t\t\t\t; copy bytes\n" // optimized ok on 32-bit CPUs
 		case 16:
-			log.Fatalln("Error: LOCAL VARIABLES are not implemented yet")
+			// TODO: Test this
+			asmcode += "\tmov di, " + to + "\t\t\t; copy bytes from " + from + " to " + to + "\n"
+			asmcode += "\tmov si, " + from + "\n"
+			asmcode += "\tmov cx, " + lengthexpr + "\n"
+			asmcode += "\tmov " + toPosition + ", cx\n"
+			asmcode += "\trep movsb\t\t\t\t; copy bytes\n"
 		}
-		return codeline
+		return asmcode
+	} else if (len(st) > 2) && ((st[1].t == ADDITION) && (st[0].t == VALID_NAME) && (st[2].t == VALID_NAME)) {
+		// Copying data from constants to variables (reserved memory in the .bss section)
+		asmcode := ""
+		from := st[2].value
+		to := st[0].value
+		lengthAddr := "[_length_of_" + to + "]"
+		// TODO: Make this a lot smarter and handle copying ranges of data, adr or value
+		// TODO: Actually, redesign the whole language
+		switch platformBits {
+		case 64:
+			asmcode += "\tmov rdi, " + to + "\t\t; add bytes from \"" + from + "\" to " + to + "\n"
+			asmcode += "\tadd rdi, " + lengthAddr + "\n"
+			asmcode += "\tmov rsi, " + from + "\n"
+			asmcode += "\tmov rcx, _length_of_" + from + "\n"
+			asmcode += "\tadd " + lengthAddr + ", rcx" + "\n"
+			asmcode += "\tcld\n"
+			asmcode += "\trep movsb\t\t\t\t; copy bytes\n"
+		case 32:
+			asmcode += "\tmov edi, " + to + "\t\t; add bytes from \"" + from + "\" to " + to + "\n"
+			asmcode += "\tadd edi, " + lengthAddr + "\n"
+			asmcode += "\tmov esi, " + from + "\n"
+			asmcode += "\tmov ecx, _length_of_" + from + "\n"
+			asmcode += "\tadd " + lengthAddr + ", ecx" + "\n"
+			asmcode += "\tcld\n"
+			asmcode += "\trep movsb\t\t\t\t; copy bytes\n"
+		case 16:
+			// TODO: Test this
+			asmcode += "\tmov di, " + to + "\t\t; add bytes from \"" + from + "\" to " + to + "\n"
+			asmcode += "\tadd di, " + lengthAddr + "\n"
+			asmcode += "\tmov si, " + from + "\n"
+			asmcode += "\tmov cx, _length_of_" + from + "\n"
+			asmcode += "\tadd " + lengthAddr + ", cx" + "\n"
+			asmcode += "\trep movsb\t\t\t\t; copy bytes\n"
+		}
+		return asmcode
 	} else if (st[0].t == BUILTIN) && (st[0].value == "halt") {
 		asmcode := "\t; --- full stop ---\n"
 		asmcode += "\tcli\t\t; clear interrupts\n"
@@ -489,9 +563,16 @@ func (st Statement) String(ps *ProgramState) string {
 		asmcode += "\tjmp .hang\t; loop forever\n\n"
 		return asmcode
 	} else if (platformBits == 16) && (st[0].t == BUILTIN) && (st[0].value == "print") && (st[1].t == VALID_NAME) {
-		asmcode := "\t; --- output string that ends with $ ---\n"
+		asmcode := "\t; --- output string of given length ---\n"
 		asmcode += "\tmov dx, " + st[1].value + "\n"
-		asmcode += "\tmov ah, 0x09\n"
+		if _, ok := ps.variables[st[1].value]; ok {
+			// A variable in .bss
+			asmcode += "\tmov cx, [_length_of_" + st[1].value + "]\n"
+		} else {
+			asmcode += "\tmov cx, _length_of_" + st[1].value + "\n"
+		}
+		asmcode += "\tmov bx, 1\n"
+		asmcode += "\tmov ah, 0x40\t\t; prepare to call \"Write File or Device\"\n"
 		asmcode += "\tint 0x21\n\n"
 		return asmcode
 	} else if ((st[0].t == KEYWORD) && (st[0].value == "ret")) || ((st[0].t == BUILTIN) && (st[0].value == "exit")) {
@@ -1021,7 +1102,7 @@ func (st Statement) String(ps *ProgramState) string {
 					return "\t" + st[2].value + "\t\t\t; asm\n"
 				}
 			} else {
-				log.Fatalln("Error: Unrecognized length of assembly epxression:", len(st)-2)
+				log.Fatalln("Error: Unrecognized length of assembly expression:", len(st)-2)
 			}
 		}
 		// Not the target bits, skip
@@ -1113,9 +1194,8 @@ func (st Statement) String(ps *ProgramState) string {
 			} else { // if ps.loop_step == 1 {
 				asmcode += "\trep stosb\t\t\t; write the value in al, cx times, starting at es:di\n"
 			}
-			//else log.Fatalln("Error: Unrecognized step size when looping. Defaulting to 1.")
 		default:
-			log.Fatalln("Error: Unimplemented: the", st[0].value, "keyword for", platformBits, "bit platforms")
+			asmcode += "\tcld\n\trep stosb\t\t\t; write the value in eax/rax, ecx/rcx times, starting at edi/rdi\n"
 		}
 		return asmcode
 	} else if (st[0].t == KEYWORD) && (st[0].value == "write") && (len(st) == 1) {
@@ -1219,7 +1299,7 @@ MEMINFO     equ  1<<1                   ; provide memory map
 FLAGS       equ  MBALIGN | MEMINFO      ; this is the Multiboot 'flag' field
 MAGIC       equ  0x1BADB002             ; 'magic number' lets bootloader find the header
 CHECKSUM    equ -(MAGIC + FLAGS)        ; checksum of above, to prove we are multiboot
- 
+
 ; Declare a header as in the Multiboot Standard. We put this into a special
 ; section so we can force the header to be in the start of the final program.
 ; You don't need to understand all these details as it is just magic values that
@@ -1230,7 +1310,7 @@ align 4
 	dd MAGIC
 	dd FLAGS
 	dd CHECKSUM
- 
+
 ; Currently the stack pointer register (esp) points at anything and using it may
 ; cause massive harm. Instead, we'll provide our own stack. We will allocate
 ; room for a small temporary stack by creating a symbol at the bottom of it,
@@ -1435,23 +1515,6 @@ section .text
 		} else {
 			log.Fatalln("Error: No function named:", st[0].value)
 		}
-	} else if (len(st) > 2) && (st[0].t == VARIABLE) && (st[1].t == ASSIGNMENT) {
-		// negative base pointer offset for local variables
-		paramoffset := len(ps.variables[ps.in_function]) - 1
-		negative_offset := strconv.Itoa(paramoffset*4 + 8)
-		reg := ""
-		asmcode := ""
-		switch platformBits {
-		case 32:
-			reg = "ebp"
-			asmcode = "\tmov DWORD [" + reg + "-" + negative_offset + "], " + st[2:].String(ps)
-		case 64:
-			negative_offset = strconv.Itoa(paramoffset*8 + 8)
-			reg = "rbp"
-			asmcode = "\tmov QWORD [" + reg + "-" + negative_offset + "], " + st[2:].String(ps)
-		}
-		asmcode += "\t\t; local variable #" + strconv.Itoa(paramoffset) + "\n"
-		return asmcode
 	} else if (st[0].t == KEYWORD) && (st[0].value == "inline_c") {
 		parseState.inlineC = true
 		return "; start of inline C block\n"

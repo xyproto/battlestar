@@ -2,7 +2,7 @@
 // The original was written by "melezov" (http://256bytes.untergrund.net/demo/334)
 
 fun main
-    al = 0x13               // set graphics mode (mode 13h)  
+    al = 0x13               // set graphics mode (mode 13h)
                             // 320x200, 256 colors, one byte per pixel
     int 10
 

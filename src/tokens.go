@@ -27,9 +27,10 @@ const (
 	ARROW          = 18
 	MEMEXP         = 19 // memory expressions, like [di+321]
 	ASMLABEL       = 20
-	ROL            = 21  // rotate left instruction
-	ROR            = 22  // rotate right instruction
-	SEGOFS         = 23  // segment:offset for 16-bit assembly
+	ROL            = 21 // rotate left instruction
+	ROR            = 22 // rotate right instruction
+	SEGOFS         = 23 // segment:offset for 16-bit assembly
+	CONCAT         = 24
 	SEP            = 127 // statement separator
 	UNKNOWN        = 255
 )
@@ -39,7 +40,7 @@ var (
 	tokenDebug     = false
 	newTokensDebug = true
 
-	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard", RESERVED: "reserved", VARIABLE: "variable", ADDITION: "addition", SUBTRACTION: "subtraction", MULTIPLICATION: "multiplication", DIVISION: "division", COMPARISON: "comparison", ARROW: "stack operation", MEMEXP: "address expression", ASMLABEL: "assembly label", AND: "and", XOR: "xor", OR: "or", ROL: "rol", ROR: "ror", SEGOFS: "segment+offset"}
+	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard", RESERVED: "reserved", VARIABLE: "variable", ADDITION: "addition", SUBTRACTION: "subtraction", MULTIPLICATION: "multiplication", DIVISION: "division", COMPARISON: "comparison", ARROW: "stack operation", MEMEXP: "address expression", ASMLABEL: "assembly label", AND: "and", XOR: "xor", OR: "or", ROL: "rol", ROR: "ror", CONCAT: "concatenation", SEGOFS: "segment+offset"}
 	// see also the top of language.go, when adding tokens
 )
 
@@ -121,6 +122,7 @@ func tokenize(program string, sep string) []Token {
 		t           Token
 		instring    = false // Have we encountered a " for any given statement?
 		constexpr   = false // Are we in a constant expression?
+		varexpr     = false // Are we in a variable expression?
 		collected   string  // Collected string, until end of line
 		inline_c    = false // Are we in parts of the code that are inline_c ... end ?
 		c_block     = false // Are we in parts of the code that are void ... } ?
@@ -178,6 +180,8 @@ func tokenize(program string, sep string) []Token {
 		// If we are defining a constant, ease up on tokenizing the rest of the line recursively
 		if words[0] == "const" {
 			constexpr = true
+		} else if words[0] == "var" {
+			varexpr = true
 		}
 
 		// Tokenize the words
@@ -221,6 +225,8 @@ func tokenize(program string, sep string) []Token {
 					tokentype = ROR
 				case "->":
 					tokentype = ARROW
+				case "..":
+					tokentype = CONCAT
 				default:
 					log.Fatalln("Error: Unhandled operator:", word)
 				}
@@ -289,8 +295,12 @@ func tokenize(program string, sep string) []Token {
 				newtokens := retokenize(word, "]")
 				tokens = append(tokens, newtokens...)
 				lognewtokens(newtokens)
-			} else if (!constexpr) && strings.Contains(word, ",") {
+			} else if (!constexpr && !varexpr) && strings.Contains(word, ",") {
 				newtokens := retokenize(word, ",")
+				tokens = append(tokens, newtokens...)
+				lognewtokens(newtokens)
+			} else if strings.Contains(word, "..") {
+				newtokens := retokenize(word, "..")
 				tokens = append(tokens, newtokens...)
 				lognewtokens(newtokens)
 			} else if strings.Contains(word, "\"") {
@@ -352,6 +362,7 @@ func tokenize(program string, sep string) []Token {
 		t = Token{SEP, ";", statementnr, ""}
 		tokens = append(tokens, t)
 		constexpr = false
+		varexpr = false
 	}
 	return tokens
 }
@@ -372,21 +383,32 @@ func reduce(st Statement, debug bool, ps *ProgramState) Statement {
 
 				name = st[i+1].value
 
-				if has(ps.variables[ps.in_function], name) {
-					// TODO: Find a way to find the length of local variables
-					log.Fatalln("Error: finding the length of a local variable is currently not implemented")
-				}
 				if !has(ps.defined_names, name) {
 					log.Fatalln("Error:", name, "is unfamiliar. Can not find length.")
 				}
+
+				// TODO: Create a built-in cap() function too
+				//if length, ok := ps.variables[name]; ok {
+				//	token_type = st[i+1].t
+
+				//	// remove the element at i+1
+				//	st = st[:i+1+copy(st[i+1:], st[i+2:])]
+
+				//	// replace len(name) with the capacity
+				//	st[i] = Token{token_type, strconv.Itoa(length), st[0].line, ""}
+				//} else {
 
 				token_type = st[i+1].t
 
 				// remove the element at i+1
 				st = st[:i+1+copy(st[i+1:], st[i+2:])]
 
-				// replace len(name) with _length_of_name
-				st[i] = Token{token_type, "_length_of_" + name, st[0].line, ""}
+				// replace len(name) with _length_of_name, or [_length_of_name] if it's in .bss
+				if _, ok := ps.variables[name]; ok {
+					st[i] = Token{token_type, "[_length_of_" + name + "]", st[0].line, ""}
+				} else {
+					st[i] = Token{token_type, "_length_of_" + name, st[0].line, ""}
+				}
 			} else if st[i+1].t == REGISTER {
 				var length string
 				switch platformBits {
@@ -427,12 +449,22 @@ func reduce(st Statement, debug bool, ps *ProgramState) Statement {
 			extra := st[i+1].extra
 			switch platformBits {
 			case 64:
-				cmd = "syscall(1, 1, " + st[i+1].value + ", len(" + st[i+1].value + "))"
+				// Special case when printing single bytes, typically from chr(...)
+				if st[i+1].value == "rsp" {
+					cmd = "syscall(1, 1, " + st[i+1].value + ", 1)"
+				} else {
+					cmd = "syscall(1, 1, " + st[i+1].value + ", len(" + st[i+1].value + "))"
+				}
 				tokens = tokenize(cmd, " ")
 				// Position of the token that is to be written
 				tokenpos = 3
 			case 32:
-				cmd = "int(0x80, 4, 1, " + st[i+1].value + ", len(" + st[i+1].value + "))"
+				// Special case when printing single bytes, typically from chr(...)
+				if st[i+1].value == "esp" {
+					cmd = "int(0x80, 4, 1, " + st[i+1].value + ", 1)"
+				} else {
+					cmd = "int(0x80, 4, 1, " + st[i+1].value + ", len(" + st[i+1].value + "))"
+				}
 				tokens = tokenize(cmd, " ")
 				// Position of the token that is to be written
 				tokenpos = 4
@@ -456,12 +488,12 @@ func reduce(st Statement, debug bool, ps *ProgramState) Statement {
 				// remove the element at i+1
 				st = st[:i+1+copy(st[i+1:], st[i+2:])]
 				// replace with the register that contains the address of the string
-				st[i] = Token{REGISTER, "rsp", st[0].line, register}
+				st[i] = Token{REGISTER, "rsp", st[0].line, register} // only a single byte
 			case 32:
 				// remove the element at i+1
 				st = st[:i+1+copy(st[i+1:], st[i+2:])]
 				// replace with the register that contains the address of the string
-				st[i] = Token{REGISTER, "esp", st[0].line, register}
+				st[i] = Token{REGISTER, "esp", st[0].line, register} // only a single byte
 			case 16:
 				log.Fatalln("Error: chr() is not implemented for 16-bit platforms")
 			}
@@ -474,6 +506,7 @@ func TokensToAssembly(tokens []Token, debug bool, debug2 bool, ps *ProgramState)
 	statement := []Token{}
 	asmcode := ""
 	constants := ""
+	bsscode := ""
 	for _, token := range tokens {
 		if token.t == SEP {
 			if len(statement) > 0 {
@@ -487,6 +520,9 @@ func TokensToAssembly(tokens []Token, debug bool, debug2 bool, ps *ProgramState)
 						log.Fatalln("Error: Unfamiliar constant:", asmline)
 					}
 					constants += asmline + "\n"
+				} else if (statement[0].t == KEYWORD) && (statement[0].value == "var") {
+					// Variables are gathered for the .bss section
+					bsscode += asmline + "\n"
 				} else {
 					asmcode += asmline + "\n"
 				}
@@ -495,6 +531,10 @@ func TokensToAssembly(tokens []Token, debug bool, debug2 bool, ps *ProgramState)
 		} else {
 			statement = append(statement, token)
 		}
+	}
+	// Add .bss section, if any
+	if bsscode != "" {
+		asmcode += "\nsection .bss\n" + bsscode
 	}
 	return strings.TrimSpace(constants), asmcode
 }

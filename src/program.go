@@ -8,16 +8,16 @@ type (
 	Program string
 
 	ProgramState struct {
-		surprise_ending_with_exit bool                // To keep track of function blocks that are ended with "exit"
-		loop_step                 int                 // To keep track of if rep should use stosb or stosw (and stepsize in loops in general)
-		loop_name_counter         int                 // To keep track of which generated label names have already been used
-		if_name_counter           int                 // To keep track of which generated label names have already been used
-		defined_names             []string            // all defined variables/constants/functions
-		variables                 map[string][]string // list of variable names per function name
-		in_function               string              // name of the function we are currently in
-		in_loop                   string              // name of the loop we are currently in
-		in_if_block               string              // name of the if block we are currently in
-		endless                   bool                // ending the program with endless keyword?
+		surprise_ending_with_exit bool           // To keep track of function blocks that are ended with "exit"
+		loop_step                 int            // To keep track of if rep should use stosb or stosw (and stepsize in loops in general)
+		loop_name_counter         int            // To keep track of which generated label names have already been used
+		if_name_counter           int            // To keep track of which generated label names have already been used
+		defined_names             []string       // all defined variables/constants/functions
+		variables                 map[string]int // map of variable names and reserved bytes
+		in_function               string         // name of the function we are currently in
+		in_loop                   string         // name of the loop we are currently in
+		in_if_block               string         // name of the if block we are currently in
+		endless                   bool           // ending the program with endless keyword?
 	}
 )
 
@@ -38,7 +38,7 @@ func NewProgramState() *ProgramState {
 	var ps ProgramState
 	// Initialize global maps and slices
 	ps.defined_names = make([]string, 0, 0)
-	ps.variables = make(map[string][]string)
+	ps.variables = make(map[string]int)
 	return &ps
 }
 

@@ -50,14 +50,45 @@ function asm64check {
   fi
 }
 
+function usage {
+  echo 'Battlestar'
+  echo
+  echo 'Arguments:'
+  echo
+  echo ' bts [FILE]                    - run the given file as a script'
+  echo ' bts run [FILE]                - run the given file as a script'
+  echo ' bts build [FILE]              - build native executable'
+  echo ' bts build --bits=64 [FILE]    - build native 64-bit executable'
+  echo ' bts build --bits=32 [FILE]    - build native 32-bit executable'
+  echo ' bts build --bits=16 [FILE]    - build native 16-bit executable'
+  echo '                                 also create dosbox launcher script'
+  echo ' bts compile [FILE]            - build object file'
+  echo ' bts clean                     - remove stray files'
+  echo ' bts size                      - analyze log files after building'
+  echo ' bts help                      - this help'
+  echo
+}
+
 function run {
   # Check for the given source file
+  if [[ -z $1 ]]; then
+    usage
+    exit 1
+  fi
+  if [[ $1 == "--help" ]]; then
+    usage
+    exit 1
+  fi
+  if [[ $1 == "help" ]]; then
+    usage
+    exit 1
+  fi
   if [[ ! -f $1 ]]; then
     echo "No such file: $1"
     exit 1
   fi
 
-  asm64check 
+  asm64check
 
   # Set up temporary filenames
   asmfn=`mktemp --suffix=.asm`
@@ -66,7 +97,7 @@ function run {
   elffn=`mktemp --suffix=.elf`
   cfn=`mktemp --suffix=.c`
   logfn=`mktemp --suffix=.log`
-  
+
   # Compile and link
   battlestarc -bits="$bits" -osx="$osx" -f $1 -o "$asmfn" -oc "$cfn" 2>"$logfn" || (cat "$logfn"; rm "$asmfn"; echo "$1 failed to build.")
   if [ -e "$asmfn" ]; then
@@ -77,22 +108,22 @@ function run {
     elif [ -e ${o1fn} ]; then
       $ldcmd "${o1fn}" -o "$elffn" || echo "$1 failed to link"
     fi
-  
+
     # Clean up after compiling and linking
     rm -f "${o1fn}" "${o2fn}" "$asmfn" "$cfn" "$logfn"
 
     # Strip the program, if available
     require sstrip 2 && sstrip "$elffn"
-  
+
     #echo
     #echo "Running $1"
     #echo "Size of executable: `du -b "$elffn" | cut -d'/' -f1`bytes"
     #echo
-  
+
     # Run the program
     [ -e $elffn ] && "$elffn"
     retval=$?
-  
+
     # Remove the program after execution
     [ -e $elffn ] && rm "$elffn"
 
@@ -109,7 +140,7 @@ if [[ $1 == run ]]; then
   require ld 1
   require gcc 2
   require sstrip 2
-  asm64check 
+  asm64check
 
   shift
   run $@
@@ -119,7 +150,7 @@ fi
 # The "build" command
 if [[ $1 == build ]]; then
   require btsbuild 1
-  asm64check 
+  asm64check
 
   shift
   btsbuild $@
@@ -129,7 +160,7 @@ fi
 # The "compile" command
 if [[ $1 == compile ]]; then
   require btsbuild 1
-  asm64check 
+  asm64check
 
   shift
   btsbuild -c $@
@@ -143,9 +174,9 @@ if [[ $1 == clean ]]; then
     if [[ -f $log ]]; then
       # Remove all the files mentioned at the end
       for fn in `tail -1 $log`; do
-	if [[ -f $fn ]]; then
-	  rm -fv "$fn"
-	fi
+        if [[ -f $fn ]]; then
+          rm -fv "$fn"
+        fi
       done
     fi
   done

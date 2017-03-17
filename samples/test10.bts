@@ -1,0 +1,14 @@
+const hello = "HELLO "
+const there = "THERE "
+const you = "YOU "
+const nl = "\n"
+var x 1024 // Must be enough space to append strings
+
+fun main
+    x = hello
+    x += there
+    x += you
+    x += there
+    x += nl
+    print(x)
+end

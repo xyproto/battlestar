@@ -1,14 +1,11 @@
-// TODO: Figure out why this program doesn't output "OK\n"
-
 const o = "O"
-
 const nl = 10
 
 fun main
-    // Output a 'O' a newline
+    // Output an 'O'
     int(80, 4, 1, o, len(o))
 
-    // Output an 'K'
+    // Output a 'K'
     eax = 75
     int(80, 4, 1, chr(eax), 4)
 
