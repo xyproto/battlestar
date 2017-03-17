@@ -26,11 +26,7 @@ var (
 func main() {
 	name := "Battlestar"
 	version := "0.4"
-	log.Println(name + " compiler")
-	log.Println("Version " + version)
-	log.Println("Alexander Rødseth")
-	log.Println("2014")
-	log.Println("MIT licensed")
+	log.Println(name + " compiler\nVersion " + version + "\nAlexander F Rødseth\n2017\nMIT licensed")
 
 	ps := NewProgramState()
 
