@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Select yasm or nasm
 hash yasm 2>/dev/null && assembler=yasm || assembler=nasm
