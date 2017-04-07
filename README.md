@@ -21,6 +21,15 @@ What is Battlestar?
 * Subset of assembly with an alternative syntax and with support for inline C.
 * The indended purpose is for writing 4k and 64k demoscene demos.
 
+Quick start
+-----------
+
+Build and install Battlestar, build the samples and run the "life" sample:
+
+* `make; sudo make devinstall; make samples; cd life; ./life.sh`
+
+This requires DosBox, Go, Yasm and GCC.
+
 Features
 --------
 
@@ -40,13 +49,6 @@ In progress
 * OS X support
 * Reimplementing 16-bit demoscene demos without using any inline assembly
 * See TODO
-
-Quick start
------------
-
-Build and install Battlestar, build the samples and run the "life" sample:
-
-* `make; sudo make devinstall; make samples; cd life; ./life.sh`
 
 Installation
 ------------------
