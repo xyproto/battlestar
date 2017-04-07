@@ -1,4 +1,4 @@
-const hi = "Hello, world!\r\n"
+const hi = "Hello, world!\r\n$"
 
 fun hello
     // Write the "hi" string

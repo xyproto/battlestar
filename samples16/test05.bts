@@ -1,4 +1,4 @@
-const hi = "Hello from mode 13h"
+const hi = "Hello from mode 13h$"
 
 fun graphics_mode
     // 320x200 256 colors
