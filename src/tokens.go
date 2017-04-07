@@ -225,8 +225,6 @@ func tokenize(program string, sep string) []Token {
 					tokentype = ROR
 				case "->":
 					tokentype = ARROW
-				case "..":
-					tokentype = CONCAT
 				default:
 					log.Fatalln("Error: Unhandled operator:", word)
 				}
