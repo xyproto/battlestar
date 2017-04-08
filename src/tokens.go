@@ -327,6 +327,11 @@ func tokenize(program string, sep string) []Token {
 				t = Token{MEMEXP, "[" + word + "]", statementnr, ""}
 				tokens = append(tokens, t)
 				logtoken(t)
+			} else if strings.Contains(word, "-") {
+				// Assume it's an address, like si-0x6
+				t = Token{MEMEXP, "[" + word + "]", statementnr, ""}
+				tokens = append(tokens, t)
+				logtoken(t)
 			} else if strings.HasSuffix(word, ":") {
 				t = Token{ASMLABEL, word, statementnr, ""}
 				tokens = append(tokens, t)
