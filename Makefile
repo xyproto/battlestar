@@ -43,11 +43,13 @@ install-linux: src/battlestarc
 	install -Dm755 "$(PWD)/scripts/bts.sh" "$(DESTDIR)$(BINDIR)/bts"
 	install -Dm755 "$(PWD)/scripts/build.sh" "$(DESTDIR)$(BINDIR)/btsbuild"
 	install -Dm755 "$(PWD)/src/battlestarc" "$(DESTDIR)$(BINDIR)/battlestarc"
+	install -Dm755 "$(PWD)/scripts/com2bts.py" "$(DESTDIR)$(BINDIR)/com2bts"
 
 install-osx: uninstall src/battlestarc
 	cp -v "$(PWD)/scripts/bts.sh" "$(DESTDIR)$(BINDIR)/bts"
 	cp -v "$(PWD)/scripts/build.sh" "$(DESTDIR)$(BINDIR)/btsbuild"
 	cp -v "$(PWD)/src/battlestarc" "$(DESTDIR)$(BINDIR)/battlestarc"
+	cp -v "$(PWD)/scripts/com2bts.py" "$(DESTDIR)$(BINDIR)/com2bts"
 	chmod +x "$(DESTDIR)$(BINDIR)/bts"
 	chmod +x "$(DESTDIR)$(BINDIR)/btsbuild"
 	chmod +x "$(DESTDIR)$(BINDIR)/battlestarc"
@@ -60,11 +62,14 @@ devinstall: src/battlestarc
 	ln -sf $(PWD)/src/battlestarc /usr/bin/battlestarc
 	ln -sf $(PWD)/scripts/bts.sh /usr/bin/bts
 	ln -sf $(PWD)/scripts/build.sh /usr/bin/btsbuild
+	ln -sf $(PWD)/scripts/com2bts.py /usr/bin/com2bts
 	chmod a+rx $(PWD)/src/battlestarc
 	chmod a+rx $(PWD)/scripts/bts.sh
 	chmod a+rx $(PWD)/scripts/build.sh
+	chmod a+rx $(PWD)/scripts/com2bts.py
 
 uninstall:
 	rm -f "$(DESTDIR)$(BINDIR)/bts"
 	rm -f "$(DESTDIR)$(BINDIR)/btsbuild"
 	rm -f "$(DESTDIR)$(BINDIR)/battlestarc"
+	rm -f "$(DESTDIR)$(BINDIR)/com2bts"
