@@ -1,10 +1,12 @@
+* Fix the issue with mul / imul in the spongy sample, see "make todo".
+
+* Make it possible to use "->" and "<-" with variables, like for the stack.
+
 * Make bottle99 and fibonacci work on OS X
 
 * Support for adc, cwd, jz and jnz (use the loop label automatically)
 
 * Reimplement more 16-bit demoscene demos.
-
-* A way to combine string constants.
 
 * Require yasm or nasm, not just yasm.
 
@@ -14,7 +16,7 @@
 
 * Add support for Kolibri OS http://wiki.kolibrios.org/wiki/Writing_applications_for_KolibriOS
 
-* "bts --help" and "man bts"
+* Manpage
 
 * String blocks can consists of: constants, immediate strings, registers (interpreted as ASCII numbers) and numbers (interpreted as strings)
 
