@@ -8,9 +8,9 @@ fun clear_screen
   a = 0xb8000                  // Video memory for text
   d = readbyte blank           // The first character in the blank string
   loop 2000                    // 2000 characters (80*25), every other byte is an attribute
-    membyte a = d            // Clear character
+    membyte a = d              // Clear character
     a++                        // Go to attribute byte
-    membyte a = 0x3E         // Cyan background (0x3) with yellow text (0x4), see https://en.wikipedia.org/wiki/BIOS_color_attributes
+    membyte a = 0x3E           // Cyan background (0x3) with yellow text (0x4), see https://en.wikipedia.org/wiki/BIOS_color_attributes
     a++                        // Go to character byte
   end
 end
@@ -24,7 +24,7 @@ fun success
 
   loop len(msg)
     d = readbyte b             // Get character
-    membyte a = d            // Store character in video memory
+    membyte a = d              // Store character in video memory
     a += 2                     // Next character in video memory (skip attribute byte)
     b++                        // Next character in message
   end

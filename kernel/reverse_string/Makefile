@@ -14,5 +14,10 @@ clean:
 	@-rm -f *.bin core.*
 
 boot: ${BIN}
-	@echo 'Booting...'
+	@echo
+	@echo 'Booting ${BIN}...'
+	@echo 'Press ctrl-alt-q to exit Qemu'
+	@echo
 	qemu-system-i386 -kernel ${BIN}
+
+run: boot
