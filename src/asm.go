@@ -727,7 +727,7 @@ func (st Statement) String(ps *ProgramState) string {
 			val = regToDouble(val)
 		}
 		return "\tmov DOUBLE " + val + ", [" + st[3].value + "]\t\t; memory assignment (double)\n"
-	} else if ((st[0].t == REGISTER) || (st[0].t == DISREGARD) || (st[0].value == "stack")) && (len(st) == 3) {
+	} else if len(st) == 3 && ((st[0].t == REGISTER) || (st[0].t == DISREGARD) || (st[0].value == "stack") || (st[2].value == "stack")) {
 		// Statements like "eax = 3" are handled here
 		// TODO: Handle all sorts of equivivalents to assembly statements
 		if st[1].t == COMPARISON {
@@ -808,6 +808,12 @@ func (st Statement) String(ps *ProgramState) string {
 			} else if (st[0].t == REGISTER) && (st[2].t == REGISTER) {
 				// reg -> reg (push and then pop)
 				return "\tpush " + st[0].value + "\t\t\t; " + st[0].value + " -> " + st[2].value + "\n\tpop " + st[2].value + "\t\t\t\t;\n"
+			} else {
+				log.Println("Error: Unrecognized stack expression: ")
+				for _, token := range []Token(st) {
+					log.Print(token)
+				}
+				os.Exit(1)
 			}
 		} else if (st[0].t == REGISTER) && (st[1].t == ASSIGNMENT) && (st[2].t == RESERVED || st[2].t == VALUE) && (st[3].t == VALUE) {
 			if st[2].value == "funparam" {
@@ -856,6 +862,10 @@ func (st Statement) String(ps *ProgramState) string {
 			return "\trol " + st[0].value + ", " + st[2].value + "\t\t\t; rotate " + st[0].value + " left" + st[2].value
 		} else if (st[1].t == ROR) && ((st[2].t == VALUE) || (st[2].t == MEMEXP) || (st[2].t == REGISTER)) {
 			return "\tror " + st[0].value + ", " + st[2].value + "\t\t\t; rotate " + st[0].value + " right " + st[2].value
+		} else if (st[1].t == SHL) && ((st[2].t == VALUE) || (st[2].t == MEMEXP) || (st[2].t == REGISTER)) {
+			return "\tshl " + st[0].value + ", " + st[2].value + "\t\t\t; shift " + st[0].value + " left" + st[2].value
+		} else if (st[1].t == SHR) && ((st[2].t == VALUE) || (st[2].t == MEMEXP) || (st[2].t == REGISTER)) {
+			return "\tshr " + st[0].value + ", " + st[2].value + "\t\t\t; shift " + st[0].value + " right " + st[2].value
 		} else if (st[1].t == MULTIPLICATION) && ((st[2].t == VALUE) || (st[2].t == MEMEXP)) {
 			// TODO: Don't use a list, write a function that covers the lot
 			shifts := []string{"2", "4", "8", "16", "32", "64", "128"}
@@ -1076,21 +1086,50 @@ func (st Statement) String(ps *ProgramState) string {
 		}
 		if platformBits == target_bits {
 			// Add the rest of the line as a regular assembly expression
-			if len(st) == 6 {
+			if len(st) == 7 {
+				comma1 := " "
+				comma2 := ", "
+				if st[4].t == QUAL {
+					comma1 = ", "
+					comma2 = " "
+				}
 				// with address calculations
-				if strings.Contains(st[5].value, "+") {
-					return "\t" + st[2].value + " " + st[3].value + " " + st[4].value + " [" + st[5].value + "]\t\t\t; asm with address calculation\n"
+				if strings.Contains(st[5].value, "+") || strings.Contains(st[5].value, "-") {
+					return "\t" + st[2].value + " " + st[3].value + " " + st[4].value + " " + st[5].value + " " + st[6].value + "\t\t\t; asm with address calculation\n"
+				} else if strings.HasPrefix(st[2].value, "i") {
+					comma1 = ", "
+					return "\t" + st[2].value + " " + st[3].value + comma1 + st[4].value + comma2 + st[5].value + " " + st[6].value + "\t\t\t; asm with integer maths\n"
 				} else {
-					return "\t" + st[2].value + " " + st[3].value + " " + st[4].value + ", " + st[5].value + "\t\t\t; asm with floating point instructions\n"
+					return "\t" + st[2].value + " " + st[3].value + comma1 + st[4].value + comma2 + st[5].value + " " + st[6].value + "\t\t\t; asm with floating point instructions\n"
+				}
+			} else if len(st) == 6 {
+				comma1 := " "
+				comma2 := ", "
+				if st[4].t == QUAL {
+					comma1 = ", "
+					comma2 = " "
+				}
+				// with address calculations
+				if strings.Contains(st[5].value, "+") || strings.Contains(st[5].value, "-") {
+					return "\t" + st[2].value + " " + st[3].value + comma1 + st[4].value + comma2 + st[5].value + "\t\t\t; asm with address calculation\n"
+				} else if strings.HasPrefix(st[2].value, "i") {
+					comma1 = ", "
+					return "\t" + st[2].value + " " + st[3].value + comma1 + st[4].value + comma2 + st[5].value + "\t\t\t; asm with integer maths\n"
+				} else {
+					return "\t" + st[2].value + " " + st[3].value + comma1 + st[4].value + comma2 + st[5].value + "\t\t\t; asm with floating point instructions\n"
 				}
 			} else if len(st) == 5 {
+				comma2 := ", "
+				if st[3].t == QUAL {
+					comma2 = " "
+				}
 				// with address calculations
-				if strings.Contains(st[4].value, "+") {
-					return "\t" + st[2].value + " " + st[3].value + ", [" + st[4].value + "]\t\t\t; asm with address calculation\n"
+				if strings.Contains(st[4].value, "+") || strings.Contains(st[4].value, "-") {
+					return "\t" + st[2].value + " " + st[3].value + comma2 + st[4].value + "\t\t\t; asm with address calculation\n"
 				} else if st[3].value == "st" {
 					return "\t" + st[2].value + " " + st[3].value + " (" + st[4].value + ")\t\t\t; asm\n"
 				} else {
-					return "\t" + st[2].value + " " + st[3].value + ", " + st[4].value + "\t\t\t; asm\n"
+					return "\t" + st[2].value + " " + st[3].value + comma2 + st[4].value + "\t\t\t; asm\n"
 				}
 			} else if len(st) == 4 {
 				return "\t" + st[2].value + " " + st[3].value + "\t\t\t; asm\n"
@@ -1102,7 +1141,14 @@ func (st Statement) String(ps *ProgramState) string {
 					return "\t" + st[2].value + "\t\t\t; asm\n"
 				}
 			} else {
-				log.Fatalln("Error: Unrecognized length of assembly expression:", len(st)-2)
+				log.Println("Error: Unrecognized length of assembly expression:", len(st)-2)
+				for i, token := range []Token(st) {
+					if i < 2 {
+						continue
+					}
+					log.Print(token)
+				}
+				os.Exit(1)
 			}
 		}
 		// Not the target bits, skip
