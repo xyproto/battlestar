@@ -31,6 +31,9 @@ const (
 	ROR            = 22 // rotate right instruction
 	SEGOFS         = 23 // segment:offset for 16-bit assembly
 	CONCAT         = 24
+	SHL            = 25  // shift left
+	SHR            = 26  // shift right
+	QUAL           = 27  // qualifier, like BYTE or WORD
 	SEP            = 127 // statement separator
 	UNKNOWN        = 255
 )
@@ -40,7 +43,7 @@ var (
 	tokenDebug     = false
 	newTokensDebug = true
 
-	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard", RESERVED: "reserved", VARIABLE: "variable", ADDITION: "addition", SUBTRACTION: "subtraction", MULTIPLICATION: "multiplication", DIVISION: "division", COMPARISON: "comparison", ARROW: "stack operation", MEMEXP: "address expression", ASMLABEL: "assembly label", AND: "and", XOR: "xor", OR: "or", ROL: "rol", ROR: "ror", CONCAT: "concatenation", SEGOFS: "segment+offset"}
+	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard", RESERVED: "reserved", VARIABLE: "variable", ADDITION: "addition", SUBTRACTION: "subtraction", MULTIPLICATION: "multiplication", DIVISION: "division", COMPARISON: "comparison", ARROW: "stack operation", MEMEXP: "address expression", ASMLABEL: "assembly label", AND: "and", XOR: "xor", OR: "or", ROL: "rol", ROR: "ror", CONCAT: "concatenation", SEGOFS: "segment+offset", SHL: "shl", SHR: "shr", QUAL: "qualifier"}
 	// see also the top of language.go, when adding tokens
 )
 
@@ -223,6 +226,10 @@ func tokenize(program string, sep string) []Token {
 					tokentype = ROL
 				case ">>>":
 					tokentype = ROR
+				case "<<":
+					tokentype = SHL
+				case ">>":
+					tokentype = SHR
 				case "->":
 					tokentype = ARROW
 				default:
@@ -275,6 +282,10 @@ func tokenize(program string, sep string) []Token {
 				lognewtokens(newtokens)
 			} else if is_valid_name(word) {
 				t = Token{VALID_NAME, word, statementnr, ""}
+				tokens = append(tokens, t)
+				logtoken(t)
+			} else if is_qualifier(word) {
+				t = Token{QUAL, word, statementnr, ""}
 				tokens = append(tokens, t)
 				logtoken(t)
 			} else if strings.Contains(word, "(") {

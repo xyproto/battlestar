@@ -8,7 +8,7 @@ import (
 
 var (
 	// TODO: Several of the operators (and the difference between signed/unsigned)
-	operators = []string{"=", "+=", "-=", "*=", "/=", "&=", "|=", "^=", "->", "<<<", ">>>", ".."}
+	operators = []string{"=", "+=", "-=", "*=", "/=", "&=", "|=", "^=", "->", "<<<", ">>>", "<<", ">>"}
 
 	comparisons = []string{"==", "!=", "<", ">", "<=", ">="}
 
@@ -21,8 +21,19 @@ var (
 	reserved = []string{"funparam", "sysparam", "a", "b", "c", "d"} // built-in lists that can be accessed with [index], or register aliases
 )
 
+func is_qualifier(s string) bool {
+	switch s {
+	case "byte", "BYTE", "word", "WORD", "dword", "DWORD", "ptr", "PTR", "short", "SHORT", "long", "LONG":
+		return true
+	}
+	return false
+}
+
 func is_valid_name(s string) bool {
 	if len(s) == 0 {
+		return false
+	}
+	if is_qualifier(s) {
 		return false
 	}
 	// TODO: These could be global constants instead
