@@ -1,0 +1,27 @@
+// Paint the screen red
+
+fun main
+    // mode 13h
+    a = 0x0013
+    int(10)
+
+    // prepare to write to 0xa000:0
+    a = 0xa000
+    es = a
+    di = 0
+    // prepare two red pixels to write: 0x28 0x28
+    a = 0x2828
+    // write the word 64000/2 times
+    c = 0x7d00
+    (asm 16) rep stosw
+
+    // wait for keypress
+    ax = 0
+    int(16)
+
+    // mode 03h
+    a = 0x0003
+    int(10)
+end
+
+// vim: syntax=c ts=4 sw=4 et:
