@@ -3,4 +3,4 @@ ah = 0x10
 int(16)
 ret
 
-// vim: set syntax=c ts=4 sw=4 et:
+// vim: syntax=c ts=4 sw=4 et:
