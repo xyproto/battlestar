@@ -120,7 +120,7 @@ func lognewtokens(tokens []Token) {
 // Tokenize a string
 func tokenize(program string, sep string) []Token {
 	statements := maps(maps(strings.Split(program, "\n"), strings.TrimSpace), removecomments)
-	tokens := make([]Token, 0, 0)
+	tokens := make([]Token, 0)
 	var (
 		t           Token
 		instring    = false // Have we encountered a " for any given statement?
@@ -573,7 +573,7 @@ func only(tokentypes []TokenType) TokenFilter {
 // Only return the tokens that the given filter function
 // returns true for.
 func filtertokens(tokens []Token, filterfunc TokenFilter) []Token {
-	newtokens := make([]Token, 0, 0)
+	newtokens := make([]Token, 0)
 	for _, t := range tokens {
 		if filterfunc(t) {
 			newtokens = append(newtokens, t)

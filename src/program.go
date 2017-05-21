@@ -37,7 +37,7 @@ const (
 func NewProgramState() *ProgramState {
 	var ps ProgramState
 	// Initialize global maps and slices
-	ps.defined_names = make([]string, 0, 0)
+	ps.defined_names = make([]string, 0)
 	ps.variables = make(map[string]int)
 	return &ps
 }
