@@ -2,7 +2,7 @@
 
 all: spongy.com
 
-todo: spongy.com
+compare: spongy.com
 	ndisasm original.com > original.asm
 	ndisasm spongy.com > spongy.asm
 	meld original.asm spongy.asm
