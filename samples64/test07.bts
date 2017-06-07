@@ -7,4 +7,4 @@ fun main
     print(nl)
 end
 
-// vim: set syntax=c ts=4 sw=4 et:
+// vim: syntax=c ts=4 sw=4 et:

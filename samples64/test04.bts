@@ -4,4 +4,4 @@ fun main
     syscall(1, 1, hi, len(hi))
 end
 
-// vim: set syntax=c ts=4 sw=4 et:
+// vim: syntax=c ts=4 sw=4 et:

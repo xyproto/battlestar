@@ -6,4 +6,4 @@ fun _start
     print(nebula)
     ret 2
 
-// vim: set syntax=c ts=4 sw=4 et:
+// vim: syntax=c ts=4 sw=4 et:

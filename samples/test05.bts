@@ -2,4 +2,4 @@ const hi = "ho", 10
 
 print(hi)
 
-// vim: set syntax=c ts=4 sw=4 et:
+// vim: syntax=c ts=4 sw=4 et:

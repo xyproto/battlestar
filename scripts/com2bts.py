@@ -26,6 +26,13 @@ def transform(line, labelmap, labelcounter):
     """Takes an assembly instruction (like "mov ax, 1") and map of labels (addr -> label).
     Returns the corresponding Battlestar code and a newly generated map of labels (addr -> label).
     Also takes and returns a labelcounter."""
+    if line.startswith("mov ["):
+        a, b = line[5:].split(",", 1)
+        if "]" in a:
+            a = a.split("]")[0]
+        if b in ["al", "ah", "bl", "bh", "cl", "ch", "dl", "dh"]:
+            return "membyte " + shorten(a) + " = " + shorten(b), {}, labelcounter
+        return "memword " + shorten(a) + " = " + shorten(b), {}, labelcounter
     if "[" in line:
         # TODO, also handle asm lines with [ and ]
         return "(asm 16) " + line, {}, labelcounter
@@ -98,8 +105,13 @@ def com2bts(comfilename, btsfilename):
             if newline.endswith(h):
                 newline = newline[:-len(h)] + str(int(h, 16))
         bl.append(newline)
-    bl.append("end")
-    bl.append("\n// vim: set syntax=c ts=4 sw=4 et:")
+    last_asm_line = bl[-1]
+    # Don't add a final "ret" if the last assembly line is a jump
+    if "jmp" in last_asm_line:
+        bl.append("noret")
+    else:
+        bl.append("end")
+    bl.append("\n// vim: syntax=c ts=4 sw=4 et:")
     open(btsfilename, "w").write("\n".join(bl))
 
 def main():

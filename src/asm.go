@@ -77,6 +77,15 @@ func regToDouble(reg string) string {
 	return upgrade(upgrade(downgradeToByte(reg)))
 }
 
+func upgrade_8bit_register_to_16bit(reg string) string {
+	if len(reg) >= 2 && reg[1] == 'l' {
+		return string(reg[0]) + "x"
+	} else if len(reg) >= 2 && reg[1] == 'h' {
+		return string(reg[0]) + "x"
+	}
+	return reg
+}
+
 // Try to find the 64-bit version of a 32-bit register, or a 32-bit version of a 16-bit register.
 // Requires the string to be non-empty.
 func upgrade(reg string) string {
@@ -85,6 +94,9 @@ func upgrade(reg string) string {
 	}
 	if is_32_bit_register("e" + reg) {
 		return "e" + reg
+	}
+	if is_16_bit_register(upgrade_8bit_register_to_16bit(reg)) {
+		return upgrade_8bit_register_to_16bit(reg)
 	}
 	return reg
 }
@@ -636,7 +648,7 @@ func (st Statement) String(ps *ProgramState) string {
 					}
 					asmcode += "\tint 0x80\t\t\t; exit program\n"
 				case 16:
-					// Unless "exit" is specified explicitly, use "ret"
+					// Unless "exit" or "noret" is specified explicitly, use "ret"
 					if st[0].value == "exit" {
 						// Since we are not building a kernel, calling DOS interrupt 21h makes sense
 						asmcode += "\tmov ah, 0x4c\t\t\t; function 4C\n"
@@ -646,6 +658,8 @@ func (st Statement) String(ps *ProgramState) string {
 							asmcode += "\tmov al, " + exit_code + "\t\t\t; exit code " + exit_code + "\n"
 						}
 						asmcode += "\tint 0x21\t\t\t; exit program\n"
+					} else if st[0].value == "noret" {
+						asmcode += "\t; there is no return\n"
 					} else {
 						if !ps.endless {
 							asmcode += "\tret\t\t\t; exit program\n"
@@ -690,14 +704,14 @@ func (st Statement) String(ps *ProgramState) string {
 		}
 		return "\tmov BYTE [" + st[1].value + "], " + val + "\t\t; " + "memory assignment" + "\n"
 	} else if (st[0].t == KEYWORD && st[0].value == "memword") && (st[1].t == VALUE || st[1].t == VALID_NAME || st[1].t == REGISTER) && (st[2].t == ASSIGNMENT) && (st[3].t == VALUE || st[3].t == VALID_NAME || st[3].t == REGISTER) {
-		// memory assignment (byte)
+		// memory assignment (word)
 		val := st[3].value
 		if st[3].t == REGISTER {
 			val = regToWord(val)
 		}
 		return "\tmov WORD [" + st[1].value + "], " + val + "\t\t; " + "memory assignment" + "\n"
 	} else if (st[0].t == KEYWORD && st[0].value == "memdouble") && (st[1].t == VALUE || st[1].t == VALID_NAME || st[1].t == REGISTER) && (st[2].t == ASSIGNMENT) && (st[3].t == VALUE || st[3].t == VALID_NAME || st[3].t == REGISTER) {
-		// memory assignment (byte)
+		// memory assignment (double)
 		val := st[3].value
 		if st[3].t == REGISTER {
 			val = regToDouble(val)
@@ -1573,6 +1587,8 @@ section .text
 		} else {
 			log.Fatalln("Error: No function named:", st[0].value)
 		}
+	} else if (st[0].t == KEYWORD) && (st[0].value == "noret") {
+		return "; end without a return\n"
 	} else if (st[0].t == KEYWORD) && (st[0].value == "inline_c") {
 		parseState.inlineC = true
 		return "; start of inline C block\n"

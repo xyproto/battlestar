@@ -1,0 +1,8 @@
+const hello = "HELLO", 10
+var x 64 // Must be enough to contain the above string
+
+fun main
+    x = hello
+    membyte x = 74
+    print(x)
+end

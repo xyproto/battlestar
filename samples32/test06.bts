@@ -23,4 +23,4 @@ fun main
     c_hi          // Call the C function named c_hi
 end
 
-// vim: set syntax=c ts=4 sw=4 et:
+// vim: syntax=c ts=4 sw=4 et:

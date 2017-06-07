@@ -150,8 +150,8 @@ func addExitTokenIfMissing(tokens []Token) []Token {
 		return tokens
 	}
 
-	// If the last keyword token is ret, exit or end, all is well, return the same tokens
-	if (lasttoken.t == KEYWORD) && ((lasttoken.value == "ret") || (lasttoken.value == "end")) {
+	// If the last keyword token is ret, exit, jmp or end, all is well, return the same tokens
+	if (lasttoken.t == KEYWORD) && ((lasttoken.value == "ret") || (lasttoken.value == "end") || (lasttoken.value == "noret")) {
 		return tokens
 	}
 
