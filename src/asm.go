@@ -836,9 +836,17 @@ func (st Statement) String(ps *ProgramState) string {
 		} else if (st[1].t == SUBTRACTION) && (st[2].t == REGISTER) {
 			return "\tsub " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " -= " + st[2].value
 		} else if (st[1].t == MULTIPLICATION) && (st[2].t == REGISTER) {
-			return "\timul " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " *= " + st[2].value
+			if register_a(st[0].value) {
+				return "\tmul " + st[2].value + "\t\t\t; " + st[0].value + " *= " + st[2].value
+			} else {
+				return "\timul " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " *= " + st[2].value
+			}
 		} else if (st[1].t == DIVISION) && (st[2].t == REGISTER) {
-			return "\tidiv " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " /= " + st[2].value
+			if register_a(st[0].value) {
+				return "\tdiv " + st[2].value + "\t\t\t; " + st[0].value + " /= " + st[2].value
+			} else {
+				return "\tidiv " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " /= " + st[2].value
+			}
 		}
 		if (st[1].t == ADDITION) && ((st[2].t == VALUE) || (st[2].t == MEMEXP)) {
 			if st[2].value == "1" {
@@ -881,7 +889,11 @@ func (st Statement) String(ps *ProgramState) string {
 				// TODO: Check that it works with signed numbers and/or introduce signed/unsigned operations
 				return "\tshl " + st[0].value + ", " + strconv.Itoa(pos) + "\t\t\t; " + st[0].value + " *= " + st[2].value
 			} else {
-				return "\timul " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " *= " + st[2].value
+				if register_a(st[0].value) {
+					return "\tmul " + st[2].value + "\t\t\t; " + st[0].value + " *= " + st[2].value
+				} else {
+					return "\timul " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " *= " + st[2].value
+				}
 			}
 		} else if (st[1].t == DIVISION) && ((st[2].t == VALUE) || (st[2].t == MEMEXP)) {
 			// TODO: Don't use a list, write a function that covers the lot
@@ -914,8 +926,8 @@ func (st Statement) String(ps *ProgramState) string {
 						asmcode += "\txor edx, edx\t\t; edx = 0 (32-bit 0:eax instead of 64-bit edx:eax)\n"
 						// ecx = st[2].value
 						asmcode += "\tmov ecx, " + st[2].value + "\t\t; divisor, ecx = " + st[2].value + "\n"
-						// idiv ecx
-						asmcode += "\tidiv ecx\t\t\t; eax = edx:eax / ecx\n"
+						// div ecx
+						asmcode += "\tdiv ecx\t\t\t; eax = edx:eax / ecx\n"
 						asmcode += "\t\t\t; remainder is in edx\n"
 						//// restore edx
 						//asmcode += "\tpop edx\t\t; restore edx\n"
@@ -934,8 +946,8 @@ func (st Statement) String(ps *ProgramState) string {
 						// bx = st[2].value
 						asmcode += "\tmov cx, " + st[2].value + "\t; divisor, cx = " + st[2].value + "\n"
 						asmcode += "\t\t\t; remainder is in dx\n"
-						// idiv bx
-						asmcode += "\tidiv cx\t\t; ax = dx:ax / cx\n"
+						// div bx
+						asmcode += "\tdiv cx\t\t; ax = dx:ax / cx\n"
 						//// restore dx
 						//asmcode += "\tpop dx\t\t; restore dx\n"
 						// restore cx
@@ -972,7 +984,7 @@ func (st Statement) String(ps *ProgramState) string {
 						// ecx = st[2].value
 						asmcode += "\tmov ecx, " + st[2].value + "\t\t; divisor, ecx = " + st[2].value + "\n"
 						// eax = edx:eax / ecx
-						asmcode += "\tidiv ecx\t\t\t; eax = edx:eax / ecx\n"
+						asmcode += "\tdiv ecx\t\t\t; eax = edx:eax / ecx\n"
 						if st[0].value != "edx" {
 							// restore edx
 							asmcode += "\tpop edx\t\t; restore edx\n"
@@ -998,8 +1010,8 @@ func (st Statement) String(ps *ProgramState) string {
 						asmcode += "\txor rdx, rdx\t\t; rdx = 0 (64-bit 0:rax instead of 128-bit rdx:rax)\n"
 						// mov r8, st[2].value
 						asmcode += "\tmov r8, " + st[2].value + "\t\t; divisor, r8 = " + st[2].value + "\n"
-						// idiv rax
-						asmcode += "\tidiv r8\t\t\t; rax = rdx:rax / r8\n"
+						// div rax
+						asmcode += "\tdiv r8\t\t\t; rax = rdx:rax / r8\n"
 						// restore rdx
 						//asmcode += "\tmov rdx, r9\t\t; restore rdx\n"
 					} else {
@@ -1034,8 +1046,8 @@ func (st Statement) String(ps *ProgramState) string {
 						asmcode += "\txor rdx, rdx\t\t; rdx = 0 (64-bit 0:rax instead of 128-bit rdx:rax)\n"
 						// mov rcx, st[2].value
 						asmcode += "\tmov r8, " + st[2].value + "\t\t; divisor, r8 = " + st[2].value + "\n"
-						// idiv rax
-						asmcode += "\tidiv r8\t\t\t; rax = rdx:rax / r8\n"
+						// div rax
+						asmcode += "\tdiv r8\t\t\t; rax = rdx:rax / r8\n"
 						//if st[0].value != "rdx" {
 						//	// restore rdx
 						//	asmcode += "\tmov rdx, r10\t\t; restore rdx\n"
