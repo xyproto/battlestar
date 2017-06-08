@@ -10,6 +10,14 @@ def com2asm(comfilename):
     asmlines = {}
     for line in disasm.split("\n")[:-1]:
         asmlines[int(line[:9], 16)] = line[28:]
+    # fix a bug in ndisasm
+    for i, line in asmlines.items():
+        if "fmul to st1" in line:
+            asmlines[i] = line.replace("fmul to st1", "fmul st1, st0")
+        elif "fmul to st2" in line:
+            asmlines[i] = line.replace("fmul to st2", "fmul st2, st0")
+        elif "fmul to, st2" in line:
+            asmlines[i] = line.replace("fmul to, st2", "fmul st2, st0")
     return asmlines
 
 def shorten(reg):
