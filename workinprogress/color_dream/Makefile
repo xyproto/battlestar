@@ -3,8 +3,8 @@
 all: color_dream.com
 
 compare: color_dream.com
-	ndisasm original.com > original.asm
-	ndisasm color_dream.com > color_dream.asm
+	ndisasm -b 16 original.com > original.asm
+	ndisasm -b 16 color_dream.com > color_dream.asm
 	meld original.asm color_dream.asm
 
 color_dream.bts: original.com

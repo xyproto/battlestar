@@ -150,7 +150,10 @@ fi
 # The "build" command
 if [[ $1 == build ]]; then
   require btsbuild 1
-  asm64check
+
+  if [[ ! $2 == "-bits=16" ]] && [[ ! $2 == "-bits=32" ]]; then
+    asm64check
+  fi
 
   shift
   btsbuild $@

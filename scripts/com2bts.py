@@ -26,7 +26,7 @@ def transform(line, labelmap, labelcounter):
     """Takes an assembly instruction (like "mov ax, 1") and map of labels (addr -> label).
     Returns the corresponding Battlestar code and a newly generated map of labels (addr -> label).
     Also takes and returns a labelcounter."""
-    if line.startswith("mov ["):
+    if line.startswith("mov [") and ("-" not in line) and ("+" not in line):
         a, b = line[5:].split(",", 1)
         if "]" in a:
             a = a.split("]")[0]
@@ -119,10 +119,13 @@ def com2bts(comfilename, btsfilename):
     open(btsfilename, "w").write("\n".join(bl))
 
 def main():
-    if len(argv) < 3:
-        print("Usage: com2bts file.com file.bts")
+    if len(argv) < 2:
+        print("Usage: com2bts file.com [file.bts]")
         exit(1)
-    com2bts(argv[1], argv[2])
+    if len(argv) < 3 or (len(argv) >= 3 and argv[2] == "-"):
+        com2bts(argv[1], "/dev/stdout")
+    else:
+        com2bts(argv[1], argv[2])
 
 if __name__ == "__main__":
     main()
