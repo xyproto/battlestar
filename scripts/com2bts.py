@@ -106,8 +106,12 @@ def com2bts(comfilename, btsfilename):
                 newline = newline[:-len(h)] + str(int(h, 16))
         bl.append(newline)
     last_asm_line = bl[-1]
-    # Don't add a final "ret" if the last assembly line is a jump
-    if "jmp" in last_asm_line:
+    if last_asm_line.endswith("ret"):
+        # Remove the final "ret", since this will be added by "end"
+        bl = bl[:-1]
+        bl.append("end")
+    elif "jmp" in last_asm_line:
+        # Don't add a final "ret" if the last assembly line is a jump
         bl.append("noret")
     else:
         bl.append("end")
