@@ -12,12 +12,15 @@ def com2asm(comfilename):
         asmlines[int(line[:9], 16)] = line[28:]
     # fix a bug in ndisasm
     for i, line in asmlines.items():
-        if "fmul to st1" in line:
-            asmlines[i] = line.replace("fmul to st1", "fmul st1, st0")
-        elif "fmul to st2" in line:
-            asmlines[i] = line.replace("fmul to st2", "fmul st2, st0")
-        elif "fmul to, st2" in line:
-            asmlines[i] = line.replace("fmul to, st2", "fmul st2, st0")
+        if "fmul to" in line or "fdiv to" in line:
+            parts = line.replace(",", "").split(" to ")
+            try:
+                instruction = parts[0].split(" ")[-1]
+                rest = parts[1].split(" ")[0]
+                asmlines[i] = instruction + " " + rest + ", st0"
+            except IndexError:
+                print("warning: unrecognized fmul or fdiv:", line)
+                pass
     return asmlines
 
 def shorten(reg):
