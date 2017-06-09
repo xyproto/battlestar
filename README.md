@@ -46,7 +46,7 @@ Features
 
 In progress
 -----------
-* OS X support
+* macOS support
 * Reimplementing 16-bit demoscene demos without using any inline assembly
 * See TODO
 
@@ -59,9 +59,9 @@ Install on Linux:
 
 `sudo make install-linux`
 
-Install on OS X:
+Install on macOS:
 
-`sudo make install-osx`
+`sudo make install-macos`
 
 For development, install soft links instead:
 

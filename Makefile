@@ -1,5 +1,10 @@
 DESTDIR ?= 
-PREFIX ?= /usr
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+  PREFIX ?= /usr/local
+else
+  PREFIX ?= /usr
+endif
 BINDIR = $(PREFIX)/bin
 PWD = $(shell pwd)
 
@@ -45,7 +50,7 @@ install-linux: src/battlestarc
 	install -Dm755 "$(PWD)/src/battlestarc" "$(DESTDIR)$(BINDIR)/battlestarc"
 	install -Dm755 "$(PWD)/scripts/com2bts.py" "$(DESTDIR)$(BINDIR)/com2bts"
 
-install-osx: uninstall src/battlestarc
+install-macos: uninstall src/battlestarc
 	cp -v "$(PWD)/scripts/bts.sh" "$(DESTDIR)$(BINDIR)/bts"
 	cp -v "$(PWD)/scripts/build.sh" "$(DESTDIR)$(BINDIR)/btsbuild"
 	cp -v "$(PWD)/src/battlestarc" "$(DESTDIR)$(BINDIR)/battlestarc"
@@ -53,16 +58,17 @@ install-osx: uninstall src/battlestarc
 	chmod +x "$(DESTDIR)$(BINDIR)/bts"
 	chmod +x "$(DESTDIR)$(BINDIR)/btsbuild"
 	chmod +x "$(DESTDIR)$(BINDIR)/battlestarc"
+	chmod +x "$(DESTDIR)$(BINDIR)/com2bts"
 
 install:
-	@# TODO: Add OS X detection
-	@echo 'Use "make install-linux" for Linux and "make install-osx" for OS X'
+	@# TODO: Add macOS detection
+	@echo 'Use "make install-linux" for Linux and "make install-macos" for macOS'
 
 devinstall: src/battlestarc
-	ln -sf $(PWD)/src/battlestarc /usr/bin/battlestarc
-	ln -sf $(PWD)/scripts/bts.sh /usr/bin/bts
-	ln -sf $(PWD)/scripts/build.sh /usr/bin/btsbuild
-	ln -sf $(PWD)/scripts/com2bts.py /usr/bin/com2bts
+	ln -sf $(PWD)/src/battlestarc $(BINDIR)/battlestarc
+	ln -sf $(PWD)/scripts/bts.sh $(BINDIR)/bts
+	ln -sf $(PWD)/scripts/build.sh $(BINDIR)/btsbuild
+	ln -sf $(PWD)/scripts/com2bts.py $(BINDIR)/com2bts
 	chmod a+rx $(PWD)/src/battlestarc
 	chmod a+rx $(PWD)/scripts/bts.sh
 	chmod a+rx $(PWD)/scripts/build.sh
