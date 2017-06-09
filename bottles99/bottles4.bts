@@ -11,8 +11,9 @@ const store = "Go to the store and buy some more, "
 const dotnl = ".\n"
 const nl = "\n"
 
-// Reserve 1024 bytes in the .bss section
-var x 1024
+// Reserve 256 bytes in the .bss section.
+// 85 bytes would be enough.
+var x 256
 
 // Write two digits, based on the value in a
 fun printnum
