@@ -30,8 +30,10 @@ Build and install Battlestar, build the samples and run the "life" sample:
 
 This requires DosBox, Go, Yasm and GCC.
 
-Features
---------
+gcc-go is not supported yet.
+
+Features and limitations
+------------------------
 
 * The resulting executables are tiny!
 * "hello world" is only *174* bytes for 32-bit Linux (when using sstrip from elfkickers). (238 bytes for 64-bit Linux, 31 bytes for 16-bit DOS)
@@ -43,6 +45,7 @@ Features
 * Interrupts can be called with the same syntax for both 32-bit and 64-bit x86 on Linux.
 * Also supports 16-bit x86 with DosBox.
 * The intermediate assembly is fully commented.
+* No register allocator, just an alternative assembly syntax.
 
 In progress
 -----------
