@@ -75,6 +75,11 @@ function build {
     return $retval
   fi
 
+  if [[ $pic = "true" ]]; then
+    # Add "default rel" to the top of the assembly file
+    sed -i 's,bits 64,bits 64\ndefault rel,g' $n.asm
+  fi
+
   if [[ $bits = 16 ]]; then
     if [[ -f $n.c ]]; then
       echo "Skipping $f (inline C is not available for 16-bit x86)"
@@ -207,6 +212,15 @@ osx=$([[ `uname -s` = Darwin ]] && echo true || echo false)
 ldcmd="ld -s --fatal-warnings --relax"
 stdgcc="gcc -Os -std=c99 -Wno-implicit -ffast-math -fno-inline -fomit-frame-pointer"
 
+# Set pic=true if -fPIC is in CFLAGS
+if [[ $CFLAGS == *"-fPIC"* ]]; then
+  pic=true
+elif [[ $CFLAGS == *"-fpie"* ]]; then
+  pic=true
+else
+  pic=false
+fi
+
 # Set the right flags if the environment variable EXTERNLIB=1
 if [[ $EXTERNLIB = 1 ]]; then
   ldcmd="$ldcmd $LDFLAGS"
@@ -220,6 +234,11 @@ fi
 
 asmcmd="$asm -f elf64"
 cccmd="$stdgcc -m64"
+
+# Set -DPIC if pic is true
+if [[ $pic = true ]]; then
+  asmcmd="$asmcmd -DPIC"
+fi
 
 if [ $bits = 32 ]; then
   asmcmd="$asm -f elf32"

@@ -23,7 +23,6 @@ samples:
 	make -C kernel/reverse_string
 	make -C bottles99
 	make -C fibonacci
-	make -C sdl2
 	make -C life
 
 clean:
@@ -38,7 +37,6 @@ clean:
 	make -C kernel/reverse_string clean
 	make -C bottles99 clean
 	make -C fibonacci clean
-	make -C sdl2 clean
 	make -C life clean
 
 src/battlestarc:
