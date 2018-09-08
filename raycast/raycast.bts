@@ -1,0 +1,48 @@
+// "Raycast"
+// The original was written by "HellMood" (https://www.pouet.net/prod.php?which=78044)
+
+fun main
+    // graphics mode 0x13: 320x200 pixels, 256 indexed colors
+    al = 0x13
+    int 0x10
+
+    0x9FF6 -> stack
+    stack -> es
+
+    d = 0x3c9
+    (asm 16) P:
+    (asm 16) out dx,al
+    (asm 16) out dx,al
+    (asm 16) out dx,al
+    (asm 16) cmp al,63
+    (asm 16) jz F
+    a++
+    (asm 16) F:
+    (asm 16) loop P
+
+    stack -> ds
+    loop
+        cl = -9
+        (asm 16) L:
+            bl = cl
+            a = 0xcccd
+            (asm 16) mul di
+            (asm 16) lea ax, [bx-80]
+            al += dh
+            bl *= bl
+            ax <-> dx
+            bl *= bl
+            al = dh
+            al ^= ah
+            (asm 16) sub bl, [0x46c]
+            al += 4
+            al &= bl
+            (asm 16) test al, 24
+        (asm 16) loopz L
+        al |= 252
+        al -= cl
+        write
+    end
+end
+
+// vim: set syntax=c ts=4 sw=4 et:
