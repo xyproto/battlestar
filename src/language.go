@@ -8,7 +8,7 @@ import (
 
 var (
 	// TODO: Several of the operators (and the difference between signed/unsigned)
-	operators = []string{"=", "+=", "-=", "*=", "/=", "&=", "|=", "^=", "->", "<<<", ">>>", "<<", ">>"}
+	operators = []string{"=", "+=", "-=", "*=", "/=", "&=", "|=", "^=", "->", "<<<", ">>>", "<<", ">>", "<->"}
 
 	comparisons = []string{"==", "!=", "<", ">", "<=", ">="}
 

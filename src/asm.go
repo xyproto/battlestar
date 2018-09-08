@@ -853,6 +853,9 @@ func (st Statement) String(ps *ProgramState) string {
 			if register_a(st[0].value) {
 				return "\tmul " + st[2].value + "\t\t\t; " + st[0].value + " *= " + st[2].value
 			} else {
+				if st[0].value == st[2].value {
+					return "\timul " + st[0].value + "\t\t\t; " + st[0].value + " *= " + st[0].value
+				}
 				return "\timul " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " *= " + st[2].value
 			}
 		} else if (st[1].t == DIVISION) && (st[2].t == REGISTER) {
@@ -872,9 +875,9 @@ func (st Statement) String(ps *ProgramState) string {
 				return "\tdec " + st[0].value + "\t\t\t; " + st[0].value + "--"
 			}
 			return "\tsub " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " -= " + st[2].value
-		} else if (st[1].t == AND) && ((st[2].t == VALUE) || (st[2].t == MEMEXP)) {
+		} else if (st[1].t == AND) && ((st[2].t == VALUE) || (st[2].t == MEMEXP) || (st[2].t == REGISTER)) {
 			return "\tand " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " &= " + st[2].value
-		} else if (st[1].t == OR) && ((st[2].t == VALUE) || (st[2].t == MEMEXP)) {
+		} else if (st[1].t == OR) && ((st[2].t == VALUE) || (st[2].t == MEMEXP) || (st[2].t == REGISTER)) {
 			return "\tor " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " |= " + st[2].value
 			// TODO: All == MEMEXP should be followed by || st[2].t == REGEXP. In fact,
 			//       a better system is needed. Some sort of pattern matching.
@@ -888,6 +891,8 @@ func (st Statement) String(ps *ProgramState) string {
 			return "\tshl " + st[0].value + ", " + st[2].value + "\t\t\t; shift " + st[0].value + " left" + st[2].value
 		} else if (st[1].t == SHR) && ((st[2].t == VALUE) || (st[2].t == MEMEXP) || (st[2].t == REGISTER)) {
 			return "\tshr " + st[0].value + ", " + st[2].value + "\t\t\t; shift " + st[0].value + " right " + st[2].value
+		} else if (st[1].t == XCHG) && ((st[2].t == VALUE) || (st[2].t == MEMEXP) || (st[2].t == REGISTER)) {
+			return "\txchg " + st[0].value + ", " + st[2].value + "\t\t\t; exchange " + st[0].value + " and " + st[2].value
 		} else if (st[1].t == MULTIPLICATION) && ((st[2].t == VALUE) || (st[2].t == MEMEXP)) {
 			// TODO: Don't use a list, write a function that covers the lot
 			shifts := []string{"2", "4", "8", "16", "32", "64", "128"}
@@ -906,6 +911,9 @@ func (st Statement) String(ps *ProgramState) string {
 				if register_a(st[0].value) {
 					return "\tmul " + st[2].value + "\t\t\t; " + st[0].value + " *= " + st[2].value
 				} else {
+					if st[0].value == st[2].value {
+						return "\timul " + st[0].value + "\t\t\t; " + st[0].value + " *= " + st[0].value
+					}
 					return "\timul " + st[0].value + ", " + st[2].value + "\t\t\t; " + st[0].value + " *= " + st[2].value
 				}
 			}
