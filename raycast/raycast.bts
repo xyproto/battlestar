@@ -21,7 +21,10 @@ fun main
     (asm 16) loop P
 
     stack -> ds
-    loop
+
+    //loop
+    (asm 16) X:
+
         cl = -9
         (asm 16) L:
             bl = cl
@@ -30,7 +33,7 @@ fun main
             (asm 16) lea ax, [bx-80]
             al += dh
             bl *= bl
-            ax <-> dx
+            a <-> d
             bl *= bl
             al = dh
             al ^= ah
@@ -42,7 +45,9 @@ fun main
         al |= 252
         al -= cl
         write
-    end
+
+    //end
+    (asm 16) loop X
 end
 
 // vim: set syntax=c ts=4 sw=4 et:
