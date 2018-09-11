@@ -893,6 +893,10 @@ func (st Statement) String(ps *ProgramState) string {
 			return "\tshr " + st[0].value + ", " + st[2].value + "\t\t\t; shift " + st[0].value + " right " + st[2].value
 		} else if (st[1].t == XCHG) && ((st[2].t == VALUE) || (st[2].t == MEMEXP) || (st[2].t == REGISTER)) {
 			return "\txchg " + st[0].value + ", " + st[2].value + "\t\t\t; exchange " + st[0].value + " and " + st[2].value
+		} else if (st[1].t == OUT) && ((st[2].t == VALUE) || (st[2].t == MEMEXP) || (st[2].t == REGISTER)) {
+			return "\tout " + st[0].value + ", " + st[2].value + "\t\t\t; output " + st[0].value + " to IO port " + st[2].value
+		} else if (st[1].t == IN) && ((st[2].t == MEMEXP) || (st[2].t == REGISTER)) {
+			return "\tin " + st[2].value + ", " + st[0].value + "\t\t\t; input " + st[2].value + " from IO port " + st[0].value
 		} else if (st[1].t == MULTIPLICATION) && ((st[2].t == VALUE) || (st[2].t == MEMEXP)) {
 			// TODO: Don't use a list, write a function that covers the lot
 			shifts := []string{"2", "4", "8", "16", "32", "64", "128"}

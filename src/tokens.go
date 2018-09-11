@@ -35,6 +35,8 @@ const (
 	SHR            = 26 // shift right
 	QUAL           = 27 // qualifier, like BYTE or WORD
 	XCHG           = 28
+	OUT            = 29
+	IN             = 30
 	SEP            = 127 // statement separator
 	UNKNOWN        = 255
 )
@@ -44,7 +46,7 @@ var (
 	tokenDebug     = false
 	newTokensDebug = true
 
-	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard", RESERVED: "reserved", VARIABLE: "variable", ADDITION: "addition", SUBTRACTION: "subtraction", MULTIPLICATION: "multiplication", DIVISION: "division", COMPARISON: "comparison", ARROW: "stack operation", MEMEXP: "address expression", ASMLABEL: "assembly label", AND: "and", XOR: "xor", OR: "or", ROL: "rol", ROR: "ror", CONCAT: "concatenation", SEGOFS: "segment+offset", SHL: "shl", SHR: "shr", QUAL: "qualifier", XCHG: "xchg"}
+	token_to_string = TokenDescriptions{REGISTER: "register", ASSIGNMENT: "assignment", VALUE: "value", VALID_NAME: "name", SEP: ";", UNKNOWN: "?", KEYWORD: "keyword", STRING: "string", BUILTIN: "built-in", DISREGARD: "disregard", RESERVED: "reserved", VARIABLE: "variable", ADDITION: "addition", SUBTRACTION: "subtraction", MULTIPLICATION: "multiplication", DIVISION: "division", COMPARISON: "comparison", ARROW: "stack operation", MEMEXP: "address expression", ASMLABEL: "assembly label", AND: "and", XOR: "xor", OR: "or", ROL: "rol", ROR: "ror", CONCAT: "concatenation", SEGOFS: "segment+offset", SHL: "shl", SHR: "shr", QUAL: "qualifier", XCHG: "xchg", OUT: "out", IN: "in"}
 	// see also the top of language.go, when adding tokens
 )
 
@@ -223,6 +225,10 @@ func tokenize(program string, sep string) []Token {
 					tokentype = OR
 				case "^=":
 					tokentype = XOR
+				case "==>":
+					tokentype = OUT
+				case "<==":
+					tokentype = IN
 				case "<<<":
 					tokentype = ROL
 				case ">>>":

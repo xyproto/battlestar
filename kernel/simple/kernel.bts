@@ -34,19 +34,19 @@ fun place_cursor
   b = 338                      // position = row * 80 + col
   a = 0xf
   d = 0x3df
-  (asm 32) out dx, eax
+  dx ==> eax                   // out
   a = b
   a &= 0xff
   d = 0x3d5
-  (asm 32) out dx, eax
+  dx ==> eax                   // out
   a = 0xe
   d = 0x3d4
-  (asm 32) out dx, eax
+  dx ==> eax                   // out
   a = b
   a /= 0xff
   a &= 0xff
   d = 0x3d5
-  (asm 32) out dx, eax
+  dx ==> eax                   // out
 end
 
 fun main
