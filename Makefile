@@ -42,13 +42,15 @@ clean:
 src/battlestarc:
 	make -C src
 
-install-linux: src/battlestarc
-	install -Dm755 "$(PWD)/scripts/bts.sh" "$(DESTDIR)$(BINDIR)/bts"
-	install -Dm755 "$(PWD)/scripts/build.sh" "$(DESTDIR)$(BINDIR)/btsbuild"
-	install -Dm755 "$(PWD)/src/battlestarc" "$(DESTDIR)$(BINDIR)/battlestarc"
-	install -Dm755 "$(PWD)/scripts/com2bts.py" "$(DESTDIR)$(BINDIR)/com2bts"
+ifeq ($(UNAME),Darwin)
+    TARGET = install-macos
+else
+    TARGET = install-linux
+endif
 
-install-macos: uninstall src/battlestarc
+install: $(TARGET) src/battlestarc
+
+install-macos: src/battlestarc
 	cp -v "$(PWD)/scripts/bts.sh" "$(DESTDIR)$(BINDIR)/bts"
 	cp -v "$(PWD)/scripts/build.sh" "$(DESTDIR)$(BINDIR)/btsbuild"
 	cp -v "$(PWD)/src/battlestarc" "$(DESTDIR)$(BINDIR)/battlestarc"
@@ -58,9 +60,13 @@ install-macos: uninstall src/battlestarc
 	chmod +x "$(DESTDIR)$(BINDIR)/battlestarc"
 	chmod +x "$(DESTDIR)$(BINDIR)/com2bts"
 
-install:
-	@# TODO: Add macOS detection
-	@echo 'Use "make install-linux" for Linux and "make install-macos" for macOS'
+install-linux: src/battlestarc
+	install -Dm755 "$(PWD)/scripts/bts.sh" "$(DESTDIR)$(BINDIR)/bts"
+	install -Dm755 "$(PWD)/scripts/build.sh" "$(DESTDIR)$(BINDIR)/btsbuild"
+	install -Dm755 "$(PWD)/src/battlestarc" "$(DESTDIR)$(BINDIR)/battlestarc"
+	install -Dm755 "$(PWD)/scripts/com2bts.py" "$(DESTDIR)$(BINDIR)/com2bts"
+
+install-dev: devinstall
 
 devinstall: src/battlestarc
 	ln -sf $(PWD)/src/battlestarc $(BINDIR)/battlestarc
