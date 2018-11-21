@@ -6,12 +6,6 @@ Battlestar
 [![Report Card](https://img.shields.io/badge/go_report-A-brightgreen.svg?style=flat)](http://goreportcard.com/report/xyproto/battlestar)
 
 
-* Version: 0.6.0
-* License: MIT
-* Author: Alexander F. Rødseth
-
-
-
 What is Battlestar?
 -------------------
 
@@ -20,6 +14,7 @@ What is Battlestar?
 * A programming language specifically for 64-bit and 32-bit x86 and Linux.
 * Subset of assembly with an alternative syntax and with support for inline C.
 * The indended purpose is for writing 4k and 64k demoscene demos.
+
 
 Quick start
 -----------
@@ -31,6 +26,7 @@ Build and install Battlestar, build the samples and run the "life" sample:
 This requires DosBox, Go, Yasm and GCC.
 
 gcc-go is not supported yet.
+
 
 Features and limitations
 ------------------------
@@ -47,11 +43,13 @@ Features and limitations
 * The intermediate assembly is fully commented.
 * No register allocator, just an alternative assembly syntax.
 
+
 In progress
 -----------
 * macOS support
 * Reimplementing 16-bit demoscene demos without using any inline assembly
 * See TODO
+
 
 Installation
 ------------------
@@ -70,13 +68,16 @@ Build all the samples:
 
 `make samples`
 
+
 Build dependencies
 ------------------
 * go >= 1.3
 
+
 Runtime dependencies
 --------------------
 * yasm
+
 
 Optional runtime dependencies
 -----------------------------
@@ -87,3 +88,10 @@ Optional runtime dependencies
 * SDL 2 (must be compiled and installed manually if on Red Hat 6)
 * tcc (for even smaller binaries, in many cases)
 
+
+General info
+------------
+
+* Version: 0.6.1
+* License: MIT
+* Author: Alexander F. Rødseth
