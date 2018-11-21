@@ -1,4 +1,4 @@
-all:
+battlestarc:
 	-go build -o battlestarc
 
 clean:
