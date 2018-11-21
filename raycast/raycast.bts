@@ -11,9 +11,9 @@ fun main
 
     d = 0x3c9
     (asm 16) P:
-    (asm 16) out dx,al
-    (asm 16) out dx,al
-    (asm 16) out dx,al
+    dx ==> al
+    dx ==> al
+    dx ==> al
     (asm 16) cmp al,63
     (asm 16) jz F
     a++
@@ -50,4 +50,4 @@ fun main
     (asm 16) loop X
 end
 
-// vim: set syntax=c ts=4 sw=4 et:
+// vim: syntax=c ts=4 sw=4 et:

@@ -40,4 +40,15 @@ fun fibb
     end
 end
 
+inline_c
+#include <stdio.h>
+
+extern int fibb(int n);
+
+int main() {
+  printf("fib %d\n", fibb(8));
+  return 0;
+}
+end
+
 // vim: set syntax=c ts=4 sw=4 et:
