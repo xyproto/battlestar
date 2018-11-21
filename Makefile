@@ -2,8 +2,10 @@ DESTDIR ?=
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
   PREFIX ?= /usr/local
+  INSTALL_TARGET = install-macos
 else
   PREFIX ?= /usr
+  INSTALL_TARGET = install-linux
 endif
 BINDIR = $(PREFIX)/bin
 PWD = $(shell pwd)
@@ -42,13 +44,7 @@ clean:
 src/battlestarc:
 	make -C src
 
-ifeq ($(UNAME),Darwin)
-    TARGET = install-macos
-else
-    TARGET = install-linux
-endif
-
-install: $(TARGET) src/battlestarc
+install: $(INSTALL_TARGET) src/battlestarc
 
 install-macos: src/battlestarc
 	cp -v "$(PWD)/scripts/bts.sh" "$(DESTDIR)$(BINDIR)/bts"

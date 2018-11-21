@@ -58,17 +58,13 @@ Installation
 
 Make sure Go, Yasm and GCC are installed.
 
-Install on Linux:
+Installation:
 
-`sudo make install-linux`
-
-Install on macOS:
-
-`sudo make install-macos`
+`sudo make PREFIX=/usr install`
 
 For development, install soft links instead:
 
-`sudo make devinstall`
+`sudo make install-dev`
 
 Build all the samples:
 
