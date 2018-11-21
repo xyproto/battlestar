@@ -25,7 +25,7 @@ var (
 
 func main() {
 	name := "Battlestar"
-	version := "0.51"
+	version := "0.6.0"
 	log.Println(name + " " + version)
 
 	ps := NewProgramState()

@@ -6,7 +6,7 @@ Battlestar
 [![Report Card](https://img.shields.io/badge/go_report-A-brightgreen.svg?style=flat)](http://goreportcard.com/report/xyproto/battlestar)
 
 
-* Version: 0.51
+* Version: 0.6.0
 * License: MIT
 * Author: Alexander F. Rødseth
 
