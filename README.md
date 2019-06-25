@@ -47,6 +47,8 @@ Features and limitations
 Sample program
 --------------
 
+This is a 16-bit x86 program, for DOS:
+
 ```c
 // "Life"
 // The original was written by "melezov" (http://256bytes.untergrund.net/demo/334)
