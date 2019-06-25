@@ -11,7 +11,7 @@ What is Battlestar?
 
 * A work in progress.
 * Created for fun and for the educational process.
-* A programming language specifically for 64-bit and 32-bit x86 and Linux.
+* A programming language specifically for 64-bit x86 Linux, 32-bit x86 Linux and 16-bit x86 DOS.
 * Subset of assembly with an alternative syntax and with support for inline C.
 * The indended purpose is for writing 4k and 64k demoscene demos.
 
@@ -44,8 +44,57 @@ Features and limitations
 * No register allocator, just an alternative assembly syntax.
 
 
+Sample program
+--------------
+
+```c
+// "Life"
+// The original was written by "melezov" (http://256bytes.untergrund.net/demo/334)
+
+fun main
+    al = 0x13               // set graphics mode (mode 13h)
+                            // 320x200, 256 colors, one byte per pixel
+    int 10
+
+    stack -> sp             // pop  sp
+    stack -> b              // pop  bx
+    stack -> ds             // pop  ds
+
+    ds -> es                // push ds, pop es
+
+    al = 62
+    ch = 0xFA
+    loopwrite               // rep stosb
+
+    loop
+
+        di <<< 3           // rotate left 3
+
+        di -= 7            // subtraction
+        di ^= 2            // xor
+
+        al = readbyte di   // read byte from memory
+        al += [di+321]     // add value at [di+321] (pixel on the line below)
+        al /= 2
+
+        di -> stack
+        write               // stosb
+        write
+
+        di += 0x13E
+        write
+        write
+
+        stack -> di
+
+    end // loops forever
+
+end
+```
+
 In progress
 -----------
+
 * macOS support
 * Reimplementing 16-bit demoscene demos without using any inline assembly
 * See TODO
