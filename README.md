@@ -137,6 +137,10 @@ Optional runtime dependencies
 * SDL 2 (must be compiled and installed manually if on Red Hat 6)
 * tcc (for even smaller binaries, in many cases)
 
+External links
+--------------
+
+* Battlestar programs on [Rosetta Code](https://rosettacode.org/wiki/Category:Battlestar#mw-pages)
 
 General info
 ------------
