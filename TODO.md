@@ -1,3 +1,5 @@
+* Fix the issue with defining string constants like this: "..", 0 or like this: 46, 46, 0
+
 * Fix the issue with mul / imul in the spongy sample, see "make todo".
 
 * Make it possible to use "->" and "<-" with variables, like for the stack.
