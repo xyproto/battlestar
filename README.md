@@ -122,11 +122,13 @@ Build all the samples:
 
 Build dependencies
 ------------------
+
 * go >= 1.3
 
 
 Runtime dependencies
 --------------------
+
 * yasm
 
 
