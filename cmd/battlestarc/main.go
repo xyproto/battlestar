@@ -13,18 +13,6 @@ import (
 	"github.com/xyproto/battlestarlib"
 )
 
-// Global variables
-var (
-	// 32-bit (i686), 64-bit (x86_64) or 16-bit (i386)
-	platformBits = 32
-
-	// Is this a bootable kernel? (declared with "bootable" at the top)
-	bootableKernel = false
-
-	// Darwin / OS X / macOS or Linux
-	macOS = false
-)
-
 // hasi can be used for checking if a slice of ints has the given int
 func hasi(il []int, i int) bool {
 	for _, e := range il {
@@ -36,10 +24,8 @@ func hasi(il []int, i int) bool {
 }
 
 func main() {
-	targetConfig := battlestarlib.NewTargetConfig(platformBits, bootableKernel, macOS)
-
 	name := "Battlestar"
-	version := "0.6.1"
+	version := "0.6.2"
 	log.Println(name + " " + version)
 
 	ps := battlestarlib.NewProgramState()
@@ -49,7 +35,7 @@ func main() {
 	// TODO: ARM support
 
 	// Check for -bits=32 or -bits=64 (default)
-	platformBitsArg := flag.Int("bits", 64, "Output 32-bit or 64-bit x86 assembly")
+	platformBitsArg := flag.Int("bits", 64, "Output 64-bit, 32-bit or 16-bit x86 assembly")
 	// Check for -osx=true or -osx=false (default)
 	macOSArg := flag.Bool("osx", false, "On Darwin, OS X or macOS?")
 	// Assembly output file
@@ -60,15 +46,18 @@ func main() {
 	btsfileArg := flag.String("f", "", "BTS source file")
 	// Is it not a standalone program, but a component? (just the .o file is needed)
 	componentArg := flag.Bool("c", false, "Component, not a standalone program")
+	// Bootable kernel instead of an executable?
+	bootableArg := flag.Bool("bootable", false, "Bootable kernel instead of an executable")
 
 	flag.Parse()
 
-	platformBits = *platformBitsArg
-	macOS = *macOSArg
+	platformBits := *platformBitsArg
+	macOS := *macOSArg
 	asmfile := *asmfileArg
 	cfile := *cfileArg
 	btsfile := *btsfileArg
 	component := *componentArg
+	bootableKernel := *bootableArg
 
 	if flag.Arg(0) != "" {
 		btsfile = flag.Arg(0)
@@ -92,6 +81,12 @@ func main() {
 	// C file contents
 	cdata := ""
 
+	// Prepare to parse, tokenize and output code for a specific platform
+	targetConfig, err := battlestarlib.NewTargetConfig(platformBits, bootableKernel, macOS)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
 	// Read code from stdin and output 32-bit or 64-bit assembly code
 	bytes, err := ioutil.ReadFile(btsfile)
 	if err == nil {
@@ -104,18 +99,13 @@ func main() {
 		asmdata += fmt.Sprintf("; Generated with %s %s, at %s\n\n", name, version, t.String()[:16])
 
 		// If "bootable" is the first token
-		bootable := false
+		bootableFirstToken := false
 		if temptokens := targetConfig.Tokenize(string(bytes), " "); (len(temptokens) > 2) && (temptokens[0].T == battlestarlib.KEYWORD) && (temptokens[0].Value == "bootable") && (temptokens[1].T == battlestarlib.SEP) {
-			bootable = true
-			asmdata += fmt.Sprintf("bits %d\n", platformBits)
+			bootableFirstToken = true
+			asmdata += fmt.Sprintf("bits %d\n", targetConfig.PlatformBits)
 		} else {
 			// Header for regular programs
-			asmdata += fmt.Sprintf("bits %d\n", platformBits)
-		}
-
-		// Check if platformBits is valid
-		if !hasi([]int{16, 32, 64}, platformBits) {
-			log.Fatalln("Error: Unsupported bit size:", platformBits)
+			asmdata += fmt.Sprintf("bits %d\n", targetConfig.PlatformBits)
 		}
 
 		btsCode := targetConfig.AddExternMainIfMissing(string(bytes))
@@ -126,22 +116,19 @@ func main() {
 			asmdata += "section .data\n"
 			asmdata += constants + "\n"
 		}
-		if platformBits == 16 {
+		if targetConfig.PlatformBits == 16 {
 			asmdata += "org 0x100\n"
 		}
-		if !bootable {
-			asmdata += "\n"
-			asmdata += "section .text\n"
+		if !bootableFirstToken {
+			asmdata += "\nsection .text\n"
 		}
-		if platformBits == 16 {
+		if targetConfig.PlatformBits == 16 {
 			// If there are defined functions, jump over the definitions and start at
 			// the main/_start function. If there is a main function, jump to the
 			// linker start function. If not, just start at the top.
 			// TODO: This is a quick fix. Don't depend on the comment, find a better way.
-			if strings.Count(asmcode, "; name of the function") > 1 {
-				if strings.Contains(asmcode, "\nmain:") {
-					asmdata += "jmp " + targetConfig.LinkerStartFunction + "\n"
-				}
+			if strings.Count(asmcode, "; name of the function") > 1 && strings.Contains(asmcode, "\nmain:") {
+				asmdata += "jmp " + targetConfig.LinkerStartFunction + "\n"
 			}
 		}
 		if asmcode != "" {
@@ -150,9 +137,9 @@ func main() {
 			} else {
 				asmdata += targetConfig.AddStartingPointIfMissing(asmcode, ps) + "\n"
 			}
-			if bootable {
+			if bootableFirstToken {
 				reg := "esp"
-				if platformBits == 64 {
+				if targetConfig.PlatformBits == 64 {
 					reg = "rsp"
 				}
 				asmdata = strings.Replace(asmdata, "; starting point of the program\n", "; starting point of the program\n\tmov "+reg+", stack_top\t; set the "+reg+" register to the top of the stack (special case for bootable kernels)\n", 1)
