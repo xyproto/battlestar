@@ -1,3 +1,3 @@
 module github.com/xyproto/battlestarlib
 
-go 1.9
+go 1.3
