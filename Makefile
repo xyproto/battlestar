@@ -42,7 +42,7 @@ clean:
 	make -C life clean
 
 cmd/battlestarc/battlestarc:
-	(cd cmd/battlestarc; go build -mod=vendor)
+	(cd cmd/battlestarc; go build)
 
 install: $(INSTALL_TARGET) cmd/battlestarc/battlestarc
 
