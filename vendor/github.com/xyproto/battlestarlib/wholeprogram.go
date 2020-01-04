@@ -1,16 +1,11 @@
-package main
+package battlestarlib
 
 import (
 	"log"
 	"strings"
 )
 
-var (
-	// TODO: Add an option for not adding start symbols
-	linker_start_function = "_start"
-)
-
-// ExtractInlineCode retrieves the C code between:
+// ExtractInlineC retrieves the C code between:
 //   inline_c...end
 // or
 //   void...}
@@ -75,50 +70,51 @@ func ExtractInlineC(code string, debug bool) string {
 	return clines
 }
 
-func addExternMainIfMissing(bts_code string) string {
-	// If there is a line starting with "void main", or "int main" but no line starting with "extern main",
-	// add "extern main" at the top.
-	found_main := false
-	found_extern := false
+// AddExternMainIfMissing will add "extern main" at the top if
+// there is a line starting with "void main", or "int main" but no line starting with "extern main".
+func (config *TargetConfig) AddExternMainIfMissing(btsCode string) string {
+	foundMain := false
+	foundExtern := false
 	trimline := ""
-	for _, line := range strings.Split(bts_code, "\n") {
+	for _, line := range strings.Split(btsCode, "\n") {
 		trimline = strings.TrimSpace(line)
 		if strings.HasPrefix(trimline, "void main") {
-			found_main = true
+			foundMain = true
 		} else if strings.HasPrefix(trimline, "int main") {
-			found_main = true
+			foundMain = true
 		} else if strings.HasPrefix(trimline, "extern main") {
-			found_extern = true
+			foundExtern = true
 		}
-		if found_main && found_extern {
+		if foundMain && foundExtern {
 			break
 		}
 	}
-	if found_main && !found_extern {
-		return "extern main\n" + bts_code
+	if foundMain && !foundExtern {
+		return "extern main\n" + btsCode
 	}
-	return bts_code
+	return btsCode
 }
 
-func addStartingPointIfMissing(asmcode string, ps *ProgramState) string {
-	// Check if the resulting code contains a starting point or not
-	if strings.Contains(asmcode, "extern "+linker_start_function) {
+// AddStartingPointIfMissing will check if the resulting code contains a starting point or not,
+// and add one if it is missing.
+func (config *TargetConfig) AddStartingPointIfMissing(asmcode string, ps *ProgramState) string {
+	if strings.Contains(asmcode, "extern "+config.LinkerStartFunction) {
 		log.Println("External starting point for linker, not adding one.")
 		return asmcode
 	}
-	if !strings.Contains(asmcode, linker_start_function) {
-		log.Printf("No %s has been defined, creating one\n", linker_start_function)
+	if !strings.Contains(asmcode, config.LinkerStartFunction) {
+		log.Printf("No %s has been defined, creating one\n", config.LinkerStartFunction)
 		var addstring string
-		if platformBits != 16 {
-			addstring += "global " + linker_start_function + "\t\t\t; make label available to the linker\n"
+		if config.platformBits != 16 {
+			addstring += "global " + config.LinkerStartFunction + "\t\t\t; make label available to the linker\n"
 		}
-		addstring += linker_start_function + ":\t\t\t\t; starting point of the program\n"
+		addstring += config.LinkerStartFunction + ":\t\t\t\t; starting point of the program\n"
 		if strings.Contains(asmcode, "extern main") {
 			//log.Println("External main function, adding starting point that calls it.")
 			linenr := uint(strings.Count(asmcode+addstring, "\n") + 5)
 			// TODO: Check that this is the correct linenr
-			exit_statement := Statement{Token{BUILTIN, "exit", linenr, ""}}
-			return asmcode + "\n" + addstring + "\n\tcall main\t\t; call the external main function\n\n" + exit_statement.String(ps)
+			exitStatement := Statement{Token{BUILTIN, "exit", linenr, ""}}
+			return asmcode + "\n" + addstring + "\n\tcall main\t\t; call the external main function\n\n" + exitStatement.String(ps, config)
 		} else if strings.Contains(asmcode, "\nmain:") {
 			//log.Println("...but main has been defined, using that as starting point.")
 			// Add "_start:"/"start" right after "main:"
@@ -130,33 +126,35 @@ func addStartingPointIfMissing(asmcode string, ps *ProgramState) string {
 	return asmcode
 }
 
-func addExitTokenIfMissing(tokens []Token) []Token {
+// AddExitTokenIfMissing will check if the code has an exit or ret and
+// will add an exit call if it's missing.
+func (config *TargetConfig) AddExitTokenIfMissing(tokens []Token) []Token {
 	var (
-		twolast   []Token
-		lasttoken Token
+		twolast        []Token
+		lasttoken      Token
+		filteredTokens = filtertokens(tokens, only([]TokenType{KEYWORD, BUILTIN, VALUE}))
 	)
-	filtered_tokens := filtertokens(tokens, only([]TokenType{KEYWORD, BUILTIN, VALUE}))
-	if len(filtered_tokens) >= 2 {
-		twolast = filtered_tokens[len(filtered_tokens)-2:]
-		if twolast[1].t == VALUE {
+	if len(filteredTokens) >= 2 {
+		twolast = filteredTokens[len(filteredTokens)-2:]
+		if twolast[1].T == VALUE {
 			lasttoken = twolast[0]
 		} else {
 			lasttoken = twolast[1]
 		}
-	} else if len(filtered_tokens) == 1 {
-		lasttoken = filtered_tokens[0]
+	} else if len(filteredTokens) == 1 {
+		lasttoken = filteredTokens[0]
 	} else {
 		// less than one token, don't add anything
 		return tokens
 	}
 
 	// If the last keyword token is ret, exit, jmp or end, all is well, return the same tokens
-	if (lasttoken.t == KEYWORD) && ((lasttoken.value == "ret") || (lasttoken.value == "end") || (lasttoken.value == "noret")) {
+	if (lasttoken.T == KEYWORD) && ((lasttoken.Value == "ret") || (lasttoken.Value == "end") || (lasttoken.Value == "noret")) {
 		return tokens
 	}
 
 	// If the last builtin token is exit or halt, all is well, return the same tokens
-	if (lasttoken.t == BUILTIN) && ((lasttoken.value == "exit") || (lasttoken.value == "halt")) {
+	if (lasttoken.T == BUILTIN) && ((lasttoken.Value == "exit") || (lasttoken.Value == "halt")) {
 		return tokens
 	}
 
@@ -165,12 +163,12 @@ func addExitTokenIfMissing(tokens []Token) []Token {
 	copy(newtokens, tokens)
 
 	// TODO: Check that the line nr is correct
-	ret_token := Token{BUILTIN, "exit", newtokens[len(newtokens)-1].line, ""}
-	newtokens[len(tokens)] = ret_token
+	retToken := Token{BUILTIN, "exit", newtokens[len(newtokens)-1].Line, ""}
+	newtokens[len(tokens)] = retToken
 
 	// TODO: Check that the line nr is correct
-	sep_token := Token{SEP, ";", newtokens[len(newtokens)-1].line, ""}
-	newtokens[len(tokens)+1] = sep_token
+	sepToken := Token{SEP, ";", newtokens[len(newtokens)-1].Line, ""}
+	newtokens[len(tokens)+1] = sepToken
 
 	return newtokens
 }

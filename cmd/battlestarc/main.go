@@ -9,6 +9,8 @@ import (
 	"log"
 	"strings"
 	"time"
+
+	"github.com/xyproto/battlestarlib"
 )
 
 // Global variables
@@ -17,18 +19,30 @@ var (
 	platformBits = 32
 
 	// Is this a bootable kernel? (declared with "bootable" at the top)
-	bootable_kernel = false
+	bootableKernel = false
 
-	// OS X or Linux
-	osx = false
+	// Darwin / OS X / macOS or Linux
+	macOS = false
 )
 
+// hasi can be used for checking if a slice of ints has the given int
+func hasi(il []int, i int) bool {
+	for _, e := range il {
+		if e == i {
+			return true
+		}
+	}
+	return false
+}
+
 func main() {
+	targetConfig := battlestarlib.NewTargetConfig(platformBits, bootableKernel, macOS)
+
 	name := "Battlestar"
 	version := "0.6.1"
 	log.Println(name + " " + version)
 
-	ps := NewProgramState()
+	ps := battlestarlib.NewProgramState()
 
 	// TODO: Add an option for not adding an exit function
 	// TODO: Automatically discover 32-bit/64-bit and Linux/OS X
@@ -37,7 +51,7 @@ func main() {
 	// Check for -bits=32 or -bits=64 (default)
 	platformBitsArg := flag.Int("bits", 64, "Output 32-bit or 64-bit x86 assembly")
 	// Check for -osx=true or -osx=false (default)
-	osxArg := flag.Bool("osx", false, "On OS X?")
+	macOSArg := flag.Bool("osx", false, "On Darwin, OS X or macOS?")
 	// Assembly output file
 	asmfileArg := flag.String("o", "", "Assembly output file")
 	// C output file
@@ -50,7 +64,7 @@ func main() {
 	flag.Parse()
 
 	platformBits = *platformBitsArg
-	osx = *osxArg
+	macOS = *macOSArg
 	asmfile := *asmfileArg
 	cfile := *cfileArg
 	btsfile := *btsfileArg
@@ -72,15 +86,6 @@ func main() {
 		cfile = btsfile + ".c"
 	}
 
-	// TODO: Consider adding an option for "start" as well, or a custom
-	// start symbol
-
-	if osx {
-		linker_start_function = "_main"
-	} else {
-		linker_start_function = "_start"
-	}
-
 	// Assembly file contents
 	asmdata := ""
 
@@ -100,7 +105,7 @@ func main() {
 
 		// If "bootable" is the first token
 		bootable := false
-		if temptokens := tokenize(string(bytes), " "); (len(temptokens) > 2) && (temptokens[0].t == KEYWORD) && (temptokens[0].value == "bootable") && (temptokens[1].t == SEP) {
+		if temptokens := targetConfig.Tokenize(string(bytes), " "); (len(temptokens) > 2) && (temptokens[0].T == battlestarlib.KEYWORD) && (temptokens[0].Value == "bootable") && (temptokens[1].T == battlestarlib.SEP) {
 			bootable = true
 			asmdata += fmt.Sprintf("bits %d\n", platformBits)
 		} else {
@@ -113,12 +118,10 @@ func main() {
 			log.Fatalln("Error: Unsupported bit size:", platformBits)
 		}
 
-		init_interrupt_parameter_registers(platformBits)
-
-		btsCode := addExternMainIfMissing(string(bytes))
-		tokens := addExitTokenIfMissing(tokenize(btsCode, " "))
+		btsCode := targetConfig.AddExternMainIfMissing(string(bytes))
+		tokens := targetConfig.AddExitTokenIfMissing(targetConfig.Tokenize(btsCode, " "))
 		log.Println("--- Done tokenizing ---")
-		constants, asmcode := TokensToAssembly(tokens, true, false, ps)
+		constants, asmcode := targetConfig.TokensToAssembly(tokens, true, false, ps)
 		if constants != "" {
 			asmdata += "section .data\n"
 			asmdata += constants + "\n"
@@ -137,7 +140,7 @@ func main() {
 			// TODO: This is a quick fix. Don't depend on the comment, find a better way.
 			if strings.Count(asmcode, "; name of the function") > 1 {
 				if strings.Contains(asmcode, "\nmain:") {
-					asmdata += "jmp " + linker_start_function + "\n"
+					asmdata += "jmp " + targetConfig.LinkerStartFunction + "\n"
 				}
 			}
 		}
@@ -145,7 +148,7 @@ func main() {
 			if component {
 				asmdata += asmcode + "\n"
 			} else {
-				asmdata += addStartingPointIfMissing(asmcode, ps) + "\n"
+				asmdata += targetConfig.AddStartingPointIfMissing(asmcode, ps) + "\n"
 			}
 			if bootable {
 				reg := "esp"
@@ -155,7 +158,7 @@ func main() {
 				asmdata = strings.Replace(asmdata, "; starting point of the program\n", "; starting point of the program\n\tmov "+reg+", stack_top\t; set the "+reg+" register to the top of the stack (special case for bootable kernels)\n", 1)
 			}
 		}
-		ccode := ExtractInlineC(strings.TrimSpace(string(bytes)), true)
+		ccode := battlestarlib.ExtractInlineC(strings.TrimSpace(string(bytes)), true)
 		if ccode != "" {
 			cdata += fmt.Sprintf("// Generated with %s %s, at %s\n\n", name, version, t.String()[:16])
 			cdata += ccode

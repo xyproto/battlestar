@@ -1,0 +1,12 @@
+*
+!*.*
+!*/
+*.o
+*.swp
+*.tmp
+*.bak
+*.pro.user
+*CMakeFiles*
+*.dblite
+*.so
+.vscode/
