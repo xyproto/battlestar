@@ -122,8 +122,10 @@ func parse(s string) ParseTree {
 	}
 	if len(tokens) >= 3 {
 		// Check if there are two operators or two non-operators in a row
-		operator := false
-		lastoperator := false
+		var (
+			operator     bool
+			lastoperator bool
+		)
 		for i, token := range tokens {
 			lastoperator = operator
 			operator = OnlyOperators(token)
