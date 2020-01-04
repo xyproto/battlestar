@@ -147,6 +147,6 @@ External links
 General info
 ------------
 
-* Version: 0.6.1
+* Version: 0.6.2
 * License: MIT
 * Author: Alexander F. Rødseth
