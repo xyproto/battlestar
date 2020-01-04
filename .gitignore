@@ -11,3 +11,4 @@
 *.so
 cmd/battlestarc/battlestarc
 .vscode
+*.log
