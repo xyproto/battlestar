@@ -1,9 +1,9 @@
 Battlestar
 ==========
 
-[![Build Status](https://travis-ci.org/xyproto/battlestar.svg?branch=master)](https://travis-ci.org/xyproto/battlestar)
-[![License](http://img.shields.io/badge/license-MIT-red.svg?style=flat)](https://raw.githubusercontent.com/xyproto/battlestar/master/LICENSE)
-[![Report Card](https://img.shields.io/badge/go_report-A-brightgreen.svg?style=flat)](http://goreportcard.com/report/xyproto/battlestar)
+[![Build Status](https://travis-ci.com/xyproto/battlestar.svg?branch=master)](https://travis-ci.com/xyproto/battlestar)
+[![License](http://img.shields.io/badge/license-MIT-green.svg?style=flat)](https://raw.githubusercontent.com/xyproto/battlestar/master/LICENSE)
+[![Go Report Card](https://goreportcard.com/badge/github.com/xyproto/battlestar)](https://goreportcard.com/report/github.com/xyproto/battlestar)
 
 
 What is Battlestar?
