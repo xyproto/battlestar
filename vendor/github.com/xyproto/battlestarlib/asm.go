@@ -27,9 +27,13 @@ type ParseState struct {
 
 // TargetConfig contains information about the current platform and compile target
 type TargetConfig struct {
-	platformBits   int
-	macOS          bool
-	bootableKernel bool
+	// PlatformBits should be 16, 32 or 64
+	PlatformBits int
+
+	macOS bool
+
+	// BootableKernel should be true if this is not a normal executable but a bootable kernel
+	BootableKernel bool
 
 	// LinkerStartFunction is the name of the first function the linker should use, typically "_start"
 	LinkerStartFunction string
@@ -42,10 +46,15 @@ type TargetConfig struct {
 // platformBits should be 16, 32 or 64
 // macOS should be true if targeting Darwin / OS X / macOS
 // bootableKernel should be set to true if this is for building a bootable kernel
-func NewTargetConfig(platformBits int, macOS, bootableKernel bool) *TargetConfig {
+func NewTargetConfig(platformBits int, macOS, bootableKernel bool) (*TargetConfig, error) {
 	linkerStartFunction := "_start"
 	if macOS {
 		linkerStartFunction = "_main"
+	}
+
+	// Check if platformBits is valid
+	if !hasi([]int{16, 32, 64}, platformBits) {
+		return nil, fmt.Errorf("Error: Unsupported bit size: %d", platformBits)
 	}
 
 	// Used when calling interrupts (or syscall). Not used for 16-bit platforms.
@@ -56,7 +65,7 @@ func NewTargetConfig(platformBits int, macOS, bootableKernel bool) *TargetConfig
 		interruptParameterRegisters = []string{"rax", "rdi", "rsi", "rdx", "rcx", "r8", "r9"}
 	}
 
-	return &TargetConfig{platformBits, macOS, bootableKernel, linkerStartFunction, interruptParameterRegisters}
+	return &TargetConfig{platformBits, macOS, bootableKernel, linkerStartFunction, interruptParameterRegisters}, nil
 }
 
 // is64bit determines if the given register name looks like the 64-bit version of the general purpose registers
@@ -148,7 +157,7 @@ func registerA(reg string) bool {
 
 func (config *TargetConfig) paramnum2reg(num int) string {
 	var offset, reg string
-	switch config.platformBits {
+	switch config.PlatformBits {
 	case 64:
 		offset = strconv.Itoa(num * 8)
 		// ref: page 34 at http://people.freebsd.org/~obrien/amd64-elf-abi.pdf (Figure 3.17)
@@ -210,7 +219,7 @@ func (config *TargetConfig) paramnum2reg(num int) string {
 }
 
 func (config *TargetConfig) counterRegister() string {
-	switch config.platformBits {
+	switch config.PlatformBits {
 	case 16:
 		return "cx"
 	case 32:
@@ -218,7 +227,7 @@ func (config *TargetConfig) counterRegister() string {
 	case 64:
 		return "rcx"
 	default:
-		log.Fatalln("Error: Unhandled bit size:", config.platformBits)
+		log.Fatalln("Error: Unhandled bit size:", config.PlatformBits)
 		return ""
 	}
 }
@@ -294,7 +303,7 @@ func (config *TargetConfig) syscallOrInterrupt(st Statement, syscall bool) strin
 					} else {
 						comment = "parameter #" + n + " is " + st[i].Value
 						// Already recognized not to be a register
-						switch config.platformBits {
+						switch config.PlatformBits {
 						case 64:
 							if st[i].Value == "rsp" {
 								if is64bit(st[i].extra) {
@@ -454,7 +463,7 @@ func (st Statement) String(ps *ProgramState, config *TargetConfig) string {
 			bsscode += varname + ": resb " + st[2].Value + "\t\t\t\t; reserve " + st[2].Value + " bytes as " + varname + "\n"
 			bsscode += "_capacity_of_" + varname + " equ " + st[2].Value + "\t\t; size of reserved memory\n"
 			bsscode += "_length_of_" + varname + ": "
-			switch config.platformBits {
+			switch config.PlatformBits {
 			case 64:
 				bsscode += "resd 1"
 			case 32:
@@ -490,7 +499,7 @@ func (st Statement) String(ps *ProgramState, config *TargetConfig) string {
 			ps.definedNames = append(ps.definedNames, constname)
 			// For the .DATA section (recognized by the keyword)
 			if st[3].T == VALUE {
-				switch config.platformBits {
+				switch config.PlatformBits {
 				case 64:
 					asmcode += constname + ":\tdq "
 				case 32:
@@ -537,7 +546,7 @@ func (st Statement) String(ps *ProgramState, config *TargetConfig) string {
 		toPosition := "[_length_of_" + to + "]"
 		// TODO: Make this a lot smarter and handle copying ranges of data, adr or value
 		// TODO: Actually, redesign the whole language
-		switch config.platformBits {
+		switch config.PlatformBits {
 		case 64:
 			asmcode += "\tmov rdi, " + to + "\t\t\t; copy bytes from " + from + " to " + to + "\n"
 			asmcode += "\tmov rsi, " + from + "\n"
@@ -570,7 +579,7 @@ func (st Statement) String(ps *ProgramState, config *TargetConfig) string {
 		lengthAddr := "[_length_of_" + to + "]"
 		// TODO: Make this a lot smarter and handle copying ranges of data, adr or value
 		// TODO: Actually, redesign the whole language
-		switch config.platformBits {
+		switch config.PlatformBits {
 		case 64:
 			asmcode += "\tmov rdi, " + to + "\t\t; add bytes from \"" + from + "\" to " + to + "\n"
 			asmcode += "\tadd rdi, " + lengthAddr + "\n"
@@ -604,7 +613,7 @@ func (st Statement) String(ps *ProgramState, config *TargetConfig) string {
 		asmcode += "\thlt\n"
 		asmcode += "\tjmp .hang\t; loop forever\n\n"
 		return asmcode
-	} else if (config.platformBits == 16) && (st[0].T == BUILTIN) && (st[0].Value == "print") && (st[1].T == VALIDNAME) {
+	} else if (config.PlatformBits == 16) && (st[0].T == BUILTIN) && (st[0].Value == "print") && (st[1].T == VALIDNAME) {
 		asmcode := "\t; --- output string of given length ---\n"
 		asmcode += "\tmov dx, " + st[1].Value + "\n"
 		if _, ok := ps.variables[st[1].Value]; ok {
@@ -623,7 +632,7 @@ func (st Statement) String(ps *ProgramState, config *TargetConfig) string {
 			if (ps.inFunction == "main") || (ps.inFunction == config.LinkerStartFunction) {
 				//log.Println("Not taking down stack frame in the main/_start/start function.")
 			} else {
-				switch config.platformBits {
+				switch config.PlatformBits {
 				case 64:
 					asmcode += "\t;--- takedown stack frame ---\n"
 					asmcode += "\tmov rsp, rbp\t\t\t; use base pointer as new stack pointer\n"
@@ -636,7 +645,7 @@ func (st Statement) String(ps *ProgramState, config *TargetConfig) string {
 			}
 		}
 		if ps.inFunction != "" {
-			if !config.bootableKernel && !ps.endless && (ps.inFunction == "main") {
+			if !config.BootableKernel && !ps.endless && (ps.inFunction == "main") {
 				asmcode += "\n\t;--- return from \"" + ps.inFunction + "\" ---\n"
 			}
 		} else if st[0].Value == "exit" {
@@ -650,8 +659,8 @@ func (st Statement) String(ps *ProgramState, config *TargetConfig) string {
 			if (len(st) == 2) && ((st[1].T == VALUE) || (st[1].T == REGISTER)) {
 				exitCode = st[1].Value
 			}
-			if !config.bootableKernel {
-				switch config.platformBits {
+			if !config.BootableKernel {
+				switch config.PlatformBits {
 				case 64:
 					asmcode += "\tmov rax, 60\t\t\t; function call: 60\n\t"
 					if exitCode == "0" {
@@ -962,7 +971,7 @@ func (st Statement) String(ps *ProgramState, config *TargetConfig) string {
 			asmcode := "\n\t;--- signed division: " + st[0].Value + " /= " + st[2].Value + " ---\n"
 			// TODO Add support for division with 16-bit registers as well!
 
-			if config.platformBits == 32 {
+			if config.PlatformBits == 32 {
 				if st[0].Value == "eax" {
 					// Dividing a 64-bit number in edx:eax by the number in ecx. Clearing out edx and only using 32-bit numbers for now.
 					// If the register to be divided is rax, do a quicker division than if it's another register
@@ -1115,7 +1124,7 @@ func (st Statement) String(ps *ProgramState, config *TargetConfig) string {
 		log.Println("Unfamiliar 3-token expression!")
 	} else if (len(st) == 4) && (st[0].T == RESERVED) && (st[1].T == VALUE) && (st[2].T == ASSIGNMENT) && ((st[3].T == VALIDNAME) || (st[3].T == VALUE) || (st[3].T == REGISTER)) {
 		retval := "\tmov " + config.reservedAndValue(st[:2]) + ", " + st[3].Value + "\t\t\t; "
-		if (config.platformBits == 32) && (st[3].T != REGISTER) {
+		if (config.PlatformBits == 32) && (st[3].T != REGISTER) {
 			retval = strings.Replace(retval, "mov", "mov DWORD", 1)
 		}
 		pointercomment := ""
@@ -1130,7 +1139,7 @@ func (st Statement) String(ps *ProgramState, config *TargetConfig) string {
 		return retval
 	} else if (len(st) == 5) && (st[0].T == RESERVED) && (st[1].T == VALUE) && (st[2].T == ASSIGNMENT) && (st[3].T == RESERVED) && (st[4].T == VALUE) {
 		retval := ""
-		if config.platformBits != 32 {
+		if config.PlatformBits != 32 {
 			retval = "\tmov " + config.reservedAndValue(st[:2]) + ", " + config.reservedAndValue(st[3:]) + "\t\t\t; "
 		} else {
 			retval = "\tmov eax, " + config.reservedAndValue(st[3:]) + "\t\t\t; Uses eax as a temporary variable\n"
@@ -1143,7 +1152,7 @@ func (st Statement) String(ps *ProgramState, config *TargetConfig) string {
 		if err != nil {
 			log.Fatalln("Error: " + st[1].Value + " is not a valid platform bit size (like 32 or 64)")
 		}
-		if config.platformBits == targetBits {
+		if config.PlatformBits == targetBits {
 			// Add the rest of the line as a regular assembly expression
 			if len(st) == 7 {
 				comma1 := " "
@@ -1222,7 +1231,7 @@ func (st Statement) String(ps *ProgramState, config *TargetConfig) string {
 			log.Fatalln("Error: Can not declare function, name is already defined:", ps.inFunction)
 		}
 		ps.definedNames = append(ps.definedNames, ps.inFunction)
-		if config.platformBits != 16 {
+		if config.PlatformBits != 16 {
 			asmcode += "global " + ps.inFunction + "\t\t\t; make label available to the linker\n"
 		}
 		asmcode += ps.inFunction + ":\t\t\t\t; name of the function\n\n"
@@ -1230,7 +1239,7 @@ func (st Statement) String(ps *ProgramState, config *TargetConfig) string {
 			//log.Println("Not setting up stack frame in the main/_start/start function.")
 			return asmcode
 		}
-		switch config.platformBits {
+		switch config.PlatformBits {
 		case 64:
 			asmcode += "\t;--- setup stack frame ---\n"
 			asmcode += "\tpush rbp\t\t\t; save old base pointer\n"
@@ -1252,7 +1261,7 @@ func (st Statement) String(ps *ProgramState, config *TargetConfig) string {
 		return "\tmov " + config.counterRegister() + ", " + st[1].Value + "\t\t\t; set (loop) counter\n"
 	} else if (st[0].T == KEYWORD) && (st[0].Value == "value") && (len(st) == 2) {
 		asmcode := ""
-		switch config.platformBits {
+		switch config.PlatformBits {
 		case 64:
 			asmcode = "\tmov rax, " + st[1].Value + "\t\t\t; set value, in preparation for looping\n"
 			ps.loopStep = 8
@@ -1285,12 +1294,12 @@ func (st Statement) String(ps *ProgramState, config *TargetConfig) string {
 				log.Fatalln("Error: Unable to tell if this is a word or a byte:", st[1].Value)
 			}
 		default:
-			log.Fatalln("Error: Unimplemented: the", st[0].Value, "keyword for", config.platformBits, "bit platforms")
+			log.Fatalln("Error: Unimplemented: the", st[0].Value, "keyword for", config.PlatformBits, "bit platforms")
 		}
 		return asmcode
 	} else if (st[0].T == KEYWORD) && (st[0].Value == "loopwrite") && (len(st) == 1) {
 		asmcode := ""
-		switch config.platformBits {
+		switch config.PlatformBits {
 		case 16:
 			if ps.loopStep == 2 {
 				asmcode += "\trep stosw\t\t\t; write the value in ax, cx times, starting at es:di\n"
@@ -1303,7 +1312,7 @@ func (st Statement) String(ps *ProgramState, config *TargetConfig) string {
 		return asmcode
 	} else if (st[0].T == KEYWORD) && (st[0].Value == "write") && (len(st) == 1) {
 		asmcode := ""
-		switch config.platformBits {
+		switch config.PlatformBits {
 		case 16:
 			if ps.loopStep == 2 {
 				asmcode += "\tstosw\t\t\t; write the value in ax, starting at es:di\n"
@@ -1312,7 +1321,7 @@ func (st Statement) String(ps *ProgramState, config *TargetConfig) string {
 			}
 			//else log.Fatalln("Error: Unrecognized step size. Defaulting to 1.")
 		default:
-			log.Fatalln("Error: Unimplemented: the", st[0].Value, "keyword for", config.platformBits, "bit platforms")
+			log.Fatalln("Error: Unimplemented: the", st[0].Value, "keyword for", config.PlatformBits, "bit platforms")
 		}
 		return asmcode
 	} else if (st[0].T == KEYWORD) && ((st[0].Value == "rawloop") || (st[0].Value == "loop")) && ((len(st) == 1) || (len(st) == 2)) {
@@ -1361,7 +1370,7 @@ func (st Statement) String(ps *ProgramState, config *TargetConfig) string {
 		return asmcode
 	} else if (st[0].T == KEYWORD) && (st[0].Value == "address") && (len(st) == 2) {
 		asmcode := ""
-		switch config.platformBits {
+		switch config.PlatformBits {
 		case 16:
 			segmentOffset := st[1].Value
 			if !strings.Contains(segmentOffset, ":") {
@@ -1387,11 +1396,11 @@ func (st Statement) String(ps *ProgramState, config *TargetConfig) string {
 		case 64:
 			asmcode += "\tmov rdi, " + st[1].Value + "\t\t\t; set address/offset\n"
 		default:
-			log.Fatalln("Error: Unimplemented: the", st[0].Value, "keyword for", config.platformBits, "bit platforms")
+			log.Fatalln("Error: Unimplemented: the", st[0].Value, "keyword for", config.PlatformBits, "bit platforms")
 		}
 		return asmcode
 	} else if (st[0].T == KEYWORD) && (st[0].Value == "bootable") && (len(st) == 1) {
-		config.bootableKernel = true
+		config.BootableKernel = true
 		// This program is supposed to be bootable
 		return `
 ; Thanks to http://wiki.osdev.org/Bare_Bones_with_NASM

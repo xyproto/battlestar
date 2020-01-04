@@ -264,7 +264,7 @@ func (config *TargetConfig) Tokenize(program, sep string) []Token {
 			} else if has(reserved, word) {
 				if has([]string{"a", "b", "c", "d"}, word) {
 					reg := word
-					switch config.platformBits {
+					switch config.PlatformBits {
 					case 64:
 						reg = "r" + word
 					case 32:
@@ -440,7 +440,7 @@ func (config *TargetConfig) reduce(st Statement, debug bool, ps *ProgramState) S
 				}
 			} else if st[i+1].T == REGISTER {
 				var length string
-				switch config.platformBits {
+				switch config.PlatformBits {
 				case 64:
 					length = "4"
 				case 32:
@@ -478,7 +478,7 @@ func (config *TargetConfig) reduce(st Statement, debug bool, ps *ProgramState) S
 				tokenpos int
 				extra    = st[i+1].extra
 			)
-			switch config.platformBits {
+			switch config.PlatformBits {
 			case 64:
 				// Special case when printing single bytes, typically from chr(...)
 				if st[i+1].Value == "rsp" {
@@ -514,7 +514,7 @@ func (config *TargetConfig) reduce(st Statement, debug bool, ps *ProgramState) S
 
 			// Replace str(register) with a token VALID_NAME with esp/rsp + register name as the value.
 			// This is not perfect, but allows us to output register values with a system call.
-			switch config.platformBits {
+			switch config.PlatformBits {
 			case 64:
 				// remove the element at i+1
 				st = st[:i+1+copy(st[i+1:], st[i+2:])]

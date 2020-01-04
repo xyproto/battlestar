@@ -105,7 +105,7 @@ func (config *TargetConfig) AddStartingPointIfMissing(asmcode string, ps *Progra
 	if !strings.Contains(asmcode, config.LinkerStartFunction) {
 		log.Printf("No %s has been defined, creating one\n", config.LinkerStartFunction)
 		var addstring string
-		if config.platformBits != 16 {
+		if config.PlatformBits != 16 {
 			addstring += "global " + config.LinkerStartFunction + "\t\t\t; make label available to the linker\n"
 		}
 		addstring += config.LinkerStartFunction + ":\t\t\t\t; starting point of the program\n"
