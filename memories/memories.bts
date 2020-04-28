@@ -1,0 +1,33 @@
+// "Memories"
+// The original was written by "HellMood/DESiRE" (http://www.sizecoding.org/wiki/Memories)
+
+// Define dosbox, sice 256 bytes
+// Define music
+// Define instrument 11
+// Define scale_mod -19*32*4
+// Define time_mask 7
+// Define targetFPS 35
+// Define tempo 1193182/256/targetFPS
+// Define sierp_color 0x2A
+// Define tunnel_base_color 20
+// Define tunnel_pattern 6
+// Define tilt_plate_pattern 4+8+16
+// Define circles_pattern 8+16
+// Not defined: switch_uart
+// Not defined: safe_dx
+// Not defined: safe_segment
+// Not defined: freedos
+// Not defined: winxpdos
+
+fun main
+    al = 0x13               // set graphics mode (mode 13h)
+    int 10                  //
+    bp <-> ax               // xchg bp,ax
+    0xa9ff6 -> stack        // push 0xa000-10
+    stack -> es             // pop es
+    ax = 0x251c             // mov ax,0x251c
+
+    // Battlestar is not yet powerful enough to port memories.asm to bts
+end
+
+// vim: set syntax=c ts=4 sw=4 et:
