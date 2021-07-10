@@ -99,7 +99,12 @@ function run {
   logfn=`mktemp --suffix=.log`
 
   # Compile and link
-  battlestarc -bits="$bits" -osx="$osx" -f $1 -o "$asmfn" -oc "$cfn" 2>"$logfn" || (cat "$logfn"; rm "$asmfn"; echo "$1 failed to build.")
+  if ! battlestarc -bits="$bits" -osx="$osx" -f $1 -o "$asmfn" -oc "$cfn" 2>"$logfn"; then
+    cat "$logfn"
+    rm "$asmfn"
+    echo "$1 failed to build."
+    exit 1
+  fi
   if [ -e "$asmfn" ]; then
     [ -e $cfn ] && ($cccmd -c "$cfn" -o "${o2fn}" || echo "$1 failed to compile")
     [ -e $asmfn ] && ($asmcmd -o "$o1fn" "$asmfn" || echo "$1 failed to assemble")
