@@ -13,16 +13,6 @@ import (
 	"github.com/xyproto/battlestarlib"
 )
 
-// hasi can be used for checking if a slice of ints has the given int
-func hasi(il []int, i int) bool {
-	for _, e := range il {
-		if e == i {
-			return true
-		}
-	}
-	return false
-}
-
 func main() {
 	name := "Battlestar"
 	version := "0.6.2"
