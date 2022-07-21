@@ -10,15 +10,15 @@ type (
 
 	// ProgramState is the state of the current position in this program, when compiling
 	ProgramState struct {
-		surpriseEndingWithExit bool           // To keep track of function blocks that are ended with "exit"
-		loopStep               int            // To keep track of if rep should use stosb or stosw (and stepsize in loops in general)
-		loopNameCounter        int            // To keep track of which generated label names have already been used
-		ifNameCounter          int            // To keep track of which generated label names have already been used
-		definedNames           []string       // all defined variables/constants/functions
 		variables              map[string]int // map of variable names and reserved bytes
 		inFunction             string         // name of the function we are currently in
 		inLoop                 string         // name of the loop we are currently in
 		inIfBlock              string         // name of the if block we are currently in
+		definedNames           []string       // all defined variables/constants/functions
+		ifNameCounter          int            // To keep track of which generated label names have already been used
+		loopStep               int            // To keep track of if rep should use stosb or stosw (and stepsize in loops in general)
+		loopNameCounter        int            // To keep track of which generated label names have already been used
+		surpriseEndingWithExit bool           // To keep track of function blocks that are ended with "exit"
 		endless                bool           // ending the program with endless keyword?
 	}
 )
