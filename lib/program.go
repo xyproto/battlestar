@@ -23,17 +23,16 @@ type (
 	}
 )
 
-var (
-	// Global program state
-	dataNotValueTypes []string          // all defined constants that are data (x: db 1,2,3,4...)
-	types             map[string]string // type of the defined names
-)
-
 const (
 	// For the types of loops that does not save and restore the counter before and after the loop body
 	rawloopPrefix = "r_"
 	// For the types of loops that loop forever
 	endlessloopPrefix = "e_"
+)
+
+var (
+	// Global program state
+	dataNotValueTypes []string // all defined constants that are data (x: db 1,2,3,4...)
 )
 
 // NewProgramState returns a new state struct that is used when the program is compiled

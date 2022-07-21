@@ -54,7 +54,7 @@ func NewTargetConfig(platformBits int, macOS, bootableKernel bool) (*TargetConfi
 
 	// Check if platformBits is valid
 	if !hasi([]int{16, 32, 64}, platformBits) {
-		return nil, fmt.Errorf("Error: Unsupported bit size: %d", platformBits)
+		return nil, fmt.Errorf("error: Unsupported bit size: %d", platformBits)
 	}
 
 	// Used when calling interrupts (or syscall). Not used for 16-bit platforms.
