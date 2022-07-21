@@ -12,7 +12,7 @@ What is Battlestar?
 * Subset of assembly with an alternative syntax and with support for inline C.
 * A work in progress.
 * Created for fun and for the educational process.
-* The indended purpose is for writing 4k and 64k demoscene demos.
+* The indended purpose is for writing small operating systems, 1k and 4k demoscene demos.
 
 
 Quick start
