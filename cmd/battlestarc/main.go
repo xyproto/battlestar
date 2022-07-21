@@ -13,10 +13,13 @@ import (
 	"github.com/xyproto/battlestar/lib"
 )
 
+const (
+	name    = "Battlestar"
+	version = "0.7.0"
+)
+
 func main() {
-	name := "Battlestar"
-	version := "0.6.2"
-	log.Println(name + " " + version)
+	log.Printf("%s %s\n", name, version)
 
 	ps := lib.NewProgramState()
 
