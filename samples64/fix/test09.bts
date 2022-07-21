@@ -9,9 +9,12 @@ fun bts_println // Takes a pointer to a string and a length
 end
 
 inline_c
+#include <stdio.h>
+#include <string.h>
+
 extern void bts_println(char *msg, int len);
 
-int mystrlen(char *s) {
+int mystrlen2(char *s) {
     int i = 0;
     while (s[i] != 0) {
         i++;
@@ -20,7 +23,7 @@ int mystrlen(char *s) {
 }
 
 void println(char *s) {
-    bts_println(s, mystrlen(s));
+    bts_println(s, mystrlen2(s));
 }
 end
 
