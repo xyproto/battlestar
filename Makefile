@@ -10,7 +10,7 @@ endif
 BINDIR = $(PREFIX)/bin
 PWD = $(shell pwd)
 
-.PHONY: all samples clean install-bin install devinstall uninstall
+.PHONY: all clean devinstall distclean install install-bin samples uninstall
 
 all: cmd/battlestarc/battlestarc
 
@@ -29,6 +29,8 @@ samples:
 
 clean:
 	(cd cmd/battlestarc; go clean)
+
+distclean: clean
 	make -C helloworld clean
 	make -C samples clean
 	make -C samples64 clean
@@ -42,7 +44,7 @@ clean:
 	make -C life clean
 
 cmd/battlestarc/battlestarc:
-	(cd cmd/battlestarc; go build)
+	(cd cmd/battlestarc; go build -mod=vendor)
 
 install: $(INSTALL_TARGET) cmd/battlestarc/battlestarc
 
