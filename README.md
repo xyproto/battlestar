@@ -20,11 +20,13 @@ Quick start
 
 Build and install Battlestar, build the samples and run the "life" sample:
 
-* `make; sudo make devinstall; make samples; cd life; ./life.sh`
+* `make; sudo make devinstall; make samples; cd life; ./life.sh; cd ..`
 
 This requires DosBox, Go, Yasm and GCC.
 
-gcc-go is not supported yet.
+Build and boot a kernel (requires GCC, Yasm, Battlestar and the `qemu-system-i386` executable):
+
+* `cd kernel/simple; make boot; cd ../..`
 
 
 Features and limitations
@@ -38,9 +40,10 @@ Features and limitations
 * Battlestar programs compiles almost instantly.
 * Programs can be run like scripts by including this line at the top: ```#!/usr/bin/bts```
 * Interrupts can be called with the same syntax for both 32-bit and 64-bit x86 on Linux.
-* Also supports 16-bit x86 with DosBox.
+* Supports 16-bit x86 that can run within DosBox.
 * The intermediate assembly is fully commented.
 * No register allocator, just an alternative assembly syntax.
+* `gccgo` is not supported yet.
 
 
 Sample program
