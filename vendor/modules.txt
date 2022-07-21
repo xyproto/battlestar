@@ -1,2 +1,0 @@
-# github.com/xyproto/battlestarlib v0.2.3
-github.com/xyproto/battlestarlib
