@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/xyproto/battlestarlib"
+	"github.com/xyproto/battlestar/lib"
 )
 
 func main() {
@@ -18,7 +18,7 @@ func main() {
 	version := "0.6.2"
 	log.Println(name + " " + version)
 
-	ps := battlestarlib.NewProgramState()
+	ps := lib.NewProgramState()
 
 	// TODO: Add an option for not adding an exit function
 	// TODO: Automatically discover 32-bit/64-bit and Linux/OS X
@@ -72,7 +72,7 @@ func main() {
 	cdata := ""
 
 	// Prepare to parse, tokenize and output code for a specific platform
-	targetConfig, err := battlestarlib.NewTargetConfig(platformBits, bootableKernel, macOS)
+	targetConfig, err := lib.NewTargetConfig(platformBits, bootableKernel, macOS)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -90,7 +90,7 @@ func main() {
 
 		// If "bootable" is the first token
 		bootableFirstToken := false
-		if temptokens := targetConfig.Tokenize(string(bytes), " "); (len(temptokens) > 2) && (temptokens[0].T == battlestarlib.KEYWORD) && (temptokens[0].Value == "bootable") && (temptokens[1].T == battlestarlib.SEP) {
+		if temptokens := targetConfig.Tokenize(string(bytes), " "); (len(temptokens) > 2) && (temptokens[0].T == lib.KEYWORD) && (temptokens[0].Value == "bootable") && (temptokens[1].T == lib.SEP) {
 			bootableFirstToken = true
 			asmdata += fmt.Sprintf("bits %d\n", targetConfig.PlatformBits)
 		} else {
@@ -135,8 +135,7 @@ func main() {
 				asmdata = strings.Replace(asmdata, "; starting point of the program\n", "; starting point of the program\n\tmov "+reg+", stack_top\t; set the "+reg+" register to the top of the stack (special case for bootable kernels)\n", 1)
 			}
 		}
-		ccode := battlestarlib.ExtractInlineC(strings.TrimSpace(string(bytes)), true)
-		if ccode != "" {
+		if ccode := lib.ExtractInlineC(strings.TrimSpace(string(bytes)), true); ccode != "" {
 			cdata += fmt.Sprintf("// Generated with %s %s, at %s\n\n", name, version, t.String()[:16])
 			cdata += ccode
 		}
@@ -145,16 +144,14 @@ func main() {
 	log.Println("--- Finalizing ---")
 
 	if asmdata != "" {
-		err = ioutil.WriteFile(asmfile, []byte(asmdata), 0644)
-		if err != nil {
+		if ioutil.WriteFile(asmfile, []byte(asmdata), 0644) != nil {
 			log.Fatalln("Error: Unable to write to", asmfile)
 		}
 		log.Printf("Wrote %s (%d bytes)\n", asmfile, len(asmdata))
 	}
 
 	if cdata != "" {
-		err = ioutil.WriteFile(cfile, []byte(cdata), 0644)
-		if err != nil {
+		if ioutil.WriteFile(cfile, []byte(cdata), 0644) != nil {
 			log.Fatalln("Error: Unable to write to", cfile)
 		}
 		log.Printf("Wrote %s (%d bytes)\n", cfile, len(cdata))
