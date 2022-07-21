@@ -8,10 +8,10 @@ Battlestar
 What is Battlestar?
 -------------------
 
-* A work in progress.
-* Created for fun and for the educational process.
 * A programming language specifically for 64-bit x86 Linux, 32-bit x86 Linux and 16-bit x86 DOS.
 * Subset of assembly with an alternative syntax and with support for inline C.
+* A work in progress.
+* Created for fun and for the educational process.
 * The indended purpose is for writing 4k and 64k demoscene demos.
 
 
