@@ -107,7 +107,7 @@ function build {
   [ -e $n.asm ] && echo $asmcmd -o "$n.o" "$n.asm"
   [ -e $n.asm ] && ($asmcmd -o "$n.o" "$n.asm" || asmok=false)
   if [[ $asmok = false ]]; then
-    [ -e $n.asm ] && echo "Failed to assemble: $n."
+    [ -e $n.asm ] && echo "Failed to assemble: $n."
   else
     [ -e $n.asm ] && echo "Assembled successfully: $n"
   fi
@@ -129,10 +129,10 @@ function build {
   if [[ $linkfail = false ]]; then
     if [[ $compiledc = true ]]; then
       if [[ $EXTERNLIB = 1 ]]; then
-	echo 'Skipping linking, external lib'
-	# Save the filenames for later cleaning
-	echo -e "\n$n $n.asm $n.c $n.o ${n}_c.o $n $n.log" >> "$n.log"
-	return 0
+  echo 'Skipping linking, external lib'
+  # Save the filenames for later cleaning
+  echo -e "\n$n $n.asm $n.c $n.o ${n}_c.o $n $n.log" >> "$n.log"
+  return 0
       else
         $ldcmd "${n}_c.o" "$n.o" -o "$n" || echo "$n failed to link"
       fi
@@ -140,27 +140,27 @@ function build {
       if [[ $bits = 16 ]]; then
       	# The output file is a .com file
         mv "$n.o" "$n.com"
-	# Create a script for running it with dosbox
-	echo '#!/bin/sh' > "$n.sh"
-	echo "dosbox -c \"mount c .\" -c \"c:\" -c cls -c $n.com -c pause -c exit > /dev/null" >> "$n.sh"
-	chmod +x "$n.sh"
-	# Save the filenames for later cleaning
-	echo -e "\n$n.asm $n.c $n.com ${n}_c.o $n.log $n $n.sh" >> "$n.log"
-	# Check if a .com file has been created and return a value accordingly
-	[ -e $n.com ] && return 0 || return 1
+  # Create a script for running it with dosbox
+  echo '#!/bin/sh' > "$n.sh"
+  echo "dosbox -c \"mount c .\" -c \"c:\" -c \"@echo off\" -c cls -c $n.com -c pause -c exit > /dev/null" >> "$n.sh"
+  chmod +x "$n.sh"
+  # Save the filenames for later cleaning
+  echo -e "\n$n.asm $n.c $n.com ${n}_c.o $n.log $n $n.sh" >> "$n.log"
+  # Check if a .com file has been created and return a value accordingly
+  [ -e $n.com ] && return 0 || return 1
       else
         if [[ $EXTERNLIB = 1 ]]; then
-	  #echo "External libraries, skipping linking."
-	  if [[ $asmok = false ]]; then
-	    # Return 1 if the assembly stage failed
-	    return 1
-	  else
-	    # Return 0 if the assembly stage went ok
-	    return 0
-	  fi
-	else
+    #echo "External libraries, skipping linking."
+    if [[ $asmok = false ]]; then
+      # Return 1 if the assembly stage failed
+      return 1
+    else
+      # Return 0 if the assembly stage went ok
+      return 0
+    fi
+  else
           $ldcmd "$n.o" -o "$n" || echo "$n failed to link"
-	fi
+  fi
       fi
     fi
   else
@@ -316,7 +316,7 @@ else
       build $f $@
       retval=$?
       if [[ $retval != 0 ]]; then
-	break
+  break
       fi
     fi
   done
