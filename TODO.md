@@ -49,3 +49,37 @@
 ### Maybe
 
 - [ ] Syntax for linking with libraries, that connects with pkg-config? "use sdl" should use the right link and inclusions.
+
+
+### Other ideas
+
+Import a C library, as found by pkg-config. The symbols will then be available as zlib::SYMBOL_NAME:
+
+import zlib
+
+
+l = [1, 2, 3, 4, 5] // a list
+
+for x in l do
+    blabla
+end
+
+
+Ignore comments when // is not the first thing on the line
+
+Built in quaternions
+
+Built in support for SDL2
+
+Use a subset of the ruby syntax
+
+
+Inline various languages:
+
+c
+  hello("hello from C");
+end
+
+python
+  hello("hello from python")
+end
