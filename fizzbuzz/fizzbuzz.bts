@@ -1,70 +1,62 @@
-const fizzbuzz = "FizzBuzz"
-const fizz = "Fizz"
-const buzz = "Buzz"
+const fizzbuzz = "FizzBuzz\n"
+const fizz = "Fizz\n"
+const buzz = "Buzz\n"
 const nl = "\n"
 
-// Write two digits, based on the value in a
-fun printnum
-    b = a
-    a >= 10
-        a /= 10
-        // modulo is in the d register after idiv
-        b = d
-        a += 48 // ASCII value for '0'
-        print(chr(a))
-    end
-    a = b
-    a += 48 // ASCII value for '0'
-    print(chr(a))
-end
-
 fun main
-    // Initialize the counter to -1
-    -1 -> stack
 
+    // Initialize the counter to -1
+    r10 = -1
+
+    // Start an endless loop
     loop
         // Increase the counter
-        stack -> a
-        a++
-        a -> stack
+        r10++
 
-        // Break the loop if the counter a is over 99
-        break (a > 99)
+        // Break the loop if the counter is over 99
+        break (r10 > 99)
 
         // Output "FizzBuzz" if a % 15 == 0
-        stack -> a
-        a -> stack
+        a = r10
         a /= 15
         d == 0
             print(fizzbuzz)
-            print(nl)
             continue
         end
 
         // Output "Fizz" if a % 3 == 0
-        stack -> a
-        a -> stack
+        a = r10
         a /= 3
         d == 0
             print(fizz)
-            print(nl)
             continue
         end
 
         // Output "Buzz" if a % 5 == 0
-        stack -> a
-        a -> stack
+        a = r10
         a /= 5
         d == 0
             print(buzz)
-            print(nl)
             continue
         end
 
         // Otherwise output the counter a
-        stack -> a
-        a -> stack
-        printnum()
+        a = r10
+
+        // Write two digits, based on the value in a
+        b = a
+        a >= 10
+            a /= 10
+            // modulo is in the d register after idiv
+            b = d
+            a += 48 // ASCII value for '0'
+            print(chr(a))
+        end
+        a = b
+        a += 48 // ASCII value for '0'
+        print(chr(a))
+
+        // Print a newline after printing the number
         print(nl)
 
     end
