@@ -8,7 +8,7 @@ Battlestar
 What is Battlestar?
 -------------------
 
-* A programming language specifically for 64-bit x86 Linux, 32-bit x86 Linux and 16-bit x86 DOS.
+* A programming language specifically for 64-bit x86 Linux, 32-bit x86 Linux and 16-bit x86 DOS (DosBox on ie. ARM works too).
 * Subset of assembly with an alternative syntax and with support for inline C.
 * A work in progress.
 * Created for fun and for the educational process.
