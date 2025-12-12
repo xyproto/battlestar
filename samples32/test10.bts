@@ -1,0 +1,174 @@
+const usage_msg_p1 = "Usage: sleep <seconds>", 10
+const usage_msg_p2 = "", 32, 32, "Sleep for NUMBER seconds.", 10
+
+fun print_usage
+    eax -> stack
+    print(usage_msg_p1)
+    print(usage_msg_p2)
+    stack -> eax
+    ret
+
+fun parse_fractional_seconds
+    // Parse "X.Y" format into seconds (eax) and nanoseconds (edx)
+    // Input: funparam[0] (put into esi) = pointer to string / char pointer
+    // Output: eax = seconds, edx = nanoseconds, edi = 1 if NaN else 0
+    eax = 0   // seconds
+    ebx = 0   // byte input
+    ecx = 0   // digit counter after decimal
+    edx = 0   // nanoseconds
+    esi = funparam[0]  // char pointer
+    edi = 0   // decimal flag: 0 = before decimal, 1 = after decimal
+
+    loop
+        // parse char from input string
+        bl = readbyte esi
+
+        // Null terminator?
+        bl == 0
+            (asm 32) jmp slp_finish
+        end
+
+        // Decimal point?
+        bl == 46  // '.' = 0x2e = 46
+            edi = 1  // Now parsing the fractional part
+            esi += 1  // next char
+            ecx = 0  // Reset for counting digits
+            continue
+        end
+
+        // Validate digit
+        bl < 48  // <'0'
+            (asm 32) jmp slp_error
+        end
+        bl > 57  // >'9'
+            (asm 32) jmp slp_error
+        end
+
+        // Convert ASCII to digit
+        bl -= 48
+
+        edi == 0  // Before decimal point:
+            // new digit: num = num * 10 + digit
+            ecx -> stack
+            ecx = 10
+            eax *= ecx
+            stack -> ecx
+            ebx &= 0xFF
+            eax += ebx
+            (asm 32) jmp slp_next_char
+        end
+
+        // Decimal since no jump
+        ecx -> stack
+        ecx = 10
+        edx *= ecx
+        stack -> ecx
+        ebx &= 0xFF
+        edx += ebx
+        ecx += 1  // Count digits after decimal
+(asm 32) slp_next_char:
+        esi += 1  // next char
+        continue
+    end
+
+(asm 32) slp_finish:
+    // If no ns, no need to scale nanosecs
+    ecx == 0
+        edi = 0
+        ret
+    end
+
+    // scale nanoseconds
+    ebx = 9
+    ebx -= ecx
+    loop ebx
+        ecx -> stack
+        ecx = 10
+        edx *= ecx
+        stack -> ecx
+    end
+
+    // unset error flag
+    edi = 0
+    ret
+
+(asm 32) slp_error:
+    // if NaN, set time to zero and error flag
+    eax = 0
+    edx = 0
+    edi = 1
+    ret
+
+fun nanosleep
+    // Expects nanoseconds and seconds on stack
+
+    // Push values onto stack in reverse order for timespec struct
+    eax = funparam[1]  // nanoseconds
+    eax -> stack  // push 0->1
+    eax = funparam[0]  // seconds
+    eax -> stack  // push 1->2
+
+    // Now esp points to the timespec
+    sysparam[1] = esp  // timespec
+    sysparam[2] = 0    // remaining seconds
+    int(0x80, 162, _, _)
+
+    // Cleanup stack (pop twice)
+    stack -> eax  // pop 2->1
+    stack -> eax  // pop 1->0
+    ret
+
+fun main
+    // read word from argc
+    ecx = mem esp
+    ecx != 2
+        print_usage()
+        exit 1
+    end
+
+    // move to &(argv[1]) - (&argc + (4 x2))
+    edi = esp
+    edi += 8
+
+    // argv = {"sleep", "1.25"}
+    //         ^argv[0]^    ^argv[1]   
+    // keep in mind that these are addresses to the first byte of the
+    //   null-terminated cstr matching the argument, and that argv[0] is the
+    //   command itself
+
+    // read &(argv[1]) (address of first argument's cstr)
+    esi = mem edi
+
+    // push &(argv[1]) onto the stack
+    esi -> stack  // push
+    parse_fractional_seconds()
+    esp += 4  // pop
+
+    // if error while parsing fractional seconds (NaN), print help
+    edi == 1
+        call print_usage
+        exit 1
+    end
+
+    // if any of (sec, ns) is nonzero, go sleep
+    eax != 0
+        (asm 32) jmp slp_main_dosleep
+    end
+    edx != 0
+        (asm 32) jmp slp_main_dosleep
+    end
+
+    // else, exit
+    exit 0
+
+
+(asm 32) slp_main_dosleep:
+    edx -> stack  // set funparam[1] (ns)  - push 0->1
+    eax -> stack  // set funparam[0] (sec) - push 1->2
+    nanosleep()  // sleep for real
+    esp += 8  // pop 2->0 (-4 x2)
+
+    exit 0
+end
+
+// vim: syntax=c ts=4 sw=4 et:
