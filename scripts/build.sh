@@ -118,7 +118,7 @@ function build {
       rm -f "$n.c"
     fi
     # Remove the generated .asm file
-    rm -f "$n.asm"
+    #rm -f "$n.asm"
   fi
   # Save the filenames for later cleaning
   echo -e "\n$n.o ${n}_c.o $n.asm $n $n.log" >> "$n.log"
