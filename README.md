@@ -2,8 +2,6 @@ Battlestar
 ==========
 
 [![License](http://img.shields.io/badge/license-BSD-green.svg?style=flat)](https://raw.githubusercontent.com/xyproto/battlestar/main/LICENSE)
-[![Go Report Card](https://goreportcard.com/badge/github.com/xyproto/battlestar)](https://goreportcard.com/report/github.com/xyproto/battlestar)
-
 
 What is Battlestar?
 -------------------
